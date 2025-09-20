@@ -320,15 +320,17 @@ class GCPConnector(BaseConnector):
                 self.logger.error("GCP credentials or project ID not available")
                 return False
             
+            connection_successful = False
+            
             # Test BigQuery connection
             if 'bigquery' in self.services and self.bigquery_client:
                 try:
                     # Try to list datasets (this will fail if credentials are invalid)
                     list(self.bigquery_client.list_datasets(max_results=1))
                     self.logger.info("BigQuery connection test successful")
+                    connection_successful = True
                 except Exception as e:
                     self.logger.error(f"BigQuery connection test failed: {e}")
-                    return False
             
             # Test Cloud Storage connection
             if 'cloud_storage' in self.services and self.storage_client:
@@ -336,12 +338,17 @@ class GCPConnector(BaseConnector):
                     # Try to list buckets (this will fail if credentials are invalid)
                     list(self.storage_client.list_buckets(max_results=1))
                     self.logger.info("Cloud Storage connection test successful")
+                    connection_successful = True
                 except Exception as e:
                     self.logger.error(f"Cloud Storage connection test failed: {e}")
-                    return False
             
-            
-            return True
+            # Return True if at least one service connection succeeded
+            if connection_successful:
+                self.logger.info("GCP connection test successful - at least one service is accessible")
+                return True
+            else:
+                self.logger.error("GCP connection test failed - no services are accessible")
+                return False
             
         except Exception as e:
             self.logger.error(f"GCP connection test failed: {e}")
