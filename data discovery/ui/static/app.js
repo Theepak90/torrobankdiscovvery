@@ -25,6 +25,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Load initial data with staggered animations
     setTimeout(() => loadSystemHealth(), 100);
     setTimeout(() => loadConnectors(), 200);
+    setTimeout(() => loadMyConnections(), 250);
     setTimeout(() => loadAssets(), 300);
     
     // Set up event listeners
@@ -255,8 +256,185 @@ async function loadConnectors() {
         renderConnectorCategory('warehouse-connectors', currentConnectors.data_warehouses, 'warehouse', availableConnectors, connectorStatus);
         renderConnectorCategory('network-storage-connectors', currentConnectors.network_storage, 'network_storage', availableConnectors, connectorStatus);
         
+        // Also refresh My Connections
+        loadMyConnections();
+        
     } catch (error) {
         console.error('Failed to load connectors:', error);
+    }
+}
+
+async function loadMyConnections() {
+    try {
+        const response = await apiCall('/system/health');
+        const connectorStatus = response.connector_status || {};
+        
+        // Filter for enabled/configured connectors
+        const activeConnections = Object.entries(connectorStatus)
+            .filter(([connectorId, status]) => status.enabled && status.configured)
+            .map(([connectorId, status]) => ({
+                id: connectorId,
+                name: getConnectorDisplayName(connectorId),
+                status: status.connected ? 'connected' : 'disconnected',
+                lastTest: status.last_test,
+                error: status.error
+            }));
+        
+        renderMyConnections(activeConnections);
+        
+    } catch (error) {
+        console.error('Failed to load my connections:', error);
+        renderMyConnections([]);
+    }
+}
+
+function getConnectorDisplayName(connectorId) {
+    const displayNames = {
+        'gcp': 'Google Cloud Platform',
+        'aws': 'Amazon Web Services',
+        'azure': 'Microsoft Azure',
+        'mysql': 'MySQL Database',
+        'postgresql': 'PostgreSQL Database',
+        'oracle': 'Oracle Database',
+        'bigquery': 'Google BigQuery',
+        'databricks': 'Databricks',
+        'trino': 'Trino',
+        'snowflake': 'Snowflake',
+        'nas': 'NAS Drives',
+        'sftp': 'SFTP Server'
+    };
+    
+    return displayNames[connectorId] || connectorId.charAt(0).toUpperCase() + connectorId.slice(1);
+}
+
+function renderMyConnections(connections) {
+    const container = document.getElementById('my-connections');
+    const countElement = document.getElementById('active-connections-count');
+    
+    // Update count
+    countElement.textContent = connections.length;
+    
+    if (connections.length === 0) {
+        container.innerHTML = `
+            <div class="col-12 text-center text-muted">
+                <i class="fas fa-info-circle me-2"></i>
+                No active connections yet. Add a connection below to get started.
+            </div>
+        `;
+        return;
+    }
+    
+    let html = '';
+    connections.forEach(connection => {
+        const statusClass = connection.status === 'connected' ? 'success' : 'danger';
+        const statusIcon = connection.status === 'connected' ? 'check-circle' : 'times-circle';
+        const lastTestText = connection.lastTest ? 
+            new Date(connection.lastTest).toLocaleString() : 'Never tested';
+        
+        html += `
+            <div class="col-md-6 col-lg-4 mb-3">
+                <div class="card h-100 border-${statusClass === 'success' ? 'success' : 'danger'}">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <h6 class="card-title mb-0">${connection.name}</h6>
+                            <span class="badge bg-${statusClass}">
+                                <i class="fas fa-${statusIcon} me-1"></i>
+                                ${connection.status.charAt(0).toUpperCase() + connection.status.slice(1)}
+                            </span>
+                        </div>
+                        <p class="card-text small text-muted mb-2">
+                            <i class="fas fa-clock me-1"></i>
+                            Last tested: ${lastTestText}
+                        </p>
+                        ${connection.error ? `
+                            <div class="alert alert-danger alert-sm mb-2">
+                                <i class="fas fa-exclamation-triangle me-1"></i>
+                                ${connection.error}
+                            </div>
+                        ` : ''}
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-outline-primary btn-sm" onclick="testConnection('${connection.id}')">
+                                <i class="fas fa-play me-1"></i> Test
+                            </button>
+                            <button class="btn btn-outline-secondary btn-sm" onclick="viewConnectionDetails('${connection.id}')">
+                                <i class="fas fa-eye me-1"></i> View
+                            </button>
+                            <button class="btn btn-outline-danger btn-sm" onclick="deleteConnection('${connection.id}')">
+                                <i class="fas fa-trash me-1"></i> Remove
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    
+    container.innerHTML = html;
+}
+
+async function testConnection(connectorId) {
+    try {
+        showNotification('Testing connection...', 'info');
+        
+        const response = await apiCall(`/config/${connectorId}/test`, {
+            method: 'POST'
+        });
+        
+        if (response) {
+            showNotification('Connection test completed', 'success');
+            // Refresh the connections list
+            loadMyConnections();
+        } else {
+            showNotification('Connection test failed', 'danger');
+        }
+        
+    } catch (error) {
+        console.error('Connection test failed:', error);
+        showNotification('Connection test failed: ' + error.message, 'danger');
+    }
+}
+
+async function viewConnectionDetails(connectorId) {
+    try {
+        const response = await apiCall(`/config/${connectorId}`);
+        
+        if (response && response.config) {
+            // Show connection details in a modal or alert
+            const configDetails = JSON.stringify(response.config, null, 2);
+            alert(`Connection Details for ${connectorId}:\n\n${configDetails}`);
+        } else {
+            showNotification('No configuration found for this connection', 'warning');
+        }
+        
+    } catch (error) {
+        console.error('Failed to load connection details:', error);
+        showNotification('Failed to load connection details', 'danger');
+    }
+}
+
+async function deleteConnection(connectorId) {
+    if (!confirm(`Are you sure you want to remove the ${connectorId} connection?`)) {
+        return;
+    }
+    
+    try {
+        const response = await apiCall(`/config/${connectorId}`, {
+            method: 'DELETE'
+        });
+        
+        if (response) {
+            showNotification('Connection removed successfully', 'success');
+            // Refresh the connections list
+            loadMyConnections();
+            // Also refresh the connectors list
+            loadConnectors();
+        } else {
+            showNotification('Failed to remove connection', 'danger');
+        }
+        
+    } catch (error) {
+        console.error('Failed to remove connection:', error);
+        showNotification('Failed to remove connection: ' + error.message, 'danger');
     }
 }
 
