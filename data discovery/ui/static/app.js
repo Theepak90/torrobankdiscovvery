@@ -3958,12 +3958,39 @@ async function loadDiscoveredAssets() {
     if (!container) return;
     
     try {
-        // Fetch real discovered assets from the API
+        // First, add the GCP connector if not already added
+        const projectId = document.getElementById('project-id')?.value;
+        const serviceAccountJson = document.getElementById('service-account-json')?.value;
+        
+        if (projectId && serviceAccountJson) {
+            // Add the connector first
+            const addResponse = await fetch('/api/connectors/gcp/add', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    name: document.getElementById('connection-name')?.value || 'GCP Connection',
+                    config: {
+                        project_id: projectId,
+                        service_account_json: serviceAccountJson,
+                        services: ['bigquery']
+                    }
+                })
+            });
+            
+            if (!addResponse.ok) {
+                throw new Error('Failed to add GCP connector');
+            }
+        }
+        
+        // Now fetch discovered assets
         const response = await fetch('/api/discovery/test/gcp', {
             method: 'POST'
         });
         
         const result = await response.json();
+        console.log('Discovery result:', result);
         
         if (result.status === 'success' && result.assets && result.assets.length > 0) {
             const assets = result.assets;
@@ -3972,68 +3999,111 @@ async function loadDiscoveredAssets() {
             
             let assetsHTML = '<div class="discovered-assets-list">';
             
-            // Show datasets
-            datasets.forEach((asset, index) => {
-                const badgeColors = ['primary', 'warning', 'info', 'success'];
-                const badgeColor = badgeColors[index % badgeColors.length];
-                const isPII = asset.name.includes('pii');
-                const isConsent = asset.name.includes('consent');
+            // Show datasets with better formatting
+            if (datasets.length > 0) {
+                assetsHTML += '<div class="mb-3">';
+                assetsHTML += '<h6 class="text-primary mb-2"><i class="fas fa-database me-2"></i>Datasets Found:</h6>';
                 
-                assetsHTML += `
-                    <div class="asset-item">
-                        <i class="fas fa-database text-${badgeColor} me-2"></i>
-                        <strong>${asset.name.split('.').pop()}</strong>
-                        <span class="badge bg-${badgeColor} ms-2">
-                            Dataset${isPII ? ' (PII)' : isConsent ? ' (Consent)' : ''}
-                        </span>
-                    </div>
-                `;
-            });
+                datasets.forEach((asset, index) => {
+                    const badgeColors = ['primary', 'warning', 'info', 'success'];
+                    const badgeColor = badgeColors[index % badgeColors.length];
+                    const isPII = asset.name.toLowerCase().includes('pii');
+                    const isConsent = asset.name.toLowerCase().includes('consent');
+                    const datasetName = asset.name.split('.').pop();
+                    
+                    assetsHTML += `
+                        <div class="asset-item mb-2 p-2 border rounded">
+                            <div class="d-flex align-items-center">
+                                <i class="fas fa-database text-${badgeColor} me-2"></i>
+                                <div class="flex-grow-1">
+                                    <strong>${datasetName}</strong>
+                                    <div class="small text-muted">${asset.name}</div>
+                                </div>
+                                <span class="badge bg-${badgeColor}">
+                                    Dataset${isPII ? ' (PII)' : isConsent ? ' (Consent)' : ''}
+                                </span>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                assetsHTML += '</div>';
+            }
             
-            // Show some tables
-            tables.slice(0, 2).forEach((asset, index) => {
-                assetsHTML += `
-                    <div class="asset-item">
-                        <i class="fas fa-table text-secondary me-2"></i>
-                        <strong>${asset.name.split('.').pop()}</strong>
-                        <span class="badge bg-secondary ms-2">Table (${asset.schema?.num_rows || 0} rows)</span>
-                    </div>
-                `;
-            });
+            // Show tables with better formatting
+            if (tables.length > 0) {
+                assetsHTML += '<div class="mb-3">';
+                assetsHTML += '<h6 class="text-secondary mb-2"><i class="fas fa-table me-2"></i>Tables Found:</h6>';
+                
+                tables.slice(0, 5).forEach((asset, index) => {
+                    const tableName = asset.name.split('.').pop();
+                    const rowCount = asset.schema?.num_rows || 0;
+                    
+                    assetsHTML += `
+                        <div class="asset-item mb-1 p-2 border rounded bg-light">
+                            <div class="d-flex align-items-center">
+                                <i class="fas fa-table text-secondary me-2"></i>
+                                <div class="flex-grow-1">
+                                    <strong>${tableName}</strong>
+                                    <div class="small text-muted">${asset.name}</div>
+                                </div>
+                                <span class="badge bg-secondary">
+                                    ${rowCount.toLocaleString()} rows
+                                </span>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                if (tables.length > 5) {
+                    assetsHTML += `<div class="text-muted small">... and ${tables.length - 5} more tables</div>`;
+                }
+                
+                assetsHTML += '</div>';
+            }
             
             assetsHTML += '</div>';
             
+            // Summary statistics
             assetsHTML += `
-                <div class="mt-2">
-                    <small class="text-success">
-                        <i class="fas fa-check-circle me-1"></i>
-                        Successfully discovered ${assets.length} BigQuery assets (${datasets.length} datasets, ${tables.length} tables)
-                    </small>
+                <div class="mt-3 p-3 bg-success bg-opacity-10 rounded">
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-check-circle text-success me-2"></i>
+                        <div>
+                            <strong>Discovery Successful!</strong>
+                            <div class="small">
+                                Found ${assets.length} total assets: ${datasets.length} datasets, ${tables.length} tables
+                            </div>
+                        </div>
+                    </div>
                 </div>
             `;
             
             container.innerHTML = assetsHTML;
         } else if (result.status === 'success' && result.assets_discovered === 0) {
             container.innerHTML = `
-                <div class="text-warning">
+                <div class="text-warning p-3 border rounded">
                     <i class="fas fa-exclamation-triangle me-2"></i>
-                    Connected successfully, but no assets found in project
+                    <strong>No Assets Found</strong>
+                    <div class="small">Connected successfully, but no BigQuery datasets or tables found in this project.</div>
                 </div>
             `;
         } else {
             container.innerHTML = `
-                <div class="text-danger">
+                <div class="text-danger p-3 border rounded">
                     <i class="fas fa-exclamation-circle me-2"></i>
-                    Failed to discover assets: ${result.message || 'Unknown error'}
+                    <strong>Discovery Failed</strong>
+                    <div class="small">${result.message || 'Unknown error occurred during asset discovery'}</div>
                 </div>
             `;
         }
     } catch (error) {
         console.error('Error loading discovered assets:', error);
         container.innerHTML = `
-            <div class="text-danger">
+            <div class="text-danger p-3 border rounded">
                 <i class="fas fa-exclamation-circle me-2"></i>
-                Error loading assets: ${error.message}
+                <strong>Error Loading Assets</strong>
+                <div class="small">${error.message}</div>
             </div>
         `;
     }
