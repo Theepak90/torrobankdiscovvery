@@ -270,7 +270,12 @@ function renderConnectorCategory(containerId, connectors, iconType, availableCon
     let html = '';
     
     // Handle both array of strings and object format
-    const connectorList = Array.isArray(connectors) ? connectors : Object.keys(connectors);
+    let connectorList = Array.isArray(connectors) ? connectors : Object.keys(connectors);
+    
+    // Filter out generic connectors for specific categories
+    if (containerId === 'database-connectors') {
+        connectorList = connectorList.filter(id => id !== 'databases');
+    }
     
     connectorList.forEach(connectorId => {
         // Get connector metadata from availableConnectors
