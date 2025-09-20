@@ -3113,6 +3113,245 @@ function loadConnectionForm() {
             `;
             break;
             
+        // NAS Connection Types
+        case 'smb':
+            formHTML = `
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="connection-form-group">
+                            <label class="connection-form-label">Connection Name</label>
+                            <input type="text" class="form-control connection-form-input" id="connection-name" placeholder="My NAS Connection" required>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="connection-form-group">
+                            <label class="connection-form-label">NAS Host/IP</label>
+                            <input type="text" class="form-control connection-form-input" id="host" placeholder="192.168.1.100" required>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="connection-form-group">
+                            <label class="connection-form-label">Port</label>
+                            <input type="number" class="form-control connection-form-input" id="port" placeholder="445" value="445" required>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="connection-form-group">
+                            <label class="connection-form-label">Share Name</label>
+                            <input type="text" class="form-control connection-form-input" id="share-name" placeholder="shared_folder" required>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="connection-form-group">
+                            <label class="connection-form-label">Username</label>
+                            <input type="text" class="form-control connection-form-input" id="username" placeholder="username" required>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="connection-form-group">
+                            <label class="connection-form-label">Password</label>
+                            <input type="password" class="form-control connection-form-input" id="password" placeholder="password" required>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="connection-form-group">
+                            <label class="connection-form-label">Domain (Optional)</label>
+                            <input type="text" class="form-control connection-form-input" id="domain" placeholder="WORKGROUP">
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="connection-form-group">
+                            <label class="connection-form-label">Max Depth</label>
+                            <input type="number" class="form-control connection-form-input" id="max-depth" placeholder="5" value="5" min="1" max="10">
+                            <small class="text-muted">Maximum directory scanning depth</small>
+                        </div>
+                    </div>
+                </div>
+            `;
+            break;
+            
+        case 'nfs':
+            formHTML = `
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="connection-form-group">
+                            <label class="connection-form-label">Connection Name</label>
+                            <input type="text" class="form-control connection-form-input" id="connection-name" placeholder="My NFS Connection" required>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="connection-form-group">
+                            <label class="connection-form-label">NFS Server</label>
+                            <input type="text" class="form-control connection-form-input" id="server" placeholder="192.168.1.100" required>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="connection-form-group">
+                            <label class="connection-form-label">Export Path</label>
+                            <input type="text" class="form-control connection-form-input" id="export" placeholder="/export/data" required>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="connection-form-group">
+                            <label class="connection-form-label">Mount Point</label>
+                            <input type="text" class="form-control connection-form-input" id="mount-point" placeholder="/mnt/nfs" required>
+                            <small class="text-muted">Local mount point for the NFS share</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="connection-form-group">
+                            <label class="connection-form-label">Scan Paths</label>
+                            <input type="text" class="form-control connection-form-input" id="scan-paths" placeholder="/data,/backup" value="/">
+                            <small class="text-muted">Comma-separated list of paths to scan within the mount</small>
+                        </div>
+                    </div>
+                </div>
+            `;
+            break;
+            
+        // SFTP Connection Types
+        case 'sftp':
+            formHTML = `
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="connection-form-group">
+                            <label class="connection-form-label">Connection Name</label>
+                            <input type="text" class="form-control connection-form-input" id="connection-name" placeholder="My SFTP Connection" required>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="connection-form-group">
+                            <label class="connection-form-label">SFTP Host/IP</label>
+                            <input type="text" class="form-control connection-form-input" id="host" placeholder="192.168.1.100" required>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="connection-form-group">
+                            <label class="connection-form-label">Port</label>
+                            <input type="number" class="form-control connection-form-input" id="port" placeholder="22" value="22" required>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="connection-form-group">
+                            <label class="connection-form-label">Username</label>
+                            <input type="text" class="form-control connection-form-input" id="username" placeholder="username" required>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="connection-form-group">
+                            <label class="connection-form-label">Password</label>
+                            <input type="password" class="form-control connection-form-input" id="password" placeholder="password">
+                            <small class="text-muted">Either password or private key is required</small>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="connection-form-group">
+                            <label class="connection-form-label">Private Key Path (Optional)</label>
+                            <input type="text" class="form-control connection-form-input" id="private-key-path" placeholder="/path/to/private/key">
+                            <small class="text-muted">Path to SSH private key file</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="connection-form-group">
+                            <label class="connection-form-label">Scan Paths</label>
+                            <input type="text" class="form-control connection-form-input" id="scan-paths" placeholder="/data,/backup" value="/">
+                            <small class="text-muted">Comma-separated list of paths to scan on the SFTP server</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="connection-form-group">
+                            <label class="connection-form-label">Max Depth</label>
+                            <input type="number" class="form-control connection-form-input" id="max-depth" placeholder="5" value="5" min="1" max="10">
+                            <small class="text-muted">Maximum directory scanning depth</small>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="connection-form-group">
+                            <label class="connection-form-label">File Extensions (Optional)</label>
+                            <input type="text" class="form-control connection-form-input" id="file-extensions" placeholder=".csv,.json,.xlsx">
+                            <small class="text-muted">Comma-separated list of file extensions to include</small>
+                        </div>
+                    </div>
+                </div>
+            `;
+            break;
+            
+        case 'scp':
+            formHTML = `
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="connection-form-group">
+                            <label class="connection-form-label">Connection Name</label>
+                            <input type="text" class="form-control connection-form-input" id="connection-name" placeholder="My SCP Connection" required>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="connection-form-group">
+                            <label class="connection-form-label">SCP Host/IP</label>
+                            <input type="text" class="form-control connection-form-input" id="host" placeholder="192.168.1.100" required>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="connection-form-group">
+                            <label class="connection-form-label">Port</label>
+                            <input type="number" class="form-control connection-form-input" id="port" placeholder="22" value="22" required>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="connection-form-group">
+                            <label class="connection-form-label">Username</label>
+                            <input type="text" class="form-control connection-form-input" id="username" placeholder="username" required>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="connection-form-group">
+                            <label class="connection-form-label">Password</label>
+                            <input type="password" class="form-control connection-form-input" id="password" placeholder="password">
+                            <small class="text-muted">Either password or private key is required</small>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="connection-form-group">
+                            <label class="connection-form-label">Private Key Path (Optional)</label>
+                            <input type="text" class="form-control connection-form-input" id="private-key-path" placeholder="/path/to/private/key">
+                            <small class="text-muted">Path to SSH private key file</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="connection-form-group">
+                            <label class="connection-form-label">Remote Path</label>
+                            <input type="text" class="form-control connection-form-input" id="remote-path" placeholder="/home/user/data" required>
+                            <small class="text-muted">Remote directory path to scan</small>
+                        </div>
+                    </div>
+                </div>
+            `;
+            break;
+            
         default:
             formHTML = `
                 <div class="alert alert-info">
@@ -3639,7 +3878,11 @@ async function saveWizardConnection() {
             'blob': 'azure',
             'warehouse': 'data_warehouses',
             'workspace': 'data_warehouses',
-            'datasets': 'bigquery'
+            'datasets': 'bigquery',
+            'smb': 'nas',
+            'nfs': 'nas',
+            'sftp': 'sftp',
+            'scp': 'sftp'
         };
         
         // Use mapped connector ID if available, otherwise use original
@@ -3715,6 +3958,102 @@ async function saveWizardConnection() {
                     database: dbName,
                     username: dbUser,
                     password: dbPassword
+                };
+                break;
+                
+            // NAS Connection Types
+            case 'smb':
+                const nasHost = document.getElementById('host')?.value;
+                const nasPort = document.getElementById('port')?.value;
+                const nasUsername = document.getElementById('username')?.value;
+                const nasPassword = document.getElementById('password')?.value;
+                const nasShareName = document.getElementById('share-name')?.value;
+                const nasDomain = document.getElementById('domain')?.value;
+                const nasMaxDepth = document.getElementById('max-depth')?.value;
+                
+                if (!nasHost || !nasUsername || !nasPassword || !nasShareName) {
+                    showNotification('Please fill in all required NAS fields', 'warning');
+                    return;
+                }
+                
+                config.config = {
+                    host: nasHost,
+                    port: parseInt(nasPort) || 445,
+                    username: nasUsername,
+                    password: nasPassword,
+                    share_name: nasShareName,
+                    domain: nasDomain || '',
+                    max_depth: parseInt(nasMaxDepth) || 5
+                };
+                break;
+                
+            case 'nfs':
+                const nfsServer = document.getElementById('server')?.value;
+                const nfsExport = document.getElementById('export')?.value;
+                const nfsMountPoint = document.getElementById('mount-point')?.value;
+                const nfsScanPaths = document.getElementById('scan-paths')?.value;
+                
+                if (!nfsServer || !nfsExport || !nfsMountPoint) {
+                    showNotification('Please fill in all required NFS fields', 'warning');
+                    return;
+                }
+                
+                config.config = {
+                    server: nfsServer,
+                    export: nfsExport,
+                    mount_point: nfsMountPoint,
+                    scan_paths: nfsScanPaths ? nfsScanPaths.split(',').map(p => p.trim()) : ['/']
+                };
+                break;
+                
+            // SFTP Connection Types
+            case 'sftp':
+                const sftpHost = document.getElementById('host')?.value;
+                const sftpPort = document.getElementById('port')?.value;
+                const sftpUsername = document.getElementById('username')?.value;
+                const sftpPassword = document.getElementById('password')?.value;
+                const sftpPrivateKeyPath = document.getElementById('private-key-path')?.value;
+                const sftpScanPaths = document.getElementById('scan-paths')?.value;
+                const sftpMaxDepth = document.getElementById('max-depth')?.value;
+                const sftpFileExtensions = document.getElementById('file-extensions')?.value;
+                
+                if (!sftpHost || !sftpUsername || (!sftpPassword && !sftpPrivateKeyPath)) {
+                    showNotification('Please fill in all required SFTP fields', 'warning');
+                    return;
+                }
+                
+                config.config = {
+                    host: sftpHost,
+                    port: parseInt(sftpPort) || 22,
+                    username: sftpUsername,
+                    password: sftpPassword || '',
+                    private_key_path: sftpPrivateKeyPath || null,
+                    scan_paths: sftpScanPaths ? sftpScanPaths.split(',').map(p => p.trim()) : ['/'],
+                    max_depth: parseInt(sftpMaxDepth) || 5,
+                    file_extensions: sftpFileExtensions ? sftpFileExtensions.split(',').map(e => e.trim()) : []
+                };
+                break;
+                
+            case 'scp':
+                const scpHost = document.getElementById('host')?.value;
+                const scpPort = document.getElementById('port')?.value;
+                const scpUsername = document.getElementById('username')?.value;
+                const scpPassword = document.getElementById('password')?.value;
+                const scpPrivateKeyPath = document.getElementById('private-key-path')?.value;
+                const scpRemotePath = document.getElementById('remote-path')?.value;
+                
+                if (!scpHost || !scpUsername || (!scpPassword && !scpPrivateKeyPath) || !scpRemotePath) {
+                    showNotification('Please fill in all required SCP fields', 'warning');
+                    return;
+                }
+                
+                config.config = {
+                    host: scpHost,
+                    port: parseInt(scpPort) || 22,
+                    username: scpUsername,
+                    password: scpPassword || '',
+                    private_key_path: scpPrivateKeyPath || null,
+                    remote_path: scpRemotePath
                 };
                 break;
                 
