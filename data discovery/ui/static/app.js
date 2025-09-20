@@ -3927,7 +3927,7 @@ function loadConnectionSummary() {
             `;
             
             // Add discovered datasets section for GCP BigQuery
-            if (connectionConfig.connectorId === 'gcp') {
+            if (connectionConfig.connectorId === 'gcp' || selectedConnectionType === 'bigquery') {
                 summaryHTML += `
                     <div class="connection-summary-item mt-4">
                         <div class="connection-summary-label">
@@ -3945,6 +3945,7 @@ function loadConnectionSummary() {
                 `;
                 
                 // Load real discovered assets
+                console.log('Loading discovered assets for BigQuery connection...');
                 setTimeout(() => loadDiscoveredAssets(), 100);
             }
             break;
@@ -3954,8 +3955,13 @@ function loadConnectionSummary() {
 }
 
 async function loadDiscoveredAssets() {
+    console.log('loadDiscoveredAssets called');
     const container = document.getElementById('discovered-assets-container');
-    if (!container) return;
+    if (!container) {
+        console.log('discovered-assets-container not found');
+        return;
+    }
+    console.log('Found discovered-assets-container, proceeding with discovery...');
     
     try {
         // First, add the GCP connector if not already added
