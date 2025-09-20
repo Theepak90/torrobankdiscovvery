@@ -36,6 +36,15 @@ class SaaSConnector(BaseConnector):
     Connector for discovering data assets in various SaaS platforms
     """
     
+    # Metadata for dynamic discovery
+    connector_type = "saas_platforms"
+    connector_name = "SaaS Platforms"
+    description = "Discover data assets from SaaS platforms including Salesforce, ServiceNow, Slack, Jira, HubSpot, Zendesk, Google Analytics, Workday, and Tableau"
+    category = "saas_platforms"
+    supported_services = ["Salesforce", "ServiceNow", "Slack", "Jira", "HubSpot", "Zendesk", "Google Analytics", "Workday", "Tableau"]
+    required_config_fields = ["saas_connections"]
+    optional_config_fields = ["connection_timeout"]
+    
     def __init__(self, config: Dict[str, Any]):
         super().__init__(config)
         self.saas_platforms = config.get('saas_connections', [])
@@ -328,10 +337,44 @@ class SaaSConnector(BaseConnector):
         assets = []
         
         try:
-            # This would require Google Analytics Reporting API
-            # Placeholder for GA discovery logic
-            ga_properties = config.get('properties', [])
+            from google.analytics.data_v1beta import BetaAnalyticsDataClient
+            from google.analytics.admin_v1beta import AnalyticsAdminServiceClient
+            from google.analytics.admin_v1beta.types import ListAccountsRequest
             
+            # Initialize GA Admin client
+            admin_client = AnalyticsAdminServiceClient(credentials=config.get('credentials'))
+            
+            # List accounts
+            request = ListAccountsRequest()
+            accounts = admin_client.list_accounts(request=request)
+            
+            for account in accounts:
+                # List properties for each account
+                properties_request = ListPropertiesRequest(parent=account.name)
+                properties = admin_client.list_properties(request=properties_request)
+                
+                for property in properties:
+                    asset = {
+                        'name': property.display_name,
+                        'type': 'google_analytics_property',
+                        'source': 'google_analytics',
+                        'location': f"ga://property/{property.name.split('/')[-1]}",
+                        'created_date': property.create_time,
+                        'size': 0,
+                        'metadata': {
+                            'platform_type': 'google_analytics',
+                            'property_id': property.name.split('/')[-1],
+                            'account_id': account.name.split('/')[-1],
+                            'time_zone': property.time_zone,
+                            'currency_code': property.currency_code
+                        }
+                    }
+                    assets.append(asset)
+            
+        except ImportError:
+            self.logger.warning("Google Analytics libraries not installed. Install with: pip install google-analytics-data google-analytics-admin")
+            # Fallback to config-based discovery
+            ga_properties = config.get('properties', [])
             for prop in ga_properties:
                 asset = {
                     'name': prop.get('name', 'GA Property'),
@@ -347,7 +390,6 @@ class SaaSConnector(BaseConnector):
                     }
                 }
                 assets.append(asset)
-            
         except Exception as e:
             self.logger.error(f"Error connecting to Google Analytics: {e}")
         
@@ -397,29 +439,85 @@ class SaaSConnector(BaseConnector):
         assets = []
         
         try:
-            # This would require Workday REST API or SOAP API
-            # Placeholder for Workday discovery logic
+            import requests
+            from requests.auth import HTTPBasicAuth
+            
+            tenant = config.get('tenant')
+            username = config.get('username')
+            password = config.get('password')
+            
+            if not all([tenant, username, password]):
+                self.logger.warning("Workday credentials not provided, using placeholder discovery")
+                workday_objects = [
+                    'employees', 'organizations', 'positions', 'jobs',
+                    'compensation', 'benefits', 'time_tracking'
+                ]
+                
+                for obj_type in workday_objects:
+                    asset = {
+                        'name': obj_type,
+                        'type': 'workday_object',
+                        'source': 'workday',
+                        'location': f"workday://{tenant}/{obj_type}",
+                        'created_date': datetime.now(),
+                        'size': 0,
+                        'metadata': {
+                            'platform_type': 'workday',
+                            'object_type': obj_type,
+                            'tenant': tenant
+                        }
+                    }
+                    assets.append(asset)
+                return assets
+            
+            # Use Workday REST API
+            base_url = f"https://{tenant}.workday.com/ccx/api/v1"
+            auth = HTTPBasicAuth(username, password)
+            
+            # Common Workday objects to discover
             workday_objects = [
-                'employees', 'organizations', 'positions', 'jobs',
-                'compensation', 'benefits', 'time_tracking'
+                'workers', 'organizations', 'positions', 'jobs',
+                'compensation', 'benefits', 'time_tracking', 'payroll'
             ]
             
             for obj_type in workday_objects:
-                asset = {
-                    'name': obj_type,
-                    'type': 'workday_object',
-                    'source': 'workday',
-                    'location': f"workday://{config.get('tenant', '')}/{obj_type}",
-                    'created_date': datetime.now(),
-                    'size': 0,
-                    'metadata': {
-                        'platform_type': 'workday',
-                        'object_type': obj_type,
-                        'tenant': config.get('tenant', '')
-                    }
-                }
-                assets.append(asset)
+                try:
+                    # Try to get object metadata
+                    response = requests.get(
+                        f"{base_url}/{obj_type}",
+                        auth=auth,
+                        params={'limit': 1},
+                        timeout=10
+                    )
+                    
+                    if response.status_code == 200:
+                        data = response.json()
+                        total_count = data.get('total', 0)
+                        
+                        asset = {
+                            'name': obj_type,
+                            'type': 'workday_object',
+                            'source': 'workday',
+                            'location': f"workday://{tenant}/{obj_type}",
+                            'created_date': datetime.now(),
+                            'size': total_count,
+                            'metadata': {
+                                'platform_type': 'workday',
+                                'object_type': obj_type,
+                                'tenant': tenant,
+                                'total_records': total_count,
+                                'api_version': 'v1'
+                            }
+                        }
+                        assets.append(asset)
+                    else:
+                        self.logger.warning(f"Workday API returned {response.status_code} for {obj_type}")
+                        
+                except Exception as e:
+                    self.logger.warning(f"Error accessing Workday {obj_type}: {e}")
             
+        except ImportError:
+            self.logger.warning("requests library not available for Workday API calls")
         except Exception as e:
             self.logger.error(f"Error connecting to Workday: {e}")
         
@@ -569,29 +667,128 @@ class SaaSConnector(BaseConnector):
         assets = []
         
         try:
-            # This would require Tableau Server REST API
-            # Placeholder for Tableau discovery logic
+            import requests
+            from requests.auth import HTTPBasicAuth
+            
+            server = config.get('server')
+            username = config.get('username')
+            password = config.get('password')
+            site_id = config.get('site_id', '')
+            
+            if not all([server, username, password]):
+                self.logger.warning("Tableau credentials not provided, using placeholder discovery")
+                tableau_objects = [
+                    'workbooks', 'datasources', 'projects', 'users',
+                    'sites', 'views', 'flows'
+                ]
+                
+                for obj_type in tableau_objects:
+                    asset = {
+                        'name': obj_type,
+                        'type': 'tableau_object',
+                        'source': 'tableau',
+                        'location': f"tableau://{server}/{obj_type}",
+                        'created_date': datetime.now(),
+                        'size': 0,
+                        'metadata': {
+                            'platform_type': 'tableau',
+                            'object_type': obj_type,
+                            'server': server
+                        }
+                    }
+                    assets.append(asset)
+                return assets
+            
+            # Use Tableau Server REST API
+            base_url = f"https://{server}/api/3.18"
+            auth = HTTPBasicAuth(username, password)
+            
+            # First, sign in to get authentication token
+            signin_data = {
+                'credentials': {
+                    'name': username,
+                    'password': password,
+                    'site': {'contentUrl': site_id}
+                }
+            }
+            
+            signin_response = requests.post(
+                f"{base_url}/auth/signin",
+                json=signin_data,
+                auth=auth,
+                timeout=10
+            )
+            
+            if signin_response.status_code != 200:
+                self.logger.error(f"Tableau authentication failed: {signin_response.status_code}")
+                return assets
+            
+            # Extract authentication token
+            signin_json = signin_response.json()
+            token = signin_json['credentials']['token']
+            site_id = signin_json['credentials']['site']['id']
+            
+            headers = {
+                'X-Tableau-Auth': token,
+                'Content-Type': 'application/json'
+            }
+            
+            # Discover different Tableau objects
             tableau_objects = [
-                'workbooks', 'datasources', 'projects', 'users',
-                'sites', 'views', 'flows'
+                ('workbooks', 'workbook'),
+                ('datasources', 'datasource'),
+                ('projects', 'project'),
+                ('users', 'user'),
+                ('sites', 'site'),
+                ('views', 'view'),
+                ('flows', 'flow')
             ]
             
-            for obj_type in tableau_objects:
-                asset = {
-                    'name': obj_type,
-                    'type': 'tableau_object',
-                    'source': 'tableau',
-                    'location': f"tableau://{config.get('server', '')}/{obj_type}",
-                    'created_date': datetime.now(),
-                    'size': 0,
-                    'metadata': {
-                        'platform_type': 'tableau',
-                        'object_type': obj_type,
-                        'server': config.get('server', '')
-                    }
-                }
-                assets.append(asset)
+            for obj_type, obj_name in tableau_objects:
+                try:
+                    response = requests.get(
+                        f"{base_url}/sites/{site_id}/{obj_type}",
+                        headers=headers,
+                        timeout=10
+                    )
+                    
+                    if response.status_code == 200:
+                        data = response.json()
+                        objects = data.get(obj_type, {}).get(obj_name, [])
+                        
+                        for obj in objects:
+                            asset = {
+                                'name': obj.get('name', obj.get('id', obj_name)),
+                                'type': f'tableau_{obj_name}',
+                                'source': 'tableau',
+                                'location': f"tableau://{server}/{obj_type}/{obj.get('id', '')}",
+                                'created_date': datetime.fromisoformat(obj.get('createdAt', '').replace('Z', '+00:00')) if obj.get('createdAt') else datetime.now(),
+                                'size': 0,
+                                'metadata': {
+                                    'platform_type': 'tableau',
+                                    'object_type': obj_name,
+                                    'server': server,
+                                    'site_id': site_id,
+                                    'object_id': obj.get('id', ''),
+                                    'description': obj.get('description', ''),
+                                    'owner': obj.get('owner', {}).get('name', '') if obj.get('owner') else ''
+                                }
+                            }
+                            assets.append(asset)
+                    else:
+                        self.logger.warning(f"Tableau API returned {response.status_code} for {obj_type}")
+                        
+                except Exception as e:
+                    self.logger.warning(f"Error accessing Tableau {obj_type}: {e}")
             
+            # Sign out
+            try:
+                requests.post(f"{base_url}/auth/signout", headers=headers, timeout=5)
+            except:
+                pass  # Ignore signout errors
+            
+        except ImportError:
+            self.logger.warning("requests library not available for Tableau API calls")
         except Exception as e:
             self.logger.error(f"Error connecting to Tableau: {e}")
         

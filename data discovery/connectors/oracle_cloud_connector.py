@@ -14,6 +14,15 @@ class OracleCloudConnector(BaseConnector):
     Connector for discovering data assets in Oracle Cloud Infrastructure services
     """
     
+    # Metadata for dynamic discovery
+    connector_type = "oracle_cloud"
+    connector_name = "Oracle Cloud Infrastructure"
+    description = "Discover data assets from Oracle Cloud Infrastructure services including Object Storage, Autonomous Database, and MySQL"
+    category = "cloud_providers"
+    supported_services = ["Object Storage", "Autonomous Database", "MySQL"]
+    required_config_fields = ["tenancy_id", "user_id", "fingerprint", "private_key_path"]
+    optional_config_fields = ["region", "services"]
+    
     def __init__(self, config: Dict[str, Any]):
         super().__init__(config)
         self.services = config.get('services', ['object_storage', 'autonomous_database', 'mysql', 'nosql'])

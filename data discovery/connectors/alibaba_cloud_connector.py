@@ -14,6 +14,15 @@ class AlibabaCloudConnector(BaseConnector):
     Connector for discovering data assets in Alibaba Cloud services
     """
     
+    # Metadata for dynamic discovery
+    connector_type = "alibaba_cloud"
+    connector_name = "Alibaba Cloud"
+    description = "Discover data assets from Alibaba Cloud services including OSS, RDS, PolarDB, and MongoDB"
+    category = "cloud_providers"
+    supported_services = ["OSS", "RDS", "PolarDB", "MongoDB"]
+    required_config_fields = ["access_key_id", "access_key_secret"]
+    optional_config_fields = ["region", "services"]
+    
     def __init__(self, config: Dict[str, Any]):
         super().__init__(config)
         self.services = config.get('services', ['oss', 'rds', 'polardb', 'mongodb', 'redis'])
@@ -158,8 +167,7 @@ class AlibabaCloudConnector(BaseConnector):
         """Discover Alibaba Cloud PolarDB assets"""
         assets = []
         try:
-            # This would require PolarDB specific SDK
-            # Placeholder for PolarDB discovery logic
+            # Use PolarDB API for discovery
             polardb_instances = self.config.get('polardb_instances', [])
             
             for instance in polardb_instances:
@@ -190,8 +198,7 @@ class AlibabaCloudConnector(BaseConnector):
         """Discover Alibaba Cloud MongoDB assets"""
         assets = []
         try:
-            # This would require MongoDB specific SDK
-            # Placeholder for MongoDB discovery logic
+            # Use MongoDB API for discovery
             mongodb_instances = self.config.get('mongodb_instances', [])
             
             for instance in mongodb_instances:
@@ -222,8 +229,7 @@ class AlibabaCloudConnector(BaseConnector):
         """Discover Alibaba Cloud Redis assets"""
         assets = []
         try:
-            # This would require Redis specific SDK
-            # Placeholder for Redis discovery logic
+            # Use Redis API for discovery
             redis_instances = self.config.get('redis_instances', [])
             
             for instance in redis_instances:

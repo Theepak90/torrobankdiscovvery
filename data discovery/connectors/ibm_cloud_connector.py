@@ -14,6 +14,15 @@ class IBMCloudConnector(BaseConnector):
     Connector for discovering data assets in IBM Cloud services
     """
     
+    # Metadata for dynamic discovery
+    connector_type = "ibm_cloud"
+    connector_name = "IBM Cloud"
+    description = "Discover data assets from IBM Cloud services including Object Storage, Db2, Cloudant, and Watson Discovery"
+    category = "cloud_providers"
+    supported_services = ["Object Storage", "Db2", "Cloudant", "Watson Discovery"]
+    required_config_fields = ["api_key"]
+    optional_config_fields = ["region", "services"]
+    
     def __init__(self, config: Dict[str, Any]):
         super().__init__(config)
         self.services = config.get('services', ['cloud_object_storage', 'db2', 'cloudant', 'watson_discovery'])
@@ -102,8 +111,8 @@ class IBMCloudConnector(BaseConnector):
         """Discover IBM Db2 on Cloud assets"""
         assets = []
         try:
-            # This would require IBM Db2 specific SDK
-            # Placeholder for Db2 discovery logic
+            import ibm_db
+            
             db2_instances = self.config.get('db2_instances', [])
             
             for instance in db2_instances:

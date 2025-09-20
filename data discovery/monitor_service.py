@@ -8,7 +8,7 @@ import asyncio
 import signal
 import sys
 from datetime import datetime
-from data_discovery_engine import DataDiscoveryAPI
+from dynamic_discovery_engine import DynamicDataDiscoveryEngine
 
 
 class MonitoringService:
@@ -17,7 +17,7 @@ class MonitoringService:
     """
     
     def __init__(self, config_path: str = "config.yaml"):
-        self.api = DataDiscoveryAPI(config_path)
+        self.api = DynamicDataDiscoveryEngine(config_path)
         self.running = False
         self.monitoring_task = None
         

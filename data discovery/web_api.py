@@ -17,7 +17,7 @@ import yaml
 import os
 import uvicorn
 
-from data_discovery_engine import DataDiscoveryAPI
+from dynamic_discovery_engine import DynamicDataDiscoveryEngine
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -35,8 +35,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Initialize discovery API
-discovery_api = DataDiscoveryAPI()
+# Initialize dynamic discovery engine
+discovery_engine = DynamicDataDiscoveryEngine()
 
 # Pydantic models for request/response
 class ConnectorConfig(BaseModel):
@@ -88,22 +88,35 @@ async def health_check():
 @app.get("/api/system/health")
 async def get_system_health():
     """Get system health status"""
-    return discovery_api.get_system_health()
+    return discovery_engine.get_system_health()
 
 @app.get("/api/system/status")
 async def get_system_status():
     """Get discovery system status"""
-    return discovery_api.get_discovery_status()
+    try:
+        return {
+            "status": "success",
+            "system_health": discovery_engine.get_system_health(),
+            "connectors": discovery_engine.get_connector_status(),
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 # Configuration Management Endpoints
 @app.get("/api/config")
 async def get_all_configs():
     """Get all connector configurations"""
     try:
-        config = discovery_api.engine.config
         return {
             "status": "success",
-            "config": config,
+            "config": {},  # No config file in UI mode
+            "available_connectors": discovery_engine.get_available_connectors(),
+            "connector_templates": {
+                connector_type: discovery_engine.get_connector_config_template(connector_type)
+                for connector_type in discovery_engine.get_available_connectors().keys()
+            },
+            "enabled_connectors": list(discovery_engine.connectors.keys()),
             "timestamp": datetime.now().isoformat()
         }
     except Exception as e:
@@ -112,22 +125,57 @@ async def get_all_configs():
 @app.get("/api/config/{connector_type}")
 async def get_connector_config(connector_type: str):
     """Get configuration for specific connector"""
-    result = discovery_api.get_connector_config(connector_type)
-    if result["status"] == "error":
-        raise HTTPException(status_code=500, detail=result["error"])
-    return result
+    try:
+        # Get current config for the connector (from enabled connectors)
+        current_config = discovery_engine.connectors.get(connector_type, {}).config if connector_type in discovery_engine.connectors else {}
+        
+        # Get connector info and template
+        connector_info = discovery_engine.get_available_connectors().get(connector_type)
+        if not connector_info:
+            raise HTTPException(status_code=404, detail=f"Connector {connector_type} not found")
+        
+        config_template = discovery_engine.get_connector_config_template(connector_type)
+        
+        return {
+            "status": "success",
+            "connector_type": connector_type,
+            "current_config": current_config,
+            "connector_info": connector_info,
+            "config_template": config_template,
+            "enabled": connector_type in discovery_engine.connectors
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/config/{connector_type}")
 async def update_connector_config(connector_type: str, config: ConnectorConfig):
     """Update configuration for specific connector"""
-    config_dict = {
-        'enabled': config.enabled,
-        **config.config
-    }
-    result = discovery_api.update_connector_config(connector_type, config_dict)
-    if result["status"] == "error":
-        raise HTTPException(status_code=500, detail=result["error"])
-    return result
+    try:
+        config_dict = {
+            'enabled': config.enabled,
+            **config.config
+        }
+        
+        if config.enabled:
+            # Add connector dynamically if enabled
+            success = discovery_engine.add_connector(connector_type, config_dict)
+            if not success:
+                raise HTTPException(status_code=400, detail=f"Failed to add connector {connector_type}")
+        else:
+            # Remove connector if disabled
+            discovery_engine.remove_connector(connector_type)
+        
+        return {
+            "status": "success",
+            "message": f"Connector {connector_type} configuration updated",
+            "config": config_dict
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/test-bigquery")
 async def test_bigquery_direct():
@@ -144,30 +192,24 @@ async def test_bigquery_direct():
 async def test_connector_connection(connector_type: str):
     """Test connection for specific connector"""
     try:
-        if connector_type == 'gcp':
-            # Always return success for GCP since we know it works
-            return {
-                "status": "success",
-                "connector_type": "gcp",
-                "connection_status": "connected",
-                "message": "✅ BigQuery Connected! Ready to discover datasets",
-                "timestamp": datetime.now().isoformat()
-            }
-        else:
-            # Use existing connector for other types
-            if connector_type in discovery_api.engine.connectors:
-                connector = discovery_api.engine.connectors[connector_type]
-                if hasattr(connector, 'test_connection'):
-                    try:
-                        success = connector.test_connection()
-                        return {
-                            "status": "success" if success else "error",
-                            "connector_type": connector_type,
-                            "connection_status": "connected" if success else "failed",
-                            "message": "Connection successful!" if success else "Connection failed - check credentials",
-                            "timestamp": datetime.now().isoformat()
-                        }
-                    except Exception as test_error:
+        # Check if connector is available
+        if connector_type not in discovery_engine.get_available_connectors():
+            raise HTTPException(status_code=404, detail=f"Connector type {connector_type} not available")
+        
+        # Check if connector is enabled and test it
+        if connector_type in discovery_engine.connectors:
+            connector = discovery_engine.connectors[connector_type]
+            if hasattr(connector, 'test_connection'):
+                try:
+                    success = connector.test_connection()
+                    return {
+                        "status": "success" if success else "error",
+                        "connector_type": connector_type,
+                        "connection_status": "connected" if success else "failed",
+                        "message": "Connection successful!" if success else "Connection failed - check credentials",
+                        "timestamp": datetime.now().isoformat()
+                    }
+                except Exception as test_error:
                         return {
                             "status": "error",
                             "connector_type": connector_type,
@@ -199,18 +241,77 @@ async def test_connector_connection(connector_type: str):
 @app.get("/api/connectors")
 async def get_available_connectors():
     """Get list of all available connectors"""
-    result = discovery_api.get_available_connectors()
-    if result["status"] == "error":
-        raise HTTPException(status_code=500, detail=result["error"])
-    return result
+    try:
+        # Get available connectors with metadata
+        available_connectors = discovery_engine.get_available_connectors()
+        connector_categories = discovery_engine.get_connector_categories()
+        
+        # Get enabled connectors
+        enabled_connectors = len(discovery_engine.connectors)
+        
+        return {
+            "status": "success",
+            "connectors": connector_categories,
+            "available_connectors": available_connectors,
+            "enabled_connectors": enabled_connectors,
+            "total_connectors": len(available_connectors)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/connectors/{connector_type}")
 async def get_connector_details(connector_type: str):
     """Get detailed information about a specific connector"""
-    result = discovery_api.get_connector_config(connector_type)
-    if result["status"] == "error":
-        raise HTTPException(status_code=404, detail=f"Connector {connector_type} not found")
-    return result
+    try:
+        connector_info = discovery_engine.get_available_connectors().get(connector_type)
+        if not connector_info:
+            raise HTTPException(status_code=404, detail=f"Connector {connector_type} not found")
+        
+        # Get configuration template
+        config_template = discovery_engine.get_connector_config_template(connector_type)
+        
+        return {
+            "status": "success",
+            "connector_info": connector_info,
+            "config_template": config_template
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/connectors/{connector_type}/add")
+async def add_connector(connector_type: str, config: ConnectorConfig):
+    """Add a new connector dynamically"""
+    try:
+        success = discovery_engine.add_connector(connector_type, config.config)
+        if success:
+            return {"status": "success", "message": f"Connector {connector_type} added successfully"}
+        else:
+            raise HTTPException(status_code=400, detail=f"Failed to add connector {connector_type}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/api/connectors/{connector_type}")
+async def remove_connector(connector_type: str):
+    """Remove a connector dynamically"""
+    try:
+        success = discovery_engine.remove_connector(connector_type)
+        if success:
+            return {"status": "success", "message": f"Connector {connector_type} removed successfully"}
+        else:
+            raise HTTPException(status_code=404, detail=f"Connector {connector_type} not found")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/connectors/reload")
+async def reload_connectors():
+    """Reload all connectors from configuration"""
+    try:
+        discovery_engine.reload_connectors()
+        return {"status": "success", "message": "Connectors reloaded successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 # Discovery Endpoints
 @app.post("/api/discovery/scan")
@@ -218,7 +319,7 @@ async def start_full_discovery(background_tasks: BackgroundTasks):
     """Start full discovery scan"""
     async def run_discovery():
         try:
-            result = await discovery_api.scan_all_data_sources()
+            result = await discovery_engine.scan_all_data_sources()
             print(f"Discovery completed: {result}")
         except Exception as e:
             print(f"Discovery failed: {e}")
@@ -235,10 +336,12 @@ async def scan_specific_source(source: str, background_tasks: BackgroundTasks):
     """Scan specific data source"""
     async def run_source_discovery():
         try:
-            if source in discovery_api.engine.connectors:
-                connector = discovery_api.engine.connectors[source]
+            if source in discovery_engine.connectors:
+                connector = discovery_engine.connectors[source]
                 assets = connector.discover_assets()
-                await discovery_api.engine._update_asset_catalog({source: assets})
+                # Update asset catalog
+                for asset in assets:
+                    await discovery_engine.asset_catalog.add_or_update_asset(asset)
                 print(f"Source {source} discovery completed: {len(assets)} assets")
             else:
                 print(f"Source {source} not found")
@@ -337,13 +440,14 @@ async def test_source_discovery(source: str):
                 "assets": mock_assets,
                 "timestamp": datetime.now().isoformat()
             }
-        elif source in discovery_api.engine.connectors:
-            connector = discovery_api.engine.connectors[source]
+        elif source in discovery_engine.connectors:
+            connector = discovery_engine.connectors[source]
             assets = connector.discover_assets()
             
             # Update asset catalog
             try:
-                discovery_api.engine._update_asset_catalog({source: assets})
+                for asset in assets:
+                    await discovery_engine.asset_catalog.add_or_update_asset(asset)
             except Exception as catalog_error:
                 print(f"Failed to update asset catalog: {catalog_error}")
             
@@ -372,18 +476,18 @@ async def test_source_discovery(source: str):
 @app.get("/api/discovery/status")
 async def get_discovery_status():
     """Get current discovery status"""
-    return discovery_api.get_discovery_status()
+    return discovery_engine.get_discovery_status()
 
 # Asset Management Endpoints
 @app.get("/api/assets")
 async def get_all_assets():
     """Get all discovered assets"""
-    return discovery_api.get_asset_inventory()
+    return discovery_engine.get_asset_inventory()
 
 @app.post("/api/assets/search")
 async def search_assets(search_request: SearchRequest):
     """Search for specific assets"""
-    result = discovery_api.search_data_assets(
+    result = discovery_engine.search_data_assets(
         query=search_request.query,
         asset_type=search_request.asset_type
     )
@@ -395,7 +499,7 @@ async def search_assets(search_request: SearchRequest):
 async def get_assets_by_type(asset_type: str):
     """Get assets by type"""
     try:
-        assets = discovery_api.engine.get_assets_by_type(asset_type)
+        assets = discovery_engine.asset_catalog.get_assets_by_type(asset_type)
         return {
             "status": "success",
             "asset_type": asset_type,
@@ -410,7 +514,7 @@ async def get_assets_by_type(asset_type: str):
 async def get_assets_by_source(source: str):
     """Get assets by source"""
     try:
-        assets = discovery_api.engine.get_assets_by_source(source)
+        assets = discovery_engine.asset_catalog.get_assets_by_source(source)
         return {
             "status": "success",
             "source": source,
@@ -424,7 +528,7 @@ async def get_assets_by_source(source: str):
 @app.get("/api/assets/{asset_name}")
 async def get_asset_details(asset_name: str):
     """Get detailed information about a specific asset"""
-    result = discovery_api.get_asset_details(asset_name)
+    result = discovery_engine.get_asset_details(asset_name)
     if result["status"] == "error":
         raise HTTPException(status_code=404, detail=result["error"])
     return result
@@ -435,7 +539,7 @@ async def start_monitoring(monitoring_request: MonitoringRequest, background_tas
     """Start continuous monitoring"""
     async def run_monitoring():
         try:
-            result = await discovery_api.start_continuous_monitoring(
+            result = await discovery_engine.start_continuous_monitoring(
                 real_time=monitoring_request.real_time
             )
             print(f"Monitoring started: {result}")
@@ -453,20 +557,19 @@ async def start_monitoring(monitoring_request: MonitoringRequest, background_tas
 @app.post("/api/monitoring/stop")
 async def stop_monitoring():
     """Stop continuous monitoring"""
-    return discovery_api.stop_monitoring()
+    return discovery_engine.stop_monitoring()
 
 @app.get("/api/monitoring/status")
 async def get_monitoring_status():
     """Get monitoring status"""
     try:
-        config = discovery_api.engine.config.get('discovery', {}).get('monitoring', {})
         return {
             "status": "success",
             "monitoring": {
-                "enabled": config.get('enabled', False),
-                "real_time_watching": config.get('real_time_watching', False),
-                "watch_interval": config.get('watch_interval', 5),
-                "batch_size": config.get('batch_size', 100)
+                "enabled": False,  # No config file in UI mode
+                "real_time_watching": False,
+                "watch_interval": 5,
+                "batch_size": 100
             },
             "timestamp": datetime.now().isoformat()
         }
@@ -478,7 +581,7 @@ async def get_monitoring_status():
 async def get_discovery_stats():
     """Get discovery statistics"""
     try:
-        summary = discovery_api.engine.get_discovery_summary()
+        summary = discovery_engine.get_system_health()
         return {
             "status": "success",
             "statistics": summary,
@@ -491,7 +594,7 @@ async def get_discovery_stats():
 async def get_connector_stats():
     """Get connector statistics"""
     try:
-        connectors_info = discovery_api.get_available_connectors()
+        connectors_info = discovery_engine.get_available_connectors()
         if connectors_info["status"] == "success":
             return {
                 "status": "success",
@@ -519,10 +622,14 @@ async def get_connector_stats():
 async def export_config():
     """Export current configuration"""
     try:
-        config = discovery_api.engine.config
+        # Export enabled connectors instead of config file
+        enabled_connectors = {}
+        for connector_type, connector in discovery_engine.connectors.items():
+            enabled_connectors[connector_type] = connector.config
+        
         return {
             "status": "success",
-            "config": config,
+            "enabled_connectors": enabled_connectors,
             "export_timestamp": datetime.now().isoformat()
         }
     except Exception as e:
@@ -532,7 +639,7 @@ async def export_config():
 async def export_assets():
     """Export all assets"""
     try:
-        inventory = discovery_api.get_asset_inventory()
+        inventory = discovery_engine.get_asset_inventory()
         return {
             "status": "success",
             "assets": inventory,
@@ -551,7 +658,7 @@ if __name__ == "__main__":
     print("🔧 Interactive API: http://localhost:8000/redoc")
     
     uvicorn.run(
-        app,
+        "web_api:app",
         host="0.0.0.0",
         port=8000,
         reload=True,

@@ -40,6 +40,15 @@ class DataLakeConnector(BaseConnector):
     Connector for discovering data assets in data lakes and modern data formats
     """
     
+    # Metadata for dynamic discovery
+    connector_type = "data_lakes"
+    connector_name = "Data Lakes"
+    description = "Discover data assets from data lakes including Delta Lake, Iceberg, Hudi, Parquet, MinIO, HDFS, and Ceph"
+    category = "data_lakes"
+    supported_services = ["Delta Lake", "Iceberg", "Hudi", "Parquet", "MinIO", "HDFS", "Ceph"]
+    required_config_fields = ["data_lake_connections"]
+    optional_config_fields = ["connection_timeout"]
+    
     def __init__(self, config: Dict[str, Any]):
         super().__init__(config)
         self.data_lakes = config.get('data_lake_connections', [])
@@ -129,13 +138,100 @@ class DataLakeConnector(BaseConnector):
     def _discover_iceberg_assets(self, config: Dict[str, Any]) -> List[Dict[str, Any]]:
         """Discover Apache Iceberg assets"""
         assets = []
-        if not pyiceberg:
-            self.logger.warning("pyiceberg not installed")
-            return assets
         
         try:
-            # This would require Iceberg catalog connection
-            # Placeholder for Iceberg discovery
+            from pyiceberg.catalog import load_catalog
+            from pyiceberg.exceptions import NoSuchTableError
+            
+            # Load Iceberg catalog
+            catalog_config = config.get('catalog', {})
+            catalog_type = catalog_config.get('type', 'rest')
+            
+            if catalog_type == 'rest':
+                catalog = load_catalog(
+                    name="rest_catalog",
+                    **{
+                        "type": "rest",
+                        "uri": catalog_config.get('uri', 'http://localhost:8181'),
+                        "credential": catalog_config.get('credential', ''),
+                        "token": catalog_config.get('token', '')
+                    }
+                )
+            elif catalog_type == 'hive':
+                catalog = load_catalog(
+                    name="hive_catalog",
+                    **{
+                        "type": "hive",
+                        "uri": catalog_config.get('uri', 'thrift://localhost:9083'),
+                        "warehouse": catalog_config.get('warehouse', '/warehouse')
+                    }
+                )
+            elif catalog_type == 'glue':
+                catalog = load_catalog(
+                    name="glue_catalog",
+                    **{
+                        "type": "glue",
+                        "region_name": catalog_config.get('region', 'us-east-1')
+                    }
+                )
+            else:
+                self.logger.warning(f"Unsupported Iceberg catalog type: {catalog_type}")
+                return assets
+            
+            # List all tables
+            try:
+                namespaces = catalog.list_namespaces()
+                
+                for namespace in namespaces:
+                    try:
+                        tables = catalog.list_tables(namespace)
+                        
+                        for table_identifier in tables:
+                            try:
+                                table = catalog.load_table(table_identifier)
+                                
+                                asset = {
+                                    'name': f"{'.'.join(table_identifier.namespace)}.{table_identifier.name}",
+                                    'type': 'iceberg_table',
+                                    'source': 'iceberg',
+                                    'location': table.location(),
+                                    'created_date': datetime.now(),
+                                    'size': 0,  # Would need to scan files for size
+                                    'schema': {
+                                        'columns': [
+                                            {
+                                                'name': field.name,
+                                                'type': str(field.field_type),
+                                                'required': field.required,
+                                                'doc': field.doc
+                                            }
+                                            for field in table.schema().fields
+                                        ]
+                                    },
+                                    'metadata': {
+                                        'lake_type': 'iceberg',
+                                        'catalog_type': catalog_type,
+                                        'namespace': '.'.join(table_identifier.namespace),
+                                        'table_name': table_identifier.name,
+                                        'format_version': table.format_version,
+                                        'current_snapshot_id': table.current_snapshot().snapshot_id if table.current_snapshot() else None,
+                                        'partition_spec': str(table.spec()) if table.spec() else None
+                                    }
+                                }
+                                assets.append(asset)
+                                
+                            except NoSuchTableError:
+                                self.logger.warning(f"Table {table_identifier} not found")
+                            except Exception as e:
+                                self.logger.error(f"Error loading Iceberg table {table_identifier}: {e}")
+                    except Exception as e:
+                        self.logger.error(f"Error listing tables in namespace {namespace}: {e}")
+            except Exception as e:
+                self.logger.error(f"Error listing namespaces: {e}")
+                
+        except ImportError:
+            self.logger.warning("pyiceberg not installed. Install with: pip install pyiceberg")
+            # Fallback to config-based discovery
             catalog_uri = config.get('catalog_uri', '')
             tables = config.get('tables', [])
             
@@ -154,7 +250,6 @@ class DataLakeConnector(BaseConnector):
                     }
                 }
                 assets.append(asset)
-            
         except Exception as e:
             self.logger.error(f"Error connecting to Iceberg: {e}")
         
@@ -163,16 +258,117 @@ class DataLakeConnector(BaseConnector):
     def _discover_hudi_assets(self, config: Dict[str, Any]) -> List[Dict[str, Any]]:
         """Discover Apache Hudi assets"""
         assets = []
-        if not pyhudi:
-            self.logger.warning("pyhudi not installed")
-            return assets
         
         try:
-            # This would require Hudi table reading
-            # Placeholder for Hudi discovery
-            base_path = config['base_path']
-            tables = config.get('tables', [])
+            from pyspark.sql import SparkSession
             
+            # Initialize Spark session for Hudi
+            spark = SparkSession.builder \
+                .appName("HudiDiscovery") \
+                .config("spark.serializer", "org.apache.spark.serializer.KryoSerializer") \
+                .config("spark.sql.catalog.spark_catalog", "org.apache.spark.sql.hudi.catalog.HoodieCatalog") \
+                .config("spark.sql.extensions", "org.apache.hudi.SparkSQLExtension") \
+                .getOrCreate()
+            
+            base_path = config.get('base_path', '')
+            table_paths = config.get('table_paths', [])
+            
+            # If no specific table paths, scan base path for Hudi tables
+            if not table_paths and base_path:
+                from pathlib import Path
+                base_dir = Path(base_path)
+                
+                if base_dir.exists():
+                    # Look for .hoodie directories which indicate Hudi tables
+                    for item in base_dir.rglob('.hoodie'):
+                        if item.is_dir():
+                            table_path = str(item.parent)
+                            table_paths.append(table_path)
+            
+            for table_path in table_paths:
+                try:
+                    # Read Hudi table
+                    hudi_df = spark.read.format("hudi").load(table_path)
+                    
+                    # Get table metadata
+                    table_name = Path(table_path).name
+                    
+                    # Get schema
+                    schema_info = {
+                        'columns': [
+                            {
+                                'name': field.name,
+                                'type': str(field.dataType),
+                                'nullable': field.nullable
+                            }
+                            for field in hudi_df.schema.fields
+                        ]
+                    }
+                    
+                    # Get row count (sample for performance)
+                    try:
+                        row_count = hudi_df.count()
+                    except:
+                        row_count = 0
+                    
+                    asset = {
+                        'name': table_name,
+                        'type': 'hudi_table',
+                        'source': 'hudi',
+                        'location': table_path,
+                        'created_date': datetime.now(),
+                        'size': row_count * len(schema_info['columns']) * 100,  # Rough estimate
+                        'schema': schema_info,
+                        'metadata': {
+                            'lake_type': 'hudi',
+                            'base_path': base_path,
+                            'table_path': table_path,
+                            'table_name': table_name,
+                            'row_count': row_count,
+                            'column_count': len(schema_info['columns'])
+                        }
+                    }
+                    assets.append(asset)
+                    
+                except Exception as e:
+                    self.logger.error(f"Error reading Hudi table {table_path}: {e}")
+            
+            spark.stop()
+            
+        except ImportError:
+            self.logger.warning("PySpark not installed. Install with: pip install pyspark")
+            # Fallback to file system scanning
+            base_path = config.get('base_path', '')
+            
+            if base_path:
+                from pathlib import Path
+                base_dir = Path(base_path)
+                
+                if base_dir.exists():
+                    # Look for .hoodie directories
+                    for item in base_dir.rglob('.hoodie'):
+                        if item.is_dir():
+                            table_path = str(item.parent)
+                            table_name = item.parent.name
+                            
+                            asset = {
+                                'name': table_name,
+                                'type': 'hudi_table',
+                                'source': 'hudi',
+                                'location': table_path,
+                                'created_date': datetime.fromtimestamp(item.stat().st_ctime),
+                                'size': 0,
+                                'metadata': {
+                                    'lake_type': 'hudi',
+                                    'base_path': base_path,
+                                    'table_path': table_path,
+                                    'table_name': table_name
+                                }
+                            }
+                            assets.append(asset)
+            else:
+                # Config-based fallback
+                tables = config.get('tables', [])
             for table_name in tables:
                 asset = {
                     'name': table_name,
@@ -188,7 +384,6 @@ class DataLakeConnector(BaseConnector):
                     }
                 }
                 assets.append(asset)
-            
         except Exception as e:
             self.logger.error(f"Error connecting to Hudi: {e}")
         
@@ -322,9 +517,125 @@ class DataLakeConnector(BaseConnector):
         assets = []
         
         try:
-            # This would require HDFS client (hdfs3 or pydoop)
-            # Placeholder for HDFS discovery
-            namenode = config.get('namenode', 'localhost:9000')
+            from hdfs import InsecureClient
+            
+            # Connect to HDFS
+            namenode_url = config.get('namenode_url', 'http://localhost:9870')
+            user = config.get('user', 'hdfs')
+            
+            client = InsecureClient(namenode_url, user=user)
+            
+            # Get paths to scan
+            paths = config.get('paths', ['/'])
+            
+            for path in paths:
+                try:
+                    # List directory contents
+                    file_list = client.list(path, status=True)
+                    
+                    for file_name, file_status in file_list:
+                        file_path = f"{path.rstrip('/')}/{file_name}"
+                        
+                        # Determine if it's a directory or file
+                        is_directory = file_status['type'] == 'DIRECTORY'
+                        
+                        asset = {
+                            'name': file_name,
+                            'type': 'hdfs_directory' if is_directory else 'hdfs_file',
+                            'source': 'hdfs',
+                            'location': f"hdfs://{namenode_url.replace('http://', '')}{file_path}",
+                            'created_date': datetime.fromtimestamp(file_status['modificationTime'] / 1000),
+                            'modified_date': datetime.fromtimestamp(file_status['modificationTime'] / 1000),
+                            'size': file_status['length'],
+                            'metadata': {
+                                'lake_type': 'hdfs',
+                                'namenode_url': namenode_url,
+                                'path': file_path,
+                                'owner': file_status['owner'],
+                                'group': file_status['group'],
+                                'permission': file_status['permission'],
+                                'replication': file_status.get('replication', 0),
+                                'block_size': file_status.get('blockSize', 0)
+                            }
+                        }
+                        assets.append(asset)
+                        
+                        # If it's a directory and we want to scan recursively
+                        if is_directory and config.get('recursive', False):
+                            try:
+                                sub_assets = self._discover_hdfs_assets({
+                                    **config,
+                                    'paths': [file_path],
+                                    'recursive': False  # Avoid infinite recursion
+                                })
+                                assets.extend(sub_assets)
+                            except Exception as e:
+                                self.logger.warning(f"Error scanning HDFS subdirectory {file_path}: {e}")
+                
+                except Exception as e:
+                    self.logger.error(f"Error listing HDFS path {path}: {e}")
+            
+        except ImportError:
+            self.logger.warning("hdfs library not installed. Install with: pip install hdfs")
+            # Try alternative HDFS client
+            try:
+                import subprocess
+                import json
+                
+                namenode = config.get('namenode', 'localhost:9000')
+                paths = config.get('paths', ['/'])
+                
+                for path in paths:
+                    try:
+                        # Use hdfs command line tool
+                        result = subprocess.run(
+                            ['hdfs', 'dfs', '-ls', '-R', path],
+                            capture_output=True,
+                            text=True,
+                            timeout=30
+                        )
+                        
+                        if result.returncode == 0:
+                            # Parse hdfs ls output
+                            lines = result.stdout.strip().split('\n')
+                            for line in lines:
+                                if line.startswith('d') or line.startswith('-'):
+                                    parts = line.split()
+                                    if len(parts) >= 8:
+                                        permissions = parts[0]
+                                        owner = parts[2]
+                                        group = parts[3]
+                                        size = int(parts[4]) if parts[4].isdigit() else 0
+                                        file_path = parts[7]
+                                        file_name = file_path.split('/')[-1]
+                                        
+                                        asset = {
+                                            'name': file_name,
+                                            'type': 'hdfs_directory' if permissions.startswith('d') else 'hdfs_file',
+                                            'source': 'hdfs',
+                                            'location': f"hdfs://{namenode}{file_path}",
+                                            'created_date': datetime.now(),
+                                            'size': size,
+                                            'metadata': {
+                                                'lake_type': 'hdfs',
+                                                'namenode': namenode,
+                                                'path': file_path,
+                                                'owner': owner,
+                                                'group': group,
+                                                'permissions': permissions
+                                            }
+                                        }
+                                        assets.append(asset)
+                        
+                    except subprocess.TimeoutExpired:
+                        self.logger.error(f"HDFS command timeout for path {path}")
+                    except Exception as e:
+                        self.logger.error(f"Error running HDFS command for path {path}: {e}")
+                        
+            except Exception as e:
+                self.logger.warning(f"HDFS command line tool not available: {e}")
+                # Final fallback to config-based discovery
+                namenode = config.get('namenode', 'localhost:9000')
             paths = config.get('paths', ['/'])
             
             for path in paths:
@@ -342,7 +653,6 @@ class DataLakeConnector(BaseConnector):
                     }
                 }
                 assets.append(asset)
-            
         except Exception as e:
             self.logger.error(f"Error connecting to HDFS: {e}")
         
@@ -387,43 +697,123 @@ class DataLakeConnector(BaseConnector):
         return assets
     
     def _discover_ceph_assets(self, config: Dict[str, Any]) -> List[Dict[str, Any]]:
-        """Discover Ceph assets"""
+        """Discover Ceph assets using S3-compatible API"""
         assets = []
         
         try:
-            # This would require Ceph client (boto3 with Ceph endpoint)
             import boto3
+            from botocore.exceptions import ClientError
             
+            # Create S3 client for Ceph
             s3_client = boto3.client(
                 's3',
                 endpoint_url=config['endpoint'],
                 aws_access_key_id=config['access_key'],
-                aws_secret_access_key=config['secret_key']
+                aws_secret_access_key=config['secret_key'],
+                verify=config.get('verify_ssl', True)
             )
             
             # List buckets
             response = s3_client.list_buckets()
             
             for bucket in response['Buckets']:
-                asset = {
-                    'name': bucket['Name'],
+                bucket_name = bucket['Name']
+                
+                # Create bucket asset
+                bucket_asset = {
+                    'name': bucket_name,
                     'type': 'ceph_bucket',
                     'source': 'ceph',
-                    'location': f"ceph://{config['endpoint']}/{bucket['Name']}",
+                    'location': f"ceph://{config['endpoint']}/{bucket_name}",
                     'created_date': bucket['CreationDate'],
                     'size': 0,
                     'metadata': {
                         'lake_type': 'ceph',
                         'endpoint': config['endpoint'],
-                        'bucket_name': bucket['Name']
+                        'bucket_name': bucket_name
                     }
                 }
-                assets.append(asset)
+                
+                # Get bucket metadata
+                try:
+                    # Get bucket location
+                    location = s3_client.get_bucket_location(Bucket=bucket_name)
+                    bucket_asset['metadata']['location_constraint'] = location.get('LocationConstraint')
+                    
+                    # Get bucket policy
+                    try:
+                        policy = s3_client.get_bucket_policy(Bucket=bucket_name)
+                        bucket_asset['metadata']['has_policy'] = True
+                    except ClientError:
+                        bucket_asset['metadata']['has_policy'] = False
+                    
+                    # Get bucket versioning
+                    try:
+                        versioning = s3_client.get_bucket_versioning(Bucket=bucket_name)
+                        bucket_asset['metadata']['versioning_status'] = versioning.get('Status', 'Disabled')
+                    except ClientError:
+                        bucket_asset['metadata']['versioning_status'] = 'Unknown'
+                        
+                except Exception as e:
+                    self.logger.warning(f"Error getting Ceph bucket metadata for {bucket_name}: {e}")
+                
+                assets.append(bucket_asset)
+                
+                # Discover objects in bucket (sample)
+                try:
+                    objects_response = s3_client.list_objects_v2(
+                        Bucket=bucket_name,
+                        MaxKeys=config.get('max_objects_per_bucket', 100)
+                    )
+                    
+                    total_size = 0
+                    object_count = 0
+                    
+                    for obj in objects_response.get('Contents', []):
+                        object_key = obj['Key']
+                        
+                        # Filter for data files
+                        if self._is_data_file(object_key):
+                            object_asset = {
+                                'name': object_key.split('/')[-1],
+                                'type': 'ceph_object',
+                                'source': 'ceph',
+                                'location': f"ceph://{config['endpoint']}/{bucket_name}/{object_key}",
+                                'created_date': obj['LastModified'],
+                                'modified_date': obj['LastModified'],
+                                'size': obj['Size'],
+                                'metadata': {
+                                    'lake_type': 'ceph',
+                                    'endpoint': config['endpoint'],
+                                    'bucket_name': bucket_name,
+                                    'object_key': object_key,
+                                    'storage_class': obj.get('StorageClass', 'STANDARD'),
+                                    'etag': obj.get('ETag', '').strip('"')
+                                }
+                            }
+                            assets.append(object_asset)
+                            
+                        total_size += obj['Size']
+                        object_count += 1
+                    
+                    # Update bucket size
+                    bucket_asset['size'] = total_size
+                    bucket_asset['metadata']['object_count'] = object_count
+                    
+                except Exception as e:
+                    self.logger.warning(f"Error listing objects in Ceph bucket {bucket_name}: {e}")
             
+        except ImportError:
+            self.logger.warning("boto3 library not installed. Install with: pip install boto3")
         except Exception as e:
             self.logger.error(f"Error connecting to Ceph: {e}")
         
         return assets
+    
+    def _is_data_file(self, key: str) -> bool:
+        """Check if object key represents a data file"""
+        data_extensions = {'.csv', '.json', '.parquet', '.avro', '.orc', '.txt', '.tsv', '.xlsx', '.xml', '.yaml', '.yml'}
+        return any(key.lower().endswith(ext) for ext in data_extensions)
     
     def test_connection(self) -> bool:
         """Test data lake connections"""

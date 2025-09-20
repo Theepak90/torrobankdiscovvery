@@ -19,6 +19,15 @@ class FileSystemConnector(BaseConnector):
     Connector for discovering data assets in file systems
     """
     
+    # Metadata for dynamic discovery
+    connector_type = "file_system"
+    connector_name = "File System"
+    description = "Discover data assets in local and network file systems"
+    category = "file_systems"
+    supported_services = ["Local Files", "Network Files", "CSV", "JSON", "Parquet", "Excel"]
+    required_config_fields = ["scan_paths"]
+    optional_config_fields = ["file_extensions", "max_file_size_mb", "exclude_patterns"]
+    
     def __init__(self, config: Dict[str, Any]):
         super().__init__(config)
         self.scan_paths = config.get('scan_paths', [])

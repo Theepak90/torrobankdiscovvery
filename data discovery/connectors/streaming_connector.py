@@ -44,6 +44,15 @@ class StreamingConnector(BaseConnector):
     Connector for discovering data assets in streaming platforms
     """
     
+    # Metadata for dynamic discovery
+    connector_type = "streaming"
+    connector_name = "Streaming Platforms"
+    description = "Discover streaming data assets from Kafka, Pulsar, RabbitMQ, Kinesis, Event Hub, Pub/Sub, and NATS"
+    category = "streaming"
+    supported_services = ["Kafka", "Pulsar", "RabbitMQ", "Kinesis", "Event Hub", "Pub/Sub", "NATS"]
+    required_config_fields = ["streaming_connections"]
+    optional_config_fields = ["connection_timeout"]
+    
     def __init__(self, config: Dict[str, Any]):
         super().__init__(config)
         self.streaming_platforms = config.get('streaming_connections', [])
@@ -140,24 +149,76 @@ class StreamingConnector(BaseConnector):
                 authentication=pulsar.AuthenticationToken(config.get('token')) if config.get('token') else None
             )
             
-            # Get topics (this would require admin API)
-            # Placeholder for topic discovery
-            topics = config.get('topics', [])
-            
-            for topic in topics:
-                asset = {
-                    'name': topic,
-                    'type': 'pulsar_topic',
-                    'source': 'pulsar',
-                    'location': f"pulsar://{config['service_url']}/{topic}",
-                    'created_date': datetime.now(),
-                    'size': 0,
-                    'metadata': {
-                        'platform_type': 'pulsar',
-                        'service_url': config['service_url']
+            # Try to discover topics using admin API
+            try:
+                from pulsar import Client, AuthenticationToken
+                admin_client = pulsar.Admin(
+                    service_url=config['service_url'],
+                    authentication=AuthenticationToken(config.get('token')) if config.get('token') else None
+                )
+                
+                # Get all topics
+                topics = admin_client.topics()
+                for topic in topics:
+                    try:
+                        # Get topic stats
+                        stats = admin_client.topics().get_stats(topic)
+                        
+                        asset = {
+                            'name': topic.split('/')[-1],  # Just the topic name
+                            'type': 'pulsar_topic',
+                            'source': 'pulsar',
+                            'location': f"pulsar://{config['service_url']}/{topic}",
+                            'created_date': datetime.now(),
+                            'size': stats.get('msgInCounter', 0),
+                            'metadata': {
+                                'platform_type': 'pulsar',
+                                'service_url': config['service_url'],
+                                'full_topic_name': topic,
+                                'producers': stats.get('producers', []),
+                                'subscriptions': list(stats.get('subscriptions', {}).keys()),
+                                'msg_in_rate': stats.get('msgInRate', 0),
+                                'msg_out_rate': stats.get('msgOutRate', 0)
+                            }
+                        }
+                        assets.append(asset)
+                    except Exception as e:
+                        self.logger.warning(f"Error getting stats for topic {topic}: {e}")
+                        # Add basic topic info without stats
+                        asset = {
+                            'name': topic.split('/')[-1],
+                            'type': 'pulsar_topic',
+                            'source': 'pulsar',
+                            'location': f"pulsar://{config['service_url']}/{topic}",
+                            'created_date': datetime.now(),
+                            'size': 0,
+                            'metadata': {
+                                'platform_type': 'pulsar',
+                                'service_url': config['service_url'],
+                                'full_topic_name': topic
+                            }
+                        }
+                        assets.append(asset)
+                
+                admin_client.close()
+                
+            except ImportError:
+                # Fallback to config-based discovery
+                topics = config.get('topics', [])
+                for topic in topics:
+                    asset = {
+                        'name': topic,
+                        'type': 'pulsar_topic',
+                        'source': 'pulsar',
+                        'location': f"pulsar://{config['service_url']}/{topic}",
+                        'created_date': datetime.now(),
+                        'size': 0,
+                        'metadata': {
+                            'platform_type': 'pulsar',
+                            'service_url': config['service_url']
+                        }
                     }
-                }
-                assets.append(asset)
+                    assets.append(asset)
             
             client.close()
             
@@ -189,25 +250,100 @@ class StreamingConnector(BaseConnector):
             
             channel = connection.channel()
             
-            # Get queue information (this requires management plugin)
-            # Placeholder for queue discovery
-            queues = config.get('queues', [])
-            
-            for queue in queues:
-                asset = {
-                    'name': queue,
-                    'type': 'rabbitmq_queue',
-                    'source': 'rabbitmq',
-                    'location': f"rabbitmq://{config['host']}/{queue}",
-                    'created_date': datetime.now(),
-                    'size': 0,
-                    'metadata': {
-                        'platform_type': 'rabbitmq',
-                        'host': config['host'],
-                        'port': config.get('port', 5672)
+            # Try to use management API first
+            try:
+                import requests
+                from requests.auth import HTTPBasicAuth
+                
+                management_port = config.get('management_port', 15672)
+                management_url = f"http://{config['host']}:{management_port}/api"
+                
+                # Get queues using management API
+                response = requests.get(
+                    f"{management_url}/queues",
+                    auth=HTTPBasicAuth(config.get('username', 'guest'), config.get('password', 'guest')),
+                    timeout=10
+                )
+                
+                if response.status_code == 200:
+                    queues_data = response.json()
+                    
+                    for queue in queues_data:
+                        asset = {
+                            'name': queue['name'],
+                            'type': 'rabbitmq_queue',
+                            'source': 'rabbitmq',
+                            'location': f"rabbitmq://{config['host']}/{queue['name']}",
+                            'created_date': datetime.fromtimestamp(queue.get('created_at', 0) / 1000) if queue.get('created_at') else datetime.now(),
+                            'size': queue.get('messages', 0),
+                            'metadata': {
+                                'platform_type': 'rabbitmq',
+                                'host': config['host'],
+                                'port': config.get('port', 5672),
+                                'vhost': queue.get('vhost', '/'),
+                                'durable': queue.get('durable', False),
+                                'auto_delete': queue.get('auto_delete', False),
+                                'messages_ready': queue.get('messages_ready', 0),
+                                'messages_unacknowledged': queue.get('messages_unacknowledged', 0),
+                                'consumers': queue.get('consumers', 0),
+                                'state': queue.get('state', 'unknown')
+                            }
+                        }
+                        assets.append(asset)
+                
+                # Get exchanges
+                response = requests.get(
+                    f"{management_url}/exchanges",
+                    auth=HTTPBasicAuth(config.get('username', 'guest'), config.get('password', 'guest')),
+                    timeout=10
+                )
+                
+                if response.status_code == 200:
+                    exchanges_data = response.json()
+                    
+                    for exchange in exchanges_data:
+                        if not exchange['name'].startswith('amq.'):  # Skip system exchanges
+                            asset = {
+                                'name': exchange['name'],
+                                'type': 'rabbitmq_exchange',
+                                'source': 'rabbitmq',
+                                'location': f"rabbitmq://{config['host']}/exchanges/{exchange['name']}",
+                                'created_date': datetime.now(),
+                                'size': 0,
+                                'metadata': {
+                                    'platform_type': 'rabbitmq',
+                                    'host': config['host'],
+                                    'port': config.get('port', 5672),
+                                    'vhost': exchange.get('vhost', '/'),
+                                    'type': exchange.get('type', 'direct'),
+                                    'durable': exchange.get('durable', False),
+                                    'auto_delete': exchange.get('auto_delete', False),
+                                    'internal': exchange.get('internal', False)
+                                }
+                            }
+                            assets.append(asset)
+                
+            except ImportError:
+                self.logger.warning("requests library not available for RabbitMQ management API")
+            except Exception as e:
+                self.logger.warning(f"RabbitMQ management API not available: {e}")
+                # Fallback to config-based discovery
+                queues = config.get('queues', [])
+                for queue in queues:
+                    asset = {
+                        'name': queue,
+                        'type': 'rabbitmq_queue',
+                        'source': 'rabbitmq',
+                        'location': f"rabbitmq://{config['host']}/{queue}",
+                        'created_date': datetime.now(),
+                        'size': 0,
+                        'metadata': {
+                            'platform_type': 'rabbitmq',
+                            'host': config['host'],
+                            'port': config.get('port', 5672)
+                        }
                     }
-                }
-                assets.append(asset)
+                    assets.append(asset)
             
             connection.close()
             
@@ -271,25 +407,80 @@ class StreamingConnector(BaseConnector):
             return assets
         
         try:
-            # Get event hubs (this would require management API)
-            # Placeholder for event hub discovery
-            event_hubs = config.get('event_hubs', [])
+            from azure.eventhub import EventHubConsumerClient
+            from azure.identity import DefaultAzureCredential
             
-            for hub_name in event_hubs:
-                asset = {
-                    'name': hub_name,
-                    'type': 'eventhub_hub',
-                    'source': 'eventhub',
-                    'location': f"eventhub://{config.get('namespace', '')}/{hub_name}",
-                    'created_date': datetime.now(),
-                    'size': 0,
-                    'metadata': {
-                        'platform_type': 'eventhub',
-                        'namespace': config.get('namespace', ''),
-                        'connection_string': config.get('connection_string', '')[:20] + '...' if config.get('connection_string') else ''
+            # Use Azure Event Hub management API
+            try:
+                credential = DefaultAzureCredential()
+                # Get event hubs using management API
+                from azure.mgmt.eventhub import EventHubManagementClient
+                
+                subscription_id = config.get('subscription_id')
+                resource_group = config.get('resource_group')
+                namespace_name = config.get('namespace')
+                
+                if all([subscription_id, resource_group, namespace_name]):
+                    eventhub_client = EventHubManagementClient(credential, subscription_id)
+                    
+                    # List event hubs
+                    event_hubs = eventhub_client.event_hubs.list_by_namespace(
+                        resource_group, namespace_name
+                    )
+                    
+                    for hub in event_hubs:
+                        asset = {
+                            'name': hub.name,
+                            'type': 'eventhub_hub',
+                            'source': 'eventhub',
+                            'location': f"eventhub://{namespace_name}/{hub.name}",
+                            'created_date': hub.created_at if hasattr(hub, 'created_at') else datetime.now(),
+                            'size': 0,
+                            'metadata': {
+                                'platform_type': 'eventhub',
+                                'namespace': namespace_name,
+                                'partition_count': hub.partition_count if hasattr(hub, 'partition_count') else 0,
+                                'message_retention_in_days': hub.message_retention_in_days if hasattr(hub, 'message_retention_in_days') else 0
+                            }
+                        }
+                        assets.append(asset)
+                else:
+                    # Fallback to config-based discovery
+                    event_hubs = config.get('event_hubs', [])
+                    for hub_name in event_hubs:
+                        asset = {
+                            'name': hub_name,
+                            'type': 'eventhub_hub',
+                            'source': 'eventhub',
+                            'location': f"eventhub://{config.get('namespace', '')}/{hub_name}",
+                            'created_date': datetime.now(),
+                            'size': 0,
+                            'metadata': {
+                                'platform_type': 'eventhub',
+                                'namespace': config.get('namespace', ''),
+                                'connection_string': config.get('connection_string', '')[:20] + '...' if config.get('connection_string') else ''
+                            }
+                        }
+                        assets.append(asset)
+                        
+            except ImportError:
+                # Fallback to config-based discovery
+                event_hubs = config.get('event_hubs', [])
+                for hub_name in event_hubs:
+                    asset = {
+                        'name': hub_name,
+                        'type': 'eventhub_hub',
+                        'source': 'eventhub',
+                        'location': f"eventhub://{config.get('namespace', '')}/{hub_name}",
+                        'created_date': datetime.now(),
+                        'size': 0,
+                        'metadata': {
+                            'platform_type': 'eventhub',
+                            'namespace': config.get('namespace', ''),
+                            'connection_string': config.get('connection_string', '')[:20] + '...' if config.get('connection_string') else ''
+                        }
                     }
-                }
-                assets.append(asset)
+                    assets.append(asset)
             
         except Exception as e:
             self.logger.error(f"Error connecting to Event Hub: {e}")
@@ -304,42 +495,139 @@ class StreamingConnector(BaseConnector):
             return assets
         
         try:
-            # Get queues and topics (this would require management API)
-            # Placeholder for service bus discovery
-            queues = config.get('queues', [])
-            topics = config.get('topics', [])
+            from azure.servicebus import ServiceBusClient
+            from azure.identity import DefaultAzureCredential
             
-            for queue_name in queues:
-                asset = {
-                    'name': queue_name,
-                    'type': 'servicebus_queue',
-                    'source': 'servicebus',
-                    'location': f"servicebus://{config.get('namespace', '')}/{queue_name}",
-                    'created_date': datetime.now(),
-                    'size': 0,
-                    'metadata': {
-                        'platform_type': 'servicebus',
-                        'resource_type': 'queue',
-                        'namespace': config.get('namespace', '')
+            # Use Azure Service Bus management API
+            try:
+                credential = DefaultAzureCredential()
+                from azure.mgmt.servicebus import ServiceBusManagementClient
+                
+                subscription_id = config.get('subscription_id')
+                resource_group = config.get('resource_group')
+                namespace_name = config.get('namespace')
+                
+                if all([subscription_id, resource_group, namespace_name]):
+                    servicebus_client = ServiceBusManagementClient(credential, subscription_id)
+                    
+                    # List queues
+                    queues = servicebus_client.queues.list_by_namespace(
+                        resource_group, namespace_name
+                    )
+                    
+                    for queue in queues:
+                        asset = {
+                            'name': queue.name,
+                            'type': 'servicebus_queue',
+                            'source': 'servicebus',
+                            'location': f"servicebus://{namespace_name}/{queue.name}",
+                            'created_date': queue.created_at if hasattr(queue, 'created_at') else datetime.now(),
+                            'size': 0,
+                            'metadata': {
+                                'platform_type': 'servicebus',
+                                'resource_type': 'queue',
+                                'namespace': namespace_name,
+                                'max_size_in_megabytes': queue.max_size_in_megabytes if hasattr(queue, 'max_size_in_megabytes') else 0,
+                                'default_message_time_to_live': queue.default_message_time_to_live if hasattr(queue, 'default_message_time_to_live') else None
+                            }
+                        }
+                        assets.append(asset)
+                    
+                    # List topics
+                    topics = servicebus_client.topics.list_by_namespace(
+                        resource_group, namespace_name
+                    )
+                    
+                    for topic in topics:
+                        asset = {
+                            'name': topic.name,
+                            'type': 'servicebus_topic',
+                            'source': 'servicebus',
+                            'location': f"servicebus://{namespace_name}/{topic.name}",
+                            'created_date': topic.created_at if hasattr(topic, 'created_at') else datetime.now(),
+                            'size': 0,
+                            'metadata': {
+                                'platform_type': 'servicebus',
+                                'resource_type': 'topic',
+                                'namespace': namespace_name,
+                                'max_size_in_megabytes': topic.max_size_in_megabytes if hasattr(topic, 'max_size_in_megabytes') else 0,
+                                'default_message_time_to_live': topic.default_message_time_to_live if hasattr(topic, 'default_message_time_to_live') else None
+                            }
+                        }
+                        assets.append(asset)
+                else:
+                    # Fallback to config-based discovery
+                    queues = config.get('queues', [])
+                    topics = config.get('topics', [])
+                    
+                    for queue_name in queues:
+                        asset = {
+                            'name': queue_name,
+                            'type': 'servicebus_queue',
+                            'source': 'servicebus',
+                            'location': f"servicebus://{config.get('namespace', '')}/{queue_name}",
+                            'created_date': datetime.now(),
+                            'size': 0,
+                            'metadata': {
+                                'platform_type': 'servicebus',
+                                'resource_type': 'queue',
+                                'namespace': config.get('namespace', '')
+                            }
+                        }
+                        assets.append(asset)
+                    
+                    for topic_name in topics:
+                        asset = {
+                            'name': topic_name,
+                            'type': 'servicebus_topic',
+                            'source': 'servicebus',
+                            'location': f"servicebus://{config.get('namespace', '')}/{topic_name}",
+                            'created_date': datetime.now(),
+                            'size': 0,
+                            'metadata': {
+                                'platform_type': 'servicebus',
+                                'resource_type': 'topic',
+                                'namespace': config.get('namespace', '')
+                            }
+                        }
+                        assets.append(asset)
+                        
+            except ImportError:
+                # Fallback to config-based discovery
+                queues = config.get('queues', [])
+                topics = config.get('topics', [])
+                
+                for queue_name in queues:
+                    asset = {
+                        'name': queue_name,
+                        'type': 'servicebus_queue',
+                        'source': 'servicebus',
+                        'location': f"servicebus://{config.get('namespace', '')}/{queue_name}",
+                        'created_date': datetime.now(),
+                        'size': 0,
+                        'metadata': {
+                            'platform_type': 'servicebus',
+                            'resource_type': 'queue',
+                            'namespace': config.get('namespace', '')
+                        }
                     }
-                }
-                assets.append(asset)
-            
-            for topic_name in topics:
-                asset = {
-                    'name': topic_name,
-                    'type': 'servicebus_topic',
-                    'source': 'servicebus',
-                    'location': f"servicebus://{config.get('namespace', '')}/{topic_name}",
-                    'created_date': datetime.now(),
-                    'size': 0,
-                    'metadata': {
-                        'platform_type': 'servicebus',
-                        'resource_type': 'topic',
-                        'namespace': config.get('namespace', '')
+                    assets.append(asset)
+                
+                for topic_name in topics:
+                    asset = {
+                        'name': topic_name,
+                        'type': 'servicebus_topic',
+                        'source': 'servicebus',
+                        'location': f"servicebus://{config.get('namespace', '')}/{topic_name}",
+                        'created_date': datetime.now(),
+                        'size': 0,
+                        'metadata': {
+                            'platform_type': 'servicebus',
+                            'resource_type': 'topic',
+                            'namespace': config.get('namespace', '')
+                        }
                     }
-                }
-                assets.append(asset)
+                    assets.append(asset)
             
         except Exception as e:
             self.logger.error(f"Error connecting to Service Bus: {e}")
@@ -387,10 +675,89 @@ class StreamingConnector(BaseConnector):
         assets = []
         
         try:
-            # This would require NATS client
-            # Placeholder for NATS discovery
-            subjects = config.get('subjects', [])
+            import nats
+            import asyncio
             
+            # Connect to NATS server
+            server = config.get('server', 'nats://localhost:4222')
+            
+            async def discover_nats_assets():
+                try:
+                    nc = await nats.connect(server)
+                    
+                    # Get server info
+                    server_info = nc.server_info
+                    
+                    # Get subject information (this requires NATS monitoring)
+                    try:
+                        # Try to get subject statistics if monitoring is enabled
+                        subjects = config.get('subjects', [])
+                        
+                        for subject in subjects:
+                            asset = {
+                                'name': subject,
+                                'type': 'nats_subject',
+                                'source': 'nats',
+                                'location': f"nats://{server}/{subject}",
+                                'created_date': datetime.now(),
+                                'size': 0,
+                                'metadata': {
+                                    'platform_type': 'nats',
+                                    'server': server,
+                                    'server_version': server_info.get('version', 'unknown'),
+                                    'server_id': server_info.get('server_id', 'unknown'),
+                                    'go_version': server_info.get('go_version', 'unknown')
+                                }
+                            }
+                            assets.append(asset)
+                    
+                    except Exception as e:
+                        self.logger.warning(f"Could not get NATS subject info: {e}")
+                        # Fallback to basic discovery
+                        subjects = config.get('subjects', [])
+                        for subject in subjects:
+                            asset = {
+                                'name': subject,
+                                'type': 'nats_subject',
+                                'source': 'nats',
+                                'location': f"nats://{server}/{subject}",
+                                'created_date': datetime.now(),
+                                'size': 0,
+                                'metadata': {
+                                    'platform_type': 'nats',
+                                    'server': server
+                                }
+                            }
+                            assets.append(asset)
+                    
+                    await nc.close()
+                    
+                except Exception as e:
+                    self.logger.error(f"Error connecting to NATS: {e}")
+                    # Fallback to config-based discovery
+                    subjects = config.get('subjects', [])
+                    for subject in subjects:
+                        asset = {
+                            'name': subject,
+                            'type': 'nats_subject',
+                            'source': 'nats',
+                            'location': f"nats://{server}/{subject}",
+                            'created_date': datetime.now(),
+                            'size': 0,
+                            'metadata': {
+                                'platform_type': 'nats',
+                                'server': server
+                            }
+                        }
+                        assets.append(asset)
+            
+            # Run the async function
+            asyncio.run(discover_nats_assets())
+            
+        except ImportError:
+            self.logger.warning("nats-py library not installed. Install with: pip install nats-py")
+            # Fallback to config-based discovery
+            subjects = config.get('subjects', [])
             for subject in subjects:
                 asset = {
                     'name': subject,
@@ -405,7 +772,6 @@ class StreamingConnector(BaseConnector):
                     }
                 }
                 assets.append(asset)
-            
         except Exception as e:
             self.logger.error(f"Error connecting to NATS: {e}")
         

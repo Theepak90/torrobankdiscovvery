@@ -18,6 +18,15 @@ class BigQueryConnector(BaseConnector):
     Dedicated connector for Google BigQuery data warehouse
     """
     
+    # Metadata for dynamic discovery
+    connector_type = "bigquery"
+    connector_name = "Google BigQuery"
+    description = "Dedicated connector for Google BigQuery data warehouse"
+    category = "data_warehouses"
+    supported_services = ["BigQuery", "Datasets", "Tables", "Views", "Routines"]
+    required_config_fields = ["project_id"]
+    optional_config_fields = ["credentials_path", "dataset_id", "service_account_json"]
+    
     def __init__(self, config: Dict[str, Any]):
         super().__init__(config)
         self.project_id = config.get('project_id')

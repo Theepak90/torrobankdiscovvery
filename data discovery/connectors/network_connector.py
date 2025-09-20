@@ -21,6 +21,15 @@ class NetworkConnector(BaseConnector):
     Connector for discovering data assets in network locations (NAS, SFTP, SMB, FTP)
     """
     
+    # Metadata for dynamic discovery
+    connector_type = "network"
+    connector_name = "Network Storage"
+    description = "Discover data assets from network storage including SFTP, SMB/CIFS, FTP, and NFS"
+    category = "network"
+    supported_services = ["SFTP", "SMB/CIFS", "FTP", "NFS"]
+    required_config_fields = ["network_sources"]
+    optional_config_fields = ["connection_timeout"]
+    
     def __init__(self, config: Dict[str, Any]):
         super().__init__(config)
         self.network_sources = config.get('network_sources', [])

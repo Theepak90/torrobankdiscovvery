@@ -15,6 +15,15 @@ class AWSConnector(BaseConnector):
     Connector for discovering data assets in AWS services
     """
     
+    # Metadata for dynamic discovery
+    connector_type = "aws"
+    connector_name = "Amazon Web Services"
+    description = "Discover data assets from AWS services including S3, RDS, DynamoDB, Redshift, Athena, and Glue"
+    category = "cloud_providers"
+    supported_services = ["S3", "RDS", "DynamoDB", "Redshift", "Athena", "Glue"]
+    required_config_fields = ["region"]
+    optional_config_fields = ["access_key", "secret_key", "services"]
+    
     def __init__(self, config: Dict[str, Any]):
         super().__init__(config)
         self.regions = config.get('regions', ['us-east-1'])
@@ -422,6 +431,21 @@ class AWSConnector(BaseConnector):
         
         if not self.services:
             self.logger.error("No AWS services configured")
+            return False
+        
+        # AWS credentials are typically handled by boto3 through environment variables,
+        # IAM roles, or credential files, so we don't need to validate specific fields
+        # But we can check if boto3 can create a session
+        try:
+            import boto3
+            session = boto3.Session()
+            # Test if we can get credentials
+            credentials = session.get_credentials()
+            if not credentials:
+                self.logger.warning("No AWS credentials found. Make sure AWS credentials are configured via environment variables, IAM roles, or credential files.")
+                return False
+        except Exception as e:
+            self.logger.error(f"Error validating AWS credentials: {e}")
             return False
         
         return True

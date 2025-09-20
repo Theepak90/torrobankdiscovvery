@@ -19,6 +19,15 @@ class GCPConnector(BaseConnector):
     Connector for discovering data assets in Google Cloud Platform services
     """
     
+    # Metadata for dynamic discovery
+    connector_type = "gcp"
+    connector_name = "Google Cloud Platform"
+    description = "Discover data assets from GCP services including BigQuery, Cloud Storage, Cloud SQL, and Dataflow"
+    category = "cloud_providers"
+    supported_services = ["BigQuery", "Cloud Storage", "Cloud SQL", "Dataflow", "Pub/Sub", "Firestore"]
+    required_config_fields = ["project_id"]
+    optional_config_fields = ["credentials_path", "service_account_json", "services"]
+    
     def __init__(self, config: Dict[str, Any]):
         super().__init__(config)
         self.services = config.get('services', ['cloud_storage'])
@@ -228,27 +237,27 @@ class GCPConnector(BaseConnector):
                 assets.append(dataset_asset)
                 
                 # 2. Discover Tables, Views, and External Tables
-                table_assets = self._discover_bigquery_tables(bq_client, dataset)
+                table_assets = self._discover_bigquery_tables(self.bigquery_client, dataset)
                 assets.extend(table_assets)
                 
                 # 3. Discover Routines (Functions & Procedures)
-                routine_assets = self._discover_bigquery_routines(bq_client, dataset)
+                routine_assets = self._discover_bigquery_routines(self.bigquery_client, dataset)
                 assets.extend(routine_assets)
                 
                 # 4. Discover Models (BigQuery ML)
-                model_assets = self._discover_bigquery_models(bq_client, dataset)
+                model_assets = self._discover_bigquery_models(self.bigquery_client, dataset)
                 assets.extend(model_assets)
             
             # 5. Discover Scheduled Queries
-            scheduled_assets = self._discover_bigquery_scheduled_queries(bq_client)
+            scheduled_assets = self._discover_bigquery_scheduled_queries(self.bigquery_client)
             assets.extend(scheduled_assets)
             
             # 6. Discover Data Transfers
-            transfer_assets = self._discover_bigquery_data_transfers(bq_client)
+            transfer_assets = self._discover_bigquery_data_transfers(self.bigquery_client)
             assets.extend(transfer_assets)
             
             # 7. Discover Reservations
-            reservation_assets = self._discover_bigquery_reservations(bq_client)
+            reservation_assets = self._discover_bigquery_reservations(self.bigquery_client)
             assets.extend(reservation_assets)
                 
         except Exception as e:
@@ -429,6 +438,11 @@ class GCPConnector(BaseConnector):
         
         if not self.project_id:
             self.logger.error("No GCP project ID configured")
+            return False
+        
+        # Validate credentials
+        if not self.credentials:
+            self.logger.warning("No GCP credentials configured. Make sure service account JSON or credentials file is provided.")
             return False
         
         return True

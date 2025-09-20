@@ -56,6 +56,15 @@ class DatabaseConnector(BaseConnector):
     Connector for discovering data assets in various database systems
     """
     
+    # Metadata for dynamic discovery
+    connector_type = "databases"
+    connector_name = "Database Systems"
+    description = "Discover data assets from various database systems including PostgreSQL, MySQL, MongoDB, Oracle, SQL Server, Cassandra, Neo4j, Redis, and Elasticsearch"
+    category = "databases"
+    supported_services = ["PostgreSQL", "MySQL", "MongoDB", "Oracle", "SQL Server", "Cassandra", "Neo4j", "Redis", "Elasticsearch"]
+    required_config_fields = ["database_connections"]
+    optional_config_fields = ["connection_timeout"]
+    
     def __init__(self, config: Dict[str, Any]):
         super().__init__(config)
         self.connection_timeout = config.get('connection_timeout', 30)
@@ -661,6 +670,32 @@ class DatabaseConnector(BaseConnector):
         for db_config in self.databases:
             if not db_config.get('type'):
                 self.logger.error("Database type not specified in configuration")
+                return False
+            
+            # Validate required fields based on database type
+            db_type = db_config.get('type', '').lower()
+            required_fields = []
+            
+            if db_type in ['postgresql', 'mysql', 'sqlserver', 'oracle']:
+                required_fields = ['host', 'username', 'password', 'database']
+            elif db_type == 'mongodb':
+                required_fields = ['host', 'username', 'password']
+            elif db_type == 'sqlite':
+                required_fields = ['path']
+            elif db_type == 'cassandra':
+                required_fields = ['host']
+            elif db_type == 'neo4j':
+                required_fields = ['host', 'username', 'password']
+            elif db_type == 'redis':
+                required_fields = ['host']
+            elif db_type == 'elasticsearch':
+                required_fields = ['host']
+            elif db_type == 'snowflake':
+                required_fields = ['username', 'password', 'account']
+            
+            # Use the base class validation method
+            if not self.validate_credentials(required_fields):
+                self.logger.error(f"Missing required fields for {db_type} database configuration")
                 return False
         
         return True

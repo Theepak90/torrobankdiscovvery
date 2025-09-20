@@ -50,6 +50,15 @@ class DataWarehouseConnector(BaseConnector):
     Connector for discovering data assets in various data warehouses
     """
     
+    # Metadata for dynamic discovery
+    connector_type = "data_warehouses"
+    connector_name = "Data Warehouses"
+    description = "Discover data assets from data warehouses including Snowflake, Databricks, Teradata, Redshift, ClickHouse, and Presto"
+    category = "data_warehouses"
+    supported_services = ["Snowflake", "Databricks", "Teradata", "Redshift", "ClickHouse", "Presto"]
+    required_config_fields = ["warehouse_connections"]
+    optional_config_fields = ["connection_timeout"]
+    
     def __init__(self, config: Dict[str, Any]):
         super().__init__(config)
         self.warehouses = config.get('warehouse_connections', [])

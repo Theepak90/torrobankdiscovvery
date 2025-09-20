@@ -240,24 +240,27 @@ async function loadSystemHealth() {
 async function loadConnectors() {
     try {
         const response = await apiCall('/connectors');
+        const healthResponse = await apiCall('/system/health');
         currentConnectors = response.connectors;
+        const availableConnectors = response.available_connectors;
+        const connectorStatus = healthResponse.connector_status || {};
         
         // Update total connectors badge
         document.getElementById('total-connectors-badge').textContent = 
             `${response.total_connectors} (${response.enabled_connectors} enabled)`;
         
-        // Render connector categories
-        renderConnectorCategory('cloud-connectors', currentConnectors.cloud_providers, 'cloud');
-        renderConnectorCategory('database-connectors', currentConnectors.databases, 'database');
-        renderConnectorCategory('warehouse-connectors', currentConnectors.data_warehouses, 'warehouse');
-        renderConnectorCategory('saas-connectors', currentConnectors.saas_platforms, 'saas');
+        // Render connector categories with proper metadata mapping
+        renderConnectorCategory('cloud-connectors', currentConnectors.cloud_providers, 'cloud', availableConnectors, connectorStatus);
+        renderConnectorCategory('database-connectors', currentConnectors.databases, 'database', availableConnectors, connectorStatus);
+        renderConnectorCategory('warehouse-connectors', currentConnectors.data_warehouses, 'warehouse', availableConnectors, connectorStatus);
+        renderConnectorCategory('saas-connectors', currentConnectors.saas_platforms, 'saas', availableConnectors, connectorStatus);
         
     } catch (error) {
         console.error('Failed to load connectors:', error);
     }
 }
 
-function renderConnectorCategory(containerId, connectors, iconType) {
+function renderConnectorCategory(containerId, connectors, iconType, availableConnectors, connectorStatus) {
     const container = document.getElementById(containerId);
     if (!connectors) {
         container.innerHTML = '<div class="text-center text-muted">No connectors available</div>';
@@ -266,8 +269,22 @@ function renderConnectorCategory(containerId, connectors, iconType) {
     
     let html = '';
     
-    Object.entries(connectors).forEach(([id, connector]) => {
-        const isEnabled = connector.enabled;
+    // Handle both array of strings and object format
+    const connectorList = Array.isArray(connectors) ? connectors : Object.keys(connectors);
+    
+    connectorList.forEach(connectorId => {
+        // Get connector metadata from availableConnectors
+        const connector = availableConnectors[connectorId];
+        if (!connector) {
+            console.warn(`No metadata found for connector: ${connectorId}`);
+            return;
+        }
+        
+        // Get connector status from system health
+        const status = connectorStatus[connectorId] || { enabled: false, configured: false, connected: false };
+        const isEnabled = status.enabled;
+        const isConfigured = status.configured;
+        const isConnected = status.connected;
         const statusClass = isEnabled ? 'enabled' : 'disabled';
         const statusBadge = isEnabled ? 'success' : 'secondary';
         
@@ -280,21 +297,22 @@ function renderConnectorCategory(containerId, connectors, iconType) {
                         </div>
                         <div class="flex-grow-1">
                             <h6 class="mb-1">${connector.name}</h6>
-                            <small class="text-muted">${connector.type || connector.services?.join(', ') || ''}</small>
+                            <small class="text-muted">${connector.services?.join(', ') || ''}</small>
                             <div class="mt-1">
                                 <span class="badge bg-${statusBadge}">${isEnabled ? 'Enabled' : 'Disabled'}</span>
-                                ${connector.configured ? '<span class="badge bg-info ms-1">Configured</span>' : '<span class="badge bg-warning ms-1">Not Configured</span>'}
+                                ${isConfigured ? '<span class="badge bg-info ms-1">Configured</span>' : '<span class="badge bg-warning ms-1">Not Configured</span>'}
+                                ${isConnected ? '<span class="badge bg-success ms-1">Connected</span>' : ''}
                             </div>
                         </div>
                         <div class="connector-actions">
                             <div class="btn-group" role="group">
-                                <button class="btn btn-outline-primary btn-sm" onclick="openConnectionWizard('${id}', '${connector.name}')" data-bs-toggle="tooltip" title="Configure Connection">
+                                <button class="btn btn-outline-primary btn-sm" onclick="openConnectionWizard('${connectorId}', '${connector.name}')" data-bs-toggle="tooltip" title="Configure Connection">
                                     <i class="fas fa-cog"></i>
                                 </button>
-                                <button class="btn btn-outline-success btn-sm" onclick="testConnection('${id}')" data-bs-toggle="tooltip" title="Test Connection">
+                                <button class="btn btn-outline-success btn-sm" onclick="testConnection('${connectorId}')" data-bs-toggle="tooltip" title="Test Connection">
                                     <i class="fas fa-plug"></i>
                                 </button>
-                                <button class="btn btn-outline-info btn-sm" onclick="viewConnectionDetails('${id}')" data-bs-toggle="tooltip" title="View Details">
+                                <button class="btn btn-outline-info btn-sm" onclick="viewConnectionDetails('${connectorId}')" data-bs-toggle="tooltip" title="View Details">
                                     <i class="fas fa-info-circle"></i>
                                 </button>
                             </div>
@@ -824,7 +842,24 @@ async function openConnectorModal(connectorId, connectorName) {
 
 async function saveConnectorConfig() {
     const modal = document.getElementById('connectorModal');
-    const connectorId = modal.getAttribute('data-connector-id');
+    let connectorId = modal.getAttribute('data-connector-id');
+    
+    // Map frontend connector IDs to backend connector IDs
+    const connectorIdMapping = {
+        'bigquery': 'gcp',
+        'storage': 'gcp',
+        's3': 'aws',
+        'blob': 'azure',
+        'object_storage': 'oracle_cloud',
+        'cos': 'ibm_cloud',
+        'oss': 'alibaba_cloud',
+        'warehouse': 'data_warehouses',
+        'workspace': 'data_warehouses',
+        'datasets': 'bigquery'
+    };
+    
+    // Use mapped connector ID if available, otherwise use original
+    connectorId = connectorIdMapping[connectorId] || connectorId;
     
     try {
         const enabled = document.getElementById('connector-enabled').checked;
@@ -1108,6 +1143,7 @@ async function saveConnectorConfig() {
         showNotification('Configuration saved successfully', 'success');
         bootstrap.Modal.getInstance(modal).hide();
         loadConnectors(); // Refresh connectors
+        refreshUserConnections(); // Refresh user connections
         
     } catch (error) {
         showNotification('Failed to save configuration', 'danger');
@@ -2043,6 +2079,9 @@ function loadWizardStepContent() {
 
 function selectConnectionType(type) {
     selectedConnectionType = type;
+    
+    // Set connectionConfig.connectorId based on the selected type
+    connectionConfig.connectorId = type;
     
     // Update UI
     document.querySelectorAll('.connection-type-card').forEach(card => {
@@ -3481,11 +3520,28 @@ function loadConnectionSummary() {
 async function saveWizardConnection() {
     try {
         // Get the connector ID from the connection config
-        const connectorId = connectionConfig.connectorId;
+        let connectorId = connectionConfig.connectorId;
         if (!connectorId) {
             showNotification('No connector selected', 'danger');
             return;
         }
+        
+        // Map frontend connector IDs to backend connector IDs
+        const connectorIdMapping = {
+            'bigquery': 'gcp',
+            'storage': 'gcp',
+            's3': 'aws',
+            'blob': 'azure',
+            'object_storage': 'oracle_cloud',
+            'cos': 'ibm_cloud',
+            'oss': 'alibaba_cloud',
+            'warehouse': 'data_warehouses',
+            'workspace': 'data_warehouses',
+            'datasets': 'bigquery'
+        };
+        
+        // Use mapped connector ID if available, otherwise use original
+        connectorId = connectorIdMapping[connectorId] || connectorId;
 
         // Collect configuration based on connection type
         let config = { enabled: true };
@@ -3580,15 +3636,16 @@ async function saveWizardConnection() {
                 modal.hide();
             }
             
-            // Refresh the connectors list
+            // Refresh the connectors list and user connections
             loadConnectors();
+            refreshUserConnections();
         } else {
             showNotification('Failed to save configuration: ' + (result.error || 'Unknown error'), 'danger');
         }
         
     } catch (error) {
         console.error('Save wizard connection error:', error);
-        showNotification('Failed to save configuration', 'danger');
+        showNotification('Failed to save configuration: ' + error.message, 'danger');
     }
 }
 
@@ -4016,12 +4073,66 @@ function createConnectionCard(connection) {
     `;
 }
 
-function loadUserConnections() {
-    // Load user-created connections
-    // This would typically fetch from your API
-    const userConnections = [];
-    
-    return userConnections;
+async function loadUserConnections() {
+    try {
+        // Load user-created connections from the API
+        const response = await apiCall('/connectors');
+        const userConnections = [];
+        
+        // Extract only enabled connections from all categories
+        if (response.connectors) {
+            Object.values(response.connectors).forEach(category => {
+                Object.entries(category).forEach(([id, connector]) => {
+                    if (connector.enabled) {
+                        userConnections.push({
+                            id: id,
+                            name: connector.name,
+                            type: connector.type || 'Data Source',
+                            status: 'connected',
+                            services: connector.services || [],
+                            configured: connector.configured || false,
+                            enabled: connector.enabled || false,
+                            host: connector.host || 'N/A',
+                            lastTest: connector.lastTest || 'Never'
+                        });
+                    }
+                });
+            });
+        }
+        
+        return userConnections;
+    } catch (error) {
+        console.error('Failed to load user connections:', error);
+        return [];
+    }
+}
+
+async function refreshUserConnections() {
+    try {
+        const container = document.getElementById('user-connections-container');
+        if (!container) return; // User connections section not loaded yet
+        
+        const userConnections = await loadUserConnections();
+        
+        if (userConnections.length > 0) {
+            container.innerHTML = userConnections.map(conn => createConnectionCard(conn)).join('');
+        } else {
+            container.innerHTML = `
+                <div class="col-12">
+                    <div class="text-center py-4">
+                        <i class="fas fa-plus-circle fa-3x text-muted mb-3"></i>
+                        <h6 class="text-muted">No connections created yet</h6>
+                        <p class="text-muted">Click "New Connection" to create your first data source connection</p>
+                        <button class="btn btn-primary mt-2" onclick="openNewConnectionWizard()">
+                            <i class="fas fa-plus me-2"></i>New Connection
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+    } catch (error) {
+        console.error('Failed to refresh user connections:', error);
+    }
 }
 
 function addUserConnectionsSection() {
@@ -4051,23 +4162,38 @@ function addUserConnectionsSection() {
     const accordion = connectorsTab.querySelector('#connectorAccordion');
     accordion.insertAdjacentHTML('beforebegin', userConnectionsHTML);
     
-    // Load user connections
-    const userConnections = loadUserConnections();
-    const container = document.getElementById('user-connections-container');
-    
-    if (userConnections.length > 0) {
-        container.innerHTML = userConnections.map(conn => createConnectionCard(conn)).join('');
-    } else {
+    // Load user connections asynchronously
+    loadUserConnections().then(userConnections => {
+        const container = document.getElementById('user-connections-container');
+        
+        if (userConnections.length > 0) {
+            container.innerHTML = userConnections.map(conn => createConnectionCard(conn)).join('');
+        } else {
+            container.innerHTML = `
+                <div class="col-12">
+                    <div class="text-center py-4">
+                        <i class="fas fa-plus-circle fa-3x text-muted mb-3"></i>
+                        <h6 class="text-muted">No connections created yet</h6>
+                        <p class="text-muted">Click "New Connection" to create your first data source connection</p>
+                        <button class="btn btn-primary mt-2" onclick="openNewConnectionWizard()">
+                            <i class="fas fa-plus me-2"></i>New Connection
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+    }).catch(error => {
+        console.error('Failed to load user connections:', error);
+        const container = document.getElementById('user-connections-container');
         container.innerHTML = `
             <div class="col-12">
-                <div class="text-center py-4">
-                    <i class="fas fa-plus-circle fa-3x text-muted mb-3"></i>
-                    <h6 class="text-muted">No connections created yet</h6>
-                    <p class="text-muted">Click "New Connection" to create your first data source connection</p>
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    Failed to load connections. Please refresh the page.
                 </div>
             </div>
         `;
-    }
+    });
 }
 
 function editConnection(connectionId) {

@@ -16,6 +16,15 @@ class AzureConnector(BaseConnector):
     Connector for discovering data assets in Azure services
     """
     
+    # Metadata for dynamic discovery
+    connector_type = "azure"
+    connector_name = "Microsoft Azure"
+    description = "Discover data assets from Azure services including Blob Storage, SQL Database, Cosmos DB, Synapse, Data Factory, Event Hub, and Service Bus"
+    category = "cloud_providers"
+    supported_services = ["Blob Storage", "SQL Database", "Cosmos DB", "Synapse", "Data Factory", "Event Hub", "Service Bus"]
+    required_config_fields = ["subscription_id", "tenant_id"]
+    optional_config_fields = ["client_id", "client_secret", "services"]
+    
     def __init__(self, config: Dict[str, Any]):
         super().__init__(config)
         self.services = config.get('services', ['blob_storage'])
