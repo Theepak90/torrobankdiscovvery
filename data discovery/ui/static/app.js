@@ -383,96 +383,6 @@ async function openConnectorModal(connectorId, connectorName) {
                     <small class="text-muted">Select which GCP services to discover</small>
                 </div>
             `;
-        } else if (connectorId === 'oracle_cloud' || connectorId === 'oracle cloud' || connectorId === 'oracle cloud infrastructure') {
-            modalBody += `
-                <div class="mb-3">
-                    <label for="compartment-id" class="form-label">Compartment ID</label>
-                    <input type="text" class="form-control" id="compartment-id" value="${config.config?.compartment_id || ''}" placeholder="ocid1.compartment.oc1..xxxxx">
-                </div>
-                <div class="mb-3">
-                    <label for="region" class="form-label">Region</label>
-                    <select class="form-select" id="region">
-                        <option value="us-ashburn-1" ${config.config?.region === 'us-ashburn-1' ? 'selected' : ''}>US East (Ashburn)</option>
-                        <option value="us-phoenix-1" ${config.config?.region === 'us-phoenix-1' ? 'selected' : ''}>US West (Phoenix)</option>
-                        <option value="eu-frankfurt-1" ${config.config?.region === 'eu-frankfurt-1' ? 'selected' : ''}>Europe (Frankfurt)</option>
-                        <option value="uk-london-1" ${config.config?.region === 'uk-london-1' ? 'selected' : ''}>UK (London)</option>
-                    </select>
-                </div>
-                <div class="mb-3">
-                    <label for="services" class="form-label">Services</label>
-                    <select class="form-select" id="services" multiple>
-                        <option value="object_storage" ${config.config?.services?.includes('object_storage') ? 'selected' : ''}>Object Storage</option>
-                        <option value="autonomous_database" ${config.config?.services?.includes('autonomous_database') ? 'selected' : ''}>Autonomous Database</option>
-                        <option value="mysql" ${config.config?.services?.includes('mysql') ? 'selected' : ''}>MySQL Database Service</option>
-                        <option value="nosql" ${config.config?.services?.includes('nosql') ? 'selected' : ''}>NoSQL Database</option>
-                    </select>
-                </div>
-                <div class="mb-3">
-                    <label for="config-file-path" class="form-label">OCI Config File Path (Optional)</label>
-                    <input type="text" class="form-control" id="config-file-path" value="${config.config?.config_file_path || ''}" placeholder="~/.oci/config">
-                    <small class="text-muted">Path to OCI configuration file. If not specified, will use default location.</small>
-                </div>
-            `;
-        } else if (connectorId === 'ibm_cloud' || connectorId === 'ibm cloud') {
-            modalBody += `
-                <div class="mb-3">
-                    <label for="api-key" class="form-label">API Key</label>
-                    <input type="password" class="form-control" id="api-key" value="${config.config?.api_key || ''}" placeholder="your-ibm-cloud-api-key">
-                </div>
-                <div class="mb-3">
-                    <label for="resource-group-id" class="form-label">Resource Group ID</label>
-                    <input type="text" class="form-control" id="resource-group-id" value="${config.config?.resource_group_id || ''}" placeholder="your-resource-group-id">
-                </div>
-                <div class="mb-3">
-                    <label for="region" class="form-label">Region</label>
-                    <select class="form-select" id="region">
-                        <option value="us-south" ${config.config?.region === 'us-south' ? 'selected' : ''}>US South</option>
-                        <option value="us-east" ${config.config?.region === 'us-east' ? 'selected' : ''}>US East</option>
-                        <option value="eu-gb" ${config.config?.region === 'eu-gb' ? 'selected' : ''}>Europe (London)</option>
-                        <option value="eu-de" ${config.config?.region === 'eu-de' ? 'selected' : ''}>Europe (Frankfurt)</option>
-                    </select>
-                </div>
-                <div class="mb-3">
-                    <label for="services" class="form-label">Services</label>
-                    <select class="form-select" id="services" multiple>
-                        <option value="cloud_object_storage" ${config.config?.services?.includes('cloud_object_storage') ? 'selected' : ''}>Cloud Object Storage</option>
-                        <option value="db2" ${config.config?.services?.includes('db2') ? 'selected' : ''}>Db2 on Cloud</option>
-                        <option value="cloudant" ${config.config?.services?.includes('cloudant') ? 'selected' : ''}>Cloudant</option>
-                        <option value="watson_discovery" ${config.config?.services?.includes('watson_discovery') ? 'selected' : ''}>Watson Discovery</option>
-                    </select>
-                </div>
-            `;
-        } else if (connectorId === 'alibaba_cloud' || connectorId === 'alibaba cloud') {
-            modalBody += `
-                <div class="mb-3">
-                    <label for="access-key-id" class="form-label">Access Key ID</label>
-                    <input type="text" class="form-control" id="access-key-id" value="${config.config?.access_key_id || ''}" placeholder="your-access-key-id">
-                </div>
-                <div class="mb-3">
-                    <label for="access-key-secret" class="form-label">Access Key Secret</label>
-                    <input type="password" class="form-control" id="access-key-secret" value="${config.config?.access_key_secret || ''}" placeholder="your-access-key-secret">
-                </div>
-                <div class="mb-3">
-                    <label for="region" class="form-label">Region</label>
-                    <select class="form-select" id="region">
-                        <option value="cn-hangzhou" ${config.config?.region === 'cn-hangzhou' ? 'selected' : ''}>China (Hangzhou)</option>
-                        <option value="cn-shanghai" ${config.config?.region === 'cn-shanghai' ? 'selected' : ''}>China (Shanghai)</option>
-                        <option value="cn-beijing" ${config.config?.region === 'cn-beijing' ? 'selected' : ''}>China (Beijing)</option>
-                        <option value="us-west-1" ${config.config?.region === 'us-west-1' ? 'selected' : ''}>US West</option>
-                        <option value="ap-southeast-1" ${config.config?.region === 'ap-southeast-1' ? 'selected' : ''}>Asia Pacific (Singapore)</option>
-                    </select>
-                </div>
-                <div class="mb-3">
-                    <label for="services" class="form-label">Services</label>
-                    <select class="form-select" id="services" multiple>
-                        <option value="oss" ${config.config?.services?.includes('oss') ? 'selected' : ''}>Object Storage Service</option>
-                        <option value="rds" ${config.config?.services?.includes('rds') ? 'selected' : ''}>RDS Database</option>
-                        <option value="polardb" ${config.config?.services?.includes('polardb') ? 'selected' : ''}>PolarDB</option>
-                        <option value="mongodb" ${config.config?.services?.includes('mongodb') ? 'selected' : ''}>MongoDB</option>
-                        <option value="redis" ${config.config?.services?.includes('redis') ? 'selected' : ''}>Redis</option>
-                    </select>
-                </div>
-            `;
         // Database Connectors
         } else if (connectorId === 'postgresql') {
             modalBody += `
@@ -857,9 +767,6 @@ async function saveConnectorConfig() {
         'storage': 'gcp',
         's3': 'aws',
         'blob': 'azure',
-        'object_storage': 'oracle_cloud',
-        'cos': 'ibm_cloud',
-        'oss': 'alibaba_cloud',
         'warehouse': 'data_warehouses',
         'workspace': 'data_warehouses',
         'datasets': 'bigquery'
@@ -899,45 +806,6 @@ async function saveConnectorConfig() {
             } else if (credentialsPath.trim()) {
                 config.config.credentials_path = credentialsPath;
             }
-        } else if (connectorId === 'oracle_cloud' || connectorId === 'oracle cloud' || connectorId === 'oracle cloud infrastructure') {
-            const compartmentId = document.getElementById('compartment-id').value;
-            const region = document.getElementById('region').value;
-            const servicesSelect = document.getElementById('services');
-            const services = Array.from(servicesSelect.selectedOptions).map(option => option.value);
-            const configFilePath = document.getElementById('config-file-path').value;
-            
-            config.config = {
-                compartment_id: compartmentId,
-                region: region,
-                services: services,
-                config_file_path: configFilePath
-            };
-        } else if (connectorId === 'ibm_cloud' || connectorId === 'ibm cloud') {
-            const apiKey = document.getElementById('api-key').value;
-            const resourceGroupId = document.getElementById('resource-group-id').value;
-            const region = document.getElementById('region').value;
-            const servicesSelect = document.getElementById('services');
-            const services = Array.from(servicesSelect.selectedOptions).map(option => option.value);
-            
-            config.config = {
-                api_key: apiKey,
-                resource_group_id: resourceGroupId,
-                region: region,
-                services: services
-            };
-        } else if (connectorId === 'alibaba_cloud' || connectorId === 'alibaba cloud') {
-            const accessKeyId = document.getElementById('access-key-id').value;
-            const accessKeySecret = document.getElementById('access-key-secret').value;
-            const region = document.getElementById('region').value;
-            const servicesSelect = document.getElementById('services');
-            const services = Array.from(servicesSelect.selectedOptions).map(option => option.value);
-            
-            config.config = {
-                access_key_id: accessKeyId,
-                access_key_secret: accessKeySecret,
-                region: region,
-                services: services
-            };
         // Database Connectors Save Handlers
         } else if (connectorId === 'postgresql') {
             const host = document.getElementById('host').value;
@@ -3083,7 +2951,7 @@ function loadConnectionForm() {
                     <div class="col-md-6">
                         <div class="connection-form-group">
                             <label class="connection-form-label">Connection Name</label>
-                            <input type="text" class="form-control connection-form-input" id="connection-name" placeholder="My Oracle Cloud Connection" required>
+                            <input type="text" class="form-control connection-form-input" id="connection-name" placeholder="My Database Connection" required>
                         </div>
                     </div>
                     <div class="col-md-6">
@@ -3126,7 +2994,7 @@ function loadConnectionForm() {
                         <div class="connection-form-group">
                             <label class="connection-form-label">Private Key</label>
                             <textarea class="form-control connection-form-input" id="private-key" rows="6" placeholder="-----BEGIN PRIVATE KEY-----..." required></textarea>
-                            <small class="text-muted">Paste your Oracle Cloud private key</small>
+                            <small class="text-muted">Paste your private key</small>
                         </div>
                     </div>
                 </div>
@@ -3761,9 +3629,6 @@ async function saveWizardConnection() {
             'storage': 'gcp',
             's3': 'aws',
             'blob': 'azure',
-            'object_storage': 'oracle_cloud',
-            'cos': 'ibm_cloud',
-            'oss': 'alibaba_cloud',
             'warehouse': 'data_warehouses',
             'workspace': 'data_warehouses',
             'datasets': 'bigquery'
@@ -4030,7 +3895,6 @@ function loadConnectorSpecificTypes(connectorId, connectorName) {
         'oracle': [
             { type: 'database', icon: 'fas fa-database', title: 'Oracle Database', description: 'Connect to Oracle Database instances' },
             { type: 'autonomous', icon: 'fas fa-robot', title: 'Autonomous Database', description: 'Connect to Oracle Autonomous Database' },
-            { type: 'oci', icon: 'fas fa-cloud', title: 'Oracle Cloud', description: 'Connect to Oracle Cloud Infrastructure' }
         ],
         'sqlserver': [
             { type: 'database', icon: 'fas fa-database', title: 'SQL Server Database', description: 'Connect to SQL Server database instances' },
@@ -4056,50 +3920,6 @@ function loadConnectorSpecificTypes(connectorId, connectorName) {
             { type: 'indices', icon: 'fas fa-search', title: 'Elasticsearch Indices', description: 'Connect to Elasticsearch indices and documents' },
             { type: 'cluster', icon: 'fas fa-server', title: 'Cluster', description: 'Connect to Elasticsearch cluster' },
             { type: 'kibana', icon: 'fas fa-chart-bar', title: 'Kibana Dashboards', description: 'Discover Kibana dashboards and visualizations' }
-        ],
-        'oracle_cloud': [
-            { type: 'object_storage', icon: 'fas fa-archive', title: 'Object Storage', description: 'Connect to Oracle Cloud Object Storage buckets' },
-            { type: 'autonomous_database', icon: 'fas fa-robot', title: 'Autonomous Database', description: 'Connect to Oracle Autonomous Database instances' },
-            { type: 'mysql', icon: 'fas fa-database', title: 'MySQL Database Service', description: 'Connect to Oracle MySQL Database Service' },
-            { type: 'nosql', icon: 'fas fa-table', title: 'NoSQL Database', description: 'Connect to Oracle NoSQL Database tables' }
-        ],
-        'oracle cloud infrastructure': [
-            { type: 'object_storage', icon: 'fas fa-archive', title: 'Object Storage', description: 'Connect to Oracle Cloud Object Storage buckets' },
-            { type: 'autonomous_database', icon: 'fas fa-robot', title: 'Autonomous Database', description: 'Connect to Oracle Autonomous Database instances' },
-            { type: 'mysql', icon: 'fas fa-database', title: 'MySQL Database Service', description: 'Connect to Oracle MySQL Database Service' },
-            { type: 'nosql', icon: 'fas fa-table', title: 'NoSQL Database', description: 'Connect to Oracle NoSQL Database tables' }
-        ],
-        'oracle cloud': [
-            { type: 'object_storage', icon: 'fas fa-archive', title: 'Object Storage', description: 'Connect to Oracle Cloud Object Storage buckets' },
-            { type: 'autonomous_database', icon: 'fas fa-robot', title: 'Autonomous Database', description: 'Connect to Oracle Autonomous Database instances' },
-            { type: 'mysql', icon: 'fas fa-database', title: 'MySQL Database Service', description: 'Connect to Oracle MySQL Database Service' },
-            { type: 'nosql', icon: 'fas fa-table', title: 'NoSQL Database', description: 'Connect to Oracle NoSQL Database tables' }
-        ],
-        'ibm_cloud': [
-            { type: 'cos', icon: 'fas fa-archive', title: 'Cloud Object Storage', description: 'Connect to IBM Cloud Object Storage buckets' },
-            { type: 'db2', icon: 'fas fa-database', title: 'Db2 on Cloud', description: 'Connect to IBM Db2 database instances' },
-            { type: 'cloudant', icon: 'fas fa-couch', title: 'Cloudant', description: 'Connect to IBM Cloudant NoSQL database' },
-            { type: 'watson', icon: 'fas fa-brain', title: 'Watson Discovery', description: 'Connect to IBM Watson Discovery service' }
-        ],
-        'ibm cloud': [
-            { type: 'cos', icon: 'fas fa-archive', title: 'Cloud Object Storage', description: 'Connect to IBM Cloud Object Storage buckets' },
-            { type: 'db2', icon: 'fas fa-database', title: 'Db2 on Cloud', description: 'Connect to IBM Db2 database instances' },
-            { type: 'cloudant', icon: 'fas fa-couch', title: 'Cloudant', description: 'Connect to IBM Cloudant NoSQL database' },
-            { type: 'watson', icon: 'fas fa-brain', title: 'Watson Discovery', description: 'Connect to IBM Watson Discovery service' }
-        ],
-        'alibaba_cloud': [
-            { type: 'oss', icon: 'fas fa-archive', title: 'Object Storage Service', description: 'Connect to Alibaba Cloud OSS buckets' },
-            { type: 'rds', icon: 'fas fa-database', title: 'RDS Database', description: 'Connect to Alibaba Cloud RDS instances' },
-            { type: 'polardb', icon: 'fas fa-database', title: 'PolarDB', description: 'Connect to Alibaba Cloud PolarDB clusters' },
-            { type: 'mongodb', icon: 'fas fa-leaf', title: 'MongoDB', description: 'Connect to Alibaba Cloud MongoDB instances' },
-            { type: 'redis', icon: 'fas fa-memory', title: 'Redis', description: 'Connect to Alibaba Cloud Redis instances' }
-        ],
-        'alibaba cloud': [
-            { type: 'oss', icon: 'fas fa-archive', title: 'Object Storage Service', description: 'Connect to Alibaba Cloud OSS buckets' },
-            { type: 'rds', icon: 'fas fa-database', title: 'RDS Database', description: 'Connect to Alibaba Cloud RDS instances' },
-            { type: 'polardb', icon: 'fas fa-database', title: 'PolarDB', description: 'Connect to Alibaba Cloud PolarDB clusters' },
-            { type: 'mongodb', icon: 'fas fa-leaf', title: 'MongoDB', description: 'Connect to Alibaba Cloud MongoDB instances' },
-            { type: 'redis', icon: 'fas fa-memory', title: 'Redis', description: 'Connect to Alibaba Cloud Redis instances' }
         ],
         // Data Warehouse Connectors
         'snowflake': [
@@ -4225,14 +4045,6 @@ function getConnectionTypeFromId(connectorId) {
         'aws': 's3',
         'azure': 'blob',
         'gcp': 'storage',
-        'oracle_cloud': 'object_storage',
-        'oracle cloud infrastructure': 'object_storage',
-        'oracle cloud': 'object_storage',
-        'oci': 'database',
-        'ibm_cloud': 'cos',
-        'ibm cloud': 'cos',
-        'alibaba_cloud': 'oss',
-        'alibaba cloud': 'oss',
         
         // Data Warehouses
         'snowflake': 'warehouse',
