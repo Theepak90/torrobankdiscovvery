@@ -3964,30 +3964,43 @@ async function loadDiscoveredAssets() {
     console.log('Found discovered-assets-container, proceeding with discovery...');
     
     try {
-        // First, add the GCP connector if not already added
-        const projectId = document.getElementById('project-id')?.value;
-        const serviceAccountJson = document.getElementById('service-account-json')?.value;
+        // Check if GCP connector already exists
+        const healthResponse = await fetch('/api/system/health');
+        const healthData = await healthResponse.json();
+        const gcpConnector = healthData.connector_status?.gcp;
         
-        if (projectId && serviceAccountJson) {
-            // Add the connector first
-            const addResponse = await fetch('/api/connectors/gcp/add', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    name: document.getElementById('connection-name')?.value || 'GCP Connection',
-                    config: {
-                        project_id: projectId,
-                        service_account_json: serviceAccountJson,
-                        services: ['bigquery']
-                    }
-                })
-            });
+        // Only add the connector if it doesn't exist or isn't configured
+        if (!gcpConnector || !gcpConnector.configured) {
+            const projectId = document.getElementById('project-id')?.value;
+            const serviceAccountJson = document.getElementById('service-account-json')?.value;
             
-            if (!addResponse.ok) {
-                throw new Error('Failed to add GCP connector');
+            if (projectId && serviceAccountJson) {
+                console.log('Adding GCP connector...');
+                const addResponse = await fetch('/api/connectors/gcp/add', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        name: document.getElementById('connection-name')?.value || 'GCP Connection',
+                        config: {
+                            project_id: projectId,
+                            service_account_json: serviceAccountJson,
+                            services: ['bigquery']
+                        }
+                    })
+                });
+                
+                if (!addResponse.ok) {
+                    const errorData = await addResponse.json();
+                    throw new Error(`Failed to add GCP connector: ${errorData.detail || 'Unknown error'}`);
+                }
+                console.log('GCP connector added successfully');
+            } else {
+                throw new Error('Project ID or Service Account JSON not found');
             }
+        } else {
+            console.log('GCP connector already exists and is configured');
         }
         
         // Now fetch discovered assets
