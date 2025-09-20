@@ -253,7 +253,7 @@ async function loadConnectors() {
         renderConnectorCategory('cloud-connectors', currentConnectors.cloud_providers, 'cloud', availableConnectors, connectorStatus);
         renderConnectorCategory('database-connectors', currentConnectors.databases, 'database', availableConnectors, connectorStatus);
         renderConnectorCategory('warehouse-connectors', currentConnectors.data_warehouses, 'warehouse', availableConnectors, connectorStatus);
-        renderConnectorCategory('saas-connectors', currentConnectors.saas_platforms, 'saas', availableConnectors, connectorStatus);
+        renderConnectorCategory('network-storage-connectors', currentConnectors.network_storage, 'network_storage', availableConnectors, connectorStatus);
         
     } catch (error) {
         console.error('Failed to load connectors:', error);
@@ -339,7 +339,7 @@ function getConnectorIcon(type) {
         'cloud': 'cloud',
         'database': 'database',
         'warehouse': 'warehouse',
-        'saas': 'cloud-upload-alt',
+        'network_storage': 'network-wired',
         'streaming': 'stream',
         'lake': 'water'
     };
@@ -1746,7 +1746,7 @@ function initializeChart() {
     discoveryChart = new Chart(ctx, {
         type: 'doughnut',
         data: {
-            labels: ['Cloud Providers', 'Databases', 'Data Warehouses', 'SaaS Platforms', 'Streaming', 'Data Lakes'],
+            labels: ['Cloud Providers', 'Databases', 'Data Warehouses', 'Network Storage', 'Streaming', 'Data Lakes'],
             datasets: [{
                 label: 'Assets Discovered',
                 data: [0, 0, 0, 0, 0, 0],
@@ -3985,6 +3985,14 @@ function loadConnectorSpecificTypes(connectorId, connectorName) {
             { type: 'tickets', icon: 'fas fa-ticket-alt', title: 'Support Tickets', description: 'Connect to Zendesk support tickets and conversations' },
             { type: 'users', icon: 'fas fa-users', title: 'Users & Organizations', description: 'Discover customer users and organization data' },
             { type: 'knowledge_base', icon: 'fas fa-book', title: 'Knowledge Base', description: 'Connect to help center articles and guides' }
+        ],
+        'nas': [
+            { type: 'smb', icon: 'fas fa-folder-open', title: 'SMB/CIFS Share', description: 'Connect to Windows SMB/CIFS network shares' },
+            { type: 'nfs', icon: 'fas fa-hdd', title: 'NFS Mount', description: 'Connect to Unix/Linux NFS network file systems' }
+        ],
+        'sftp': [
+            { type: 'sftp', icon: 'fas fa-key', title: 'SFTP Server', description: 'Connect to SFTP servers with SSH authentication' },
+            { type: 'scp', icon: 'fas fa-copy', title: 'SCP Transfer', description: 'Connect using SCP for secure file transfer' }
         ]
     };
     
@@ -3992,7 +4000,7 @@ function loadConnectorSpecificTypes(connectorId, connectorName) {
     const types = connectorTypes[connectorId.toLowerCase()] || [
         { type: 'database', icon: 'fas fa-database', title: 'Database', description: 'Connect to SQL databases like PostgreSQL, MySQL, Oracle' },
         { type: 'cloud', icon: 'fas fa-cloud', title: 'Cloud Storage', description: 'Connect to cloud storage services' },
-        { type: 'api', icon: 'fas fa-exchange-alt', title: 'API / SaaS', description: 'Connect to REST APIs and SaaS platforms' }
+        { type: 'network', icon: 'fas fa-network-wired', title: 'Network Storage', description: 'Connect to NAS drives and SFTP servers' }
     ];
     
     connectionTypesHTML = `

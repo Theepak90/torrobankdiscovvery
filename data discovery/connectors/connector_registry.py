@@ -119,7 +119,7 @@ class ConnectorRegistry:
             "cloud_providers": [],
             "databases": [],
             "data_warehouses": [],
-            "saas_platforms": [],
+            "network_storage": [],
             "streaming": [],
             "data_lakes": [],
             "network": [],
