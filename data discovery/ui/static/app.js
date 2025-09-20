@@ -276,6 +276,9 @@ function renderConnectorCategory(containerId, connectors, iconType, availableCon
     if (containerId === 'database-connectors') {
         connectorList = connectorList.filter(id => id !== 'databases');
     }
+    if (containerId === 'warehouse-connectors') {
+        connectorList = connectorList.filter(id => id !== 'data_warehouses');
+    }
     
     connectorList.forEach(connectorId => {
         // Get connector metadata from availableConnectors
