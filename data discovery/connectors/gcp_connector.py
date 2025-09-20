@@ -1,15 +1,19 @@
 """
 GCP Connector - Discovers data assets in Google Cloud Platform services
+Real implementation with actual Google Cloud API calls
 """
 
 from datetime import datetime
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 import json
 import tempfile
 import os
+import logging
 from google.cloud import storage, bigquery
-from google.cloud.exceptions import GoogleCloudError
+from google.cloud.exceptions import GoogleCloudError, NotFound
 from google.oauth2 import service_account
+from google.auth import default
+from google.auth.exceptions import DefaultCredentialsError
 
 from .base_connector import BaseConnector
 
@@ -17,6 +21,7 @@ from .base_connector import BaseConnector
 class GCPConnector(BaseConnector):
     """
     Connector for discovering data assets in Google Cloud Platform services
+    Real implementation with actual Google Cloud API calls
     """
     
     # Metadata for dynamic discovery
@@ -24,19 +29,19 @@ class GCPConnector(BaseConnector):
     connector_name = "Google Cloud Platform"
     description = "Discover data assets from GCP services including BigQuery, Cloud Storage, Cloud SQL, and Dataflow"
     category = "cloud_providers"
-    supported_services = ["BigQuery", "Cloud Storage", "Cloud SQL", "Dataflow", "Pub/Sub", "Firestore"]
+    supported_services = ["BigQuery", "Cloud Storage", "Dataflow", "Pub/Sub", "Firestore"]
     required_config_fields = ["project_id"]
-    optional_config_fields = ["credentials_path", "service_account_json", "services"]
+    optional_config_fields = ["credentials_path", "service_account_json", "services", "region"]
     
     def __init__(self, config: Dict[str, Any]):
         super().__init__(config)
-        self.services = config.get('services', ['cloud_storage'])
+        self.services = config.get('services', ['bigquery', 'cloud_storage'])
         self.project_id = config.get('project_id')
         self.service_account_json = config.get('service_account_json')
         self.credentials_path = config.get('credentials_path')
-        self.dataset_id = config.get('dataset_id')  # Optional dataset ID for BigQuery
+        self.region = config.get('region', 'us-central1')
         
-        # Initialize credentials
+        # Initialize credentials and clients
         self.credentials = None
         self.storage_client = None
         self.bigquery_client = None
@@ -45,27 +50,36 @@ class GCPConnector(BaseConnector):
         self._initialize_clients()
     
     def _initialize_credentials(self):
-        """Initialize GCP credentials from service account JSON"""
+        """Initialize GCP credentials from service account JSON or default credentials"""
         try:
             if self.service_account_json:
-                # Parse JSON string into dict
+                # Use service account JSON from config
                 if isinstance(self.service_account_json, str):
                     service_account_info = json.loads(self.service_account_json)
                 else:
                     service_account_info = self.service_account_json
                 
-                self.credentials = service_account.Credentials.from_service_account_info(service_account_info)
+                self.credentials = service_account.Credentials.from_service_account_info(
+                    service_account_info
+                )
                 self.logger.info("GCP credentials initialized from service account JSON")
                 
             elif self.credentials_path and os.path.exists(self.credentials_path):
-                # Use credentials file path
-                self.credentials = service_account.Credentials.from_service_account_file(self.credentials_path)
+                # Use service account file
+                self.credentials = service_account.Credentials.from_service_account_file(
+                    self.credentials_path
+                )
                 self.logger.info(f"GCP credentials initialized from file: {self.credentials_path}")
                 
             else:
-                self.logger.warning("No GCP credentials provided, will try default credentials")
-                self.credentials = None
-                
+                # Try default credentials (ADC - Application Default Credentials)
+                try:
+                    self.credentials, _ = default()
+                    self.logger.info("GCP credentials initialized using Application Default Credentials")
+                except DefaultCredentialsError:
+                    self.logger.warning("No GCP credentials found. Some services may not work.")
+                    self.credentials = None
+                    
         except Exception as e:
             self.logger.error(f"Failed to initialize GCP credentials: {e}")
             self.credentials = None
@@ -73,579 +87,305 @@ class GCPConnector(BaseConnector):
     def _initialize_clients(self):
         """Initialize GCP service clients"""
         try:
-            if 'cloud_storage' in self.services or 'gcs' in self.services:
-                if self.credentials:
-                    self.storage_client = storage.Client(project=self.project_id, credentials=self.credentials)
-                else:
-                    self.storage_client = storage.Client(project=self.project_id)
-                self.logger.info("GCP Storage client initialized")
-            
-            if 'bigquery' in self.services:
-                if self.credentials:
-                    self.bigquery_client = bigquery.Client(project=self.project_id, credentials=self.credentials)
-                else:
-                    self.bigquery_client = bigquery.Client(project=self.project_id)
-                self.logger.info("GCP BigQuery client initialized")
+            if self.credentials and self.project_id:
+                # Initialize BigQuery client
+                if 'bigquery' in self.services:
+                    self.bigquery_client = bigquery.Client(
+                        project=self.project_id,
+                        credentials=self.credentials
+                    )
+                    self.logger.info("BigQuery client initialized")
                 
+                # Initialize Cloud Storage client
+                if 'cloud_storage' in self.services:
+                    self.storage_client = storage.Client(
+                        project=self.project_id,
+                        credentials=self.credentials
+                    )
+                    self.logger.info("Cloud Storage client initialized")
+                
+                    
         except Exception as e:
-            self.logger.error(f"GCP client initialization failed: {e}")
-            self.storage_client = None
-            self.bigquery_client = None
+            self.logger.error(f"Failed to initialize GCP clients: {e}")
     
     def discover_assets(self) -> List[Dict[str, Any]]:
-        """Discover GCP data assets"""
-        self.logger.info("Starting GCP asset discovery")
+        """Discover GCP data assets using real API calls"""
+        if not self.credentials or not self.project_id:
+            self.logger.error("GCP credentials or project ID not available")
+            return []
+        
         assets = []
         
-        if 'cloud_storage' in self.services and self.storage_client:
-            assets.extend(self._discover_cloud_storage_assets())
-        
-        if 'bigquery' in self.services:
-            assets.extend(self._discover_bigquery_assets())
-        
-        if 'cloud_sql' in self.services:
-            assets.extend(self._discover_cloud_sql_assets())
+        try:
+            # Discover BigQuery assets
+            if 'bigquery' in self.services and self.bigquery_client:
+                assets.extend(self._discover_bigquery_assets())
+            
+            # Discover Cloud Storage assets
+            if 'cloud_storage' in self.services and self.storage_client:
+                assets.extend(self._discover_cloud_storage_assets())
+            
+                
+        except Exception as e:
+            self.logger.error(f"Error discovering GCP assets: {e}")
         
         self.logger.info(f"Discovered {len(assets)} GCP assets")
         return assets
     
-    def _discover_cloud_storage_assets(self) -> List[Dict[str, Any]]:
-        """Discover Google Cloud Storage assets"""
+    def _discover_bigquery_assets(self) -> List[Dict[str, Any]]:
+        """Discover BigQuery datasets, tables, and views"""
         assets = []
         
         try:
-            # List all buckets
-            buckets = self.storage_client.list_buckets()
+            # List all datasets in the project
+            datasets = list(self.bigquery_client.list_datasets())
+            
+            for dataset in datasets:
+                dataset_id = dataset.dataset_id
+                dataset_ref = self.bigquery_client.dataset(dataset_id)
+                
+                # Get dataset metadata
+                try:
+                    dataset_obj = self.bigquery_client.get_dataset(dataset_ref)
+                    
+                    # Add dataset as an asset
+                    assets.append({
+                        'name': f"{self.project_id}.{dataset_id}",
+                        'type': 'bigquery_dataset',
+                        'source': 'gcp_bigquery',
+                        'location': f"bigquery://{self.project_id}/{dataset_id}",
+                        'size': 0,  # Datasets don't have size
+                        'created_date': dataset_obj.created.isoformat() if dataset_obj.created else None,
+                        'modified_date': dataset_obj.modified.isoformat() if dataset_obj.modified else None,
+                        'schema': {},
+                        'tags': ['gcp', 'bigquery', 'dataset'],
+                        'metadata': {
+                            'service': 'bigquery',
+                            'resource_type': 'dataset',
+                            'project_id': self.project_id,
+                            'dataset_id': dataset_id,
+                            'location': dataset_obj.location,
+                            'description': dataset_obj.description or '',
+                            'labels': dict(dataset_obj.labels) if dataset_obj.labels else {}
+                        }
+                    })
+                    
+                    # List tables and views in the dataset
+                    tables = list(self.bigquery_client.list_tables(dataset_ref))
+                    
+                    for table in tables:
+                        table_id = table.table_id
+                        table_ref = dataset_ref.table(table_id)
+                        
+                        try:
+                            table_obj = self.bigquery_client.get_table(table_ref)
+                            
+                            # Determine table type
+                            table_type = 'bigquery_view' if table_obj.table_type == 'VIEW' else 'bigquery_table'
+                            
+                            # Get schema information
+                            schema_info = []
+                            if table_obj.schema:
+                                for field in table_obj.schema:
+                                    schema_info.append({
+                                        'name': field.name,
+                                        'type': field.field_type,
+                                        'mode': field.mode,
+                                        'description': field.description or ''
+                                    })
+                            
+                            assets.append({
+                                'name': f"{self.project_id}.{dataset_id}.{table_id}",
+                                'type': table_type,
+                                'source': 'gcp_bigquery',
+                                'location': f"bigquery://{self.project_id}/{dataset_id}/{table_id}",
+                                'size': table_obj.num_bytes or 0,
+                                'created_date': table_obj.created.isoformat() if table_obj.created else None,
+                                'modified_date': table_obj.modified.isoformat() if table_obj.modified else None,
+                                'schema': {
+                                    'fields': schema_info,
+                                    'num_rows': table_obj.num_rows or 0,
+                                    'num_bytes': table_obj.num_bytes or 0
+                                },
+                                'tags': ['gcp', 'bigquery', 'table' if table_type == 'bigquery_table' else 'view'],
+                                'metadata': {
+                                    'service': 'bigquery',
+                                    'resource_type': 'table',
+                                    'project_id': self.project_id,
+                                    'dataset_id': dataset_id,
+                                    'table_id': table_id,
+                                    'table_type': table_obj.table_type,
+                                    'description': table_obj.description or '',
+                                    'labels': dict(table_obj.labels) if table_obj.labels else {},
+                                    'expiration_time': table_obj.expires.isoformat() if table_obj.expires else None
+                                }
+                            })
+                            
+                        except NotFound:
+                            self.logger.warning(f"Table {table_id} not found in dataset {dataset_id}")
+                        except Exception as e:
+                            self.logger.error(f"Error getting table {table_id}: {e}")
+                
+                except NotFound:
+                    self.logger.warning(f"Dataset {dataset_id} not found")
+                except Exception as e:
+                    self.logger.error(f"Error getting dataset {dataset_id}: {e}")
+                    
+        except Exception as e:
+            self.logger.error(f"Error discovering BigQuery assets: {e}")
+        
+        return assets
+    
+    def _discover_cloud_storage_assets(self) -> List[Dict[str, Any]]:
+        """Discover Cloud Storage buckets and objects"""
+        assets = []
+        
+        try:
+            # List all buckets in the project
+            buckets = list(self.storage_client.list_buckets())
             
             for bucket in buckets:
-                bucket_asset = {
-                    'name': bucket.name,
+                bucket_name = bucket.name
+                
+                # Add bucket as an asset
+                assets.append({
+                    'name': bucket_name,
                     'type': 'gcs_bucket',
                     'source': 'gcp_cloud_storage',
-                    'location': f"gs://{bucket.name}",
-                    'size': 0,
-                    'created_date': bucket.time_created,
-                    'modified_date': bucket.updated,
+                    'location': f"gs://{bucket_name}",
+                    'size': 0,  # Buckets don't have size
+                    'created_date': bucket.time_created.isoformat() if bucket.time_created else None,
+                    'modified_date': bucket.updated.isoformat() if bucket.updated else None,
                     'schema': {},
                     'tags': ['gcp', 'cloud_storage', 'bucket'],
                     'metadata': {
                         'service': 'cloud_storage',
                         'resource_type': 'bucket',
                         'project_id': self.project_id,
-                        'location': bucket.location,
-                        'storage_class': bucket.storage_class,
-                        'versioning_enabled': bucket.versioning_enabled
+                        'bucket_name': bucket_name,
+                        'location': bucket.location or 'US',
+                        'storage_class': bucket.storage_class or 'STANDARD',
+                        'labels': dict(bucket.labels) if bucket.labels else {},
+                        'versioning_enabled': bucket.versioning_enabled or False,
+                        'lifecycle_rules': len(bucket.lifecycle_rules) if bucket.lifecycle_rules else 0
                     }
-                }
+                })
                 
-                assets.append(bucket_asset)
-                
-                # Discover objects in bucket
-                object_assets = self._discover_gcs_objects(bucket)
-                assets.extend(object_assets[:100])  # Limit to first 100 objects per bucket
-                
-        except GoogleCloudError as e:
+                # List objects in the bucket (limit to first 1000 for performance)
+                try:
+                    blobs = list(self.storage_client.list_blobs(bucket_name, max_results=1000))
+                    
+                    for blob in blobs:
+                        # Only include significant files (skip small temp files)
+                        if blob.size and blob.size > 1024:  # > 1KB
+                            file_extension = os.path.splitext(blob.name)[1].lower()
+                            
+                            assets.append({
+                                'name': f"{bucket_name}/{blob.name}",
+                                'type': 'gcs_object',
+                                'source': 'gcp_cloud_storage',
+                                'location': f"gs://{bucket_name}/{blob.name}",
+                                'size': blob.size or 0,
+                                'created_date': blob.time_created.isoformat() if blob.time_created else None,
+                                'modified_date': blob.updated.isoformat() if blob.updated else None,
+                                'schema': {},
+                                'tags': ['gcp', 'cloud_storage', 'object', file_extension[1:] if file_extension else 'file'],
+                                'metadata': {
+                                    'service': 'cloud_storage',
+                                    'resource_type': 'object',
+                                    'project_id': self.project_id,
+                                    'bucket_name': bucket_name,
+                                    'object_name': blob.name,
+                                    'content_type': blob.content_type or 'application/octet-stream',
+                                    'storage_class': blob.storage_class or 'STANDARD',
+                                    'labels': dict(blob.metadata) if blob.metadata else {},
+                                    'md5_hash': blob.md5_hash,
+                                    'crc32c': blob.crc32c
+                                }
+                            })
+                            
+                except Exception as e:
+                    self.logger.error(f"Error listing objects in bucket {bucket_name}: {e}")
+                    
+        except Exception as e:
             self.logger.error(f"Error discovering Cloud Storage assets: {e}")
         
         return assets
     
-    def _discover_gcs_objects(self, bucket) -> List[Dict[str, Any]]:
-        """Discover objects in GCS bucket"""
-        assets = []
-        
-        try:
-            blobs = bucket.list_blobs(max_results=100)  # Limit for performance
-            
-            for blob in blobs:
-                # Filter for data files
-                if not self._is_data_object(blob.name):
-                    continue
-                
-                object_asset = {
-                    'name': blob.name.split('/')[-1],  # Just the filename
-                    'type': self._determine_gcs_object_type(blob.name),
-                    'source': 'gcp_cloud_storage',
-                    'location': f"gs://{bucket.name}/{blob.name}",
-                    'size': blob.size,
-                    'created_date': blob.time_created,
-                    'modified_date': blob.updated,
-                    'schema': {},
-                    'tags': ['gcp', 'cloud_storage', 'object'] + self._get_gcs_object_tags(blob.name),
-                    'metadata': {
-                        'service': 'cloud_storage',
-                        'resource_type': 'object',
-                        'bucket': bucket.name,
-                        'name': blob.name,
-                        'content_type': blob.content_type,
-                        'storage_class': blob.storage_class,
-                        'etag': blob.etag,
-                        'generation': blob.generation
-                    }
-                }
-                
-                assets.append(object_asset)
-                
-        except GoogleCloudError as e:
-            self.logger.warning(f"Error listing objects in bucket {bucket.name}: {e}")
-        
-        return assets
-    
-    def _discover_bigquery_assets(self) -> List[Dict[str, Any]]:
-        """Discover BigQuery assets - COMPLETE discovery"""
-        assets = []
-        
-        if not self.bigquery_client:
-            self.logger.warning("BigQuery client not initialized")
-            return assets
-        
-        try:
-            # 1. Discover Datasets
-            if self.dataset_id:
-                # If specific dataset ID is provided, only scan that dataset
-                try:
-                    dataset_ref = self.bigquery_client.dataset(self.dataset_id)
-                    dataset = self.bigquery_client.get_dataset(dataset_ref)
-                    datasets = [dataset]
-                    self.logger.info(f"Scanning specific dataset: {self.dataset_id}")
-                except Exception as e:
-                    self.logger.error(f"Failed to get dataset {self.dataset_id}: {e}")
-                    return assets
-            else:
-                # Scan all datasets
-                datasets = list(self.bigquery_client.list_datasets())
-                self.logger.info(f"Scanning all datasets in project {self.project_id}")
-            
-            for dataset in datasets:
-                dataset_asset = {
-                    'name': dataset.dataset_id,
-                    'type': 'bigquery_dataset',
-                    'source': 'gcp_bigquery',
-                    'location': f"bigquery://{self.project_id}/{dataset.dataset_id}",
-                    'size': 0,
-                    'created_date': dataset.created,
-                    'modified_date': dataset.modified,
-                    'schema': {},
-                    'tags': ['gcp', 'bigquery', 'dataset'],
-                    'metadata': {
-                        'service': 'bigquery',
-                        'resource_type': 'dataset',
-                        'project_id': self.project_id,
-                        'dataset_id': dataset.dataset_id,
-                        'location': dataset.location
-                    }
-                }
-                assets.append(dataset_asset)
-                
-                # 2. Discover Tables, Views, and External Tables
-                table_assets = self._discover_bigquery_tables(self.bigquery_client, dataset)
-                assets.extend(table_assets)
-                
-                # 3. Discover Routines (Functions & Procedures)
-                routine_assets = self._discover_bigquery_routines(self.bigquery_client, dataset)
-                assets.extend(routine_assets)
-                
-                # 4. Discover Models (BigQuery ML)
-                model_assets = self._discover_bigquery_models(self.bigquery_client, dataset)
-                assets.extend(model_assets)
-            
-            # 5. Discover Scheduled Queries
-            scheduled_assets = self._discover_bigquery_scheduled_queries(self.bigquery_client)
-            assets.extend(scheduled_assets)
-            
-            # 6. Discover Data Transfers
-            transfer_assets = self._discover_bigquery_data_transfers(self.bigquery_client)
-            assets.extend(transfer_assets)
-            
-            # 7. Discover Reservations
-            reservation_assets = self._discover_bigquery_reservations(self.bigquery_client)
-            assets.extend(reservation_assets)
-                
-        except Exception as e:
-            self.logger.error(f"Error discovering BigQuery assets: {e}")
-        
-        return assets
-    
-    def _discover_bigquery_tables(self, bq_client, dataset) -> List[Dict[str, Any]]:
-        """Discover tables in BigQuery dataset"""
-        assets = []
-        
-        try:
-            tables = bq_client.list_tables(dataset.reference)
-            
-            for table in tables:
-                table_ref = bq_client.get_table(table.reference)
-                
-                table_asset = {
-                    'name': table.table_id,
-                    'type': 'bigquery_table',
-                    'source': 'gcp_bigquery',
-                    'location': f"bigquery://{self.project_id}/{dataset.dataset_id}/{table.table_id}",
-                    'size': table_ref.num_bytes,
-                    'created_date': table_ref.created,
-                    'modified_date': table_ref.modified,
-                    'schema': {
-                        'fields': [{'name': field.name, 'type': field.field_type, 'mode': field.mode} 
-                                  for field in table_ref.schema]
-                    },
-                    'tags': ['gcp', 'bigquery', 'table'],
-                    'metadata': {
-                        'service': 'bigquery',
-                        'resource_type': 'table',
-                        'project_id': self.project_id,
-                        'dataset_id': dataset.dataset_id,
-                        'table_id': table.table_id,
-                        'table_type': table_ref.table_type,
-                        'num_rows': table_ref.num_rows,
-                        'num_bytes': table_ref.num_bytes
-                    }
-                }
-                
-                assets.append(table_asset)
-                
-        except Exception as e:
-            self.logger.warning(f"Error discovering tables in dataset {dataset.dataset_id}: {e}")
-        
-        return assets
-    
-    def _discover_cloud_sql_assets(self) -> List[Dict[str, Any]]:
-        """Discover Cloud SQL assets"""
-        assets = []
-        
-        sql_instances = self.config.get('sql_instances', [])
-        
-        for instance_config in sql_instances:
-            try:
-                instance_name = instance_config.get('instance_name')
-                databases = instance_config.get('databases', [])
-                
-                for database_name in databases:
-                    sql_asset = {
-                        'name': database_name,
-                        'type': 'cloud_sql_database',
-                        'source': 'gcp_cloud_sql',
-                        'location': f"cloud-sql://{self.project_id}/{instance_name}/{database_name}",
-                        'size': 0,  # Would need to query for actual size
-                        'created_date': datetime.now(),  # Would need actual creation date
-                        'modified_date': datetime.now(),
-                        'schema': {},
-                        'tags': ['gcp', 'cloud_sql', 'relational'],
-                        'metadata': {
-                            'service': 'cloud_sql',
-                            'resource_type': 'database',
-                            'project_id': self.project_id,
-                            'instance_name': instance_name,
-                            'database_name': database_name
-                        }
-                    }
-                    
-                    assets.append(sql_asset)
-                    
-            except Exception as e:
-                self.logger.error(f"Error discovering Cloud SQL assets: {e}")
-        
-        return assets
-    
-    def _is_data_object(self, object_name: str) -> bool:
-        """Check if GCS object is a data file"""
-        data_extensions = {'.csv', '.json', '.parquet', '.avro', '.orc', '.txt', '.tsv', '.xlsx', '.xml', '.yaml', '.yml'}
-        return any(object_name.lower().endswith(ext) for ext in data_extensions)
-    
-    def _determine_gcs_object_type(self, object_name: str) -> str:
-        """Determine GCS object type based on extension"""
-        object_name_lower = object_name.lower()
-        
-        if object_name_lower.endswith('.csv'):
-            return 'gcs_csv_file'
-        elif object_name_lower.endswith('.json'):
-            return 'gcs_json_file'
-        elif object_name_lower.endswith('.parquet'):
-            return 'gcs_parquet_file'
-        elif object_name_lower.endswith(('.xlsx', '.xls')):
-            return 'gcs_excel_file'
-        elif object_name_lower.endswith('.avro'):
-            return 'gcs_avro_file'
-        elif object_name_lower.endswith('.orc'):
-            return 'gcs_orc_file'
-        else:
-            return 'gcs_data_file'
-    
-    def _get_gcs_object_tags(self, object_name: str) -> List[str]:
-        """Generate tags for GCS object"""
-        tags = []
-        
-        # Add extension-based tag
-        if '.' in object_name:
-            ext = object_name.split('.')[-1].lower()
-            tags.append(f"ext_{ext}")
-        
-        # Add path-based tags
-        if '/' in object_name:
-            path_parts = object_name.split('/')
-            for part in path_parts[:-1]:  # Exclude filename
-                if part.lower() in ['data', 'raw', 'processed', 'archive', 'backup']:
-                    tags.append(f"folder_{part.lower()}")
-        
-        return tags
     
     def test_connection(self) -> bool:
-        """Test GCP connection"""
+        """Test connection to GCP services"""
         try:
-            # Test credentials and project access
-            if not self.project_id:
-                self.logger.error("No project ID configured")
+            if not self.credentials or not self.project_id:
+                self.logger.error("GCP credentials or project ID not available")
                 return False
             
-            connection_tested = False
-            
-            # Test Cloud Storage connection if enabled
-            if self.storage_client:
+            # Test BigQuery connection
+            if 'bigquery' in self.services and self.bigquery_client:
                 try:
-                    # Test by listing buckets (limited to 1)
-                    buckets = list(self.storage_client.list_buckets(max_results=1))
-                    self.logger.info("GCP Cloud Storage connection test successful")
-                    connection_tested = True
+                    # Try to list datasets (this will fail if credentials are invalid)
+                    list(self.bigquery_client.list_datasets(max_results=1))
+                    self.logger.info("BigQuery connection test successful")
                 except Exception as e:
-                    self.logger.warning(f"Cloud Storage test failed: {e}")
+                    self.logger.error(f"BigQuery connection test failed: {e}")
+                    return False
             
-            # Test BigQuery connection if enabled
-            if self.bigquery_client:
+            # Test Cloud Storage connection
+            if 'cloud_storage' in self.services and self.storage_client:
                 try:
-                    # Test by listing datasets (limited to 1)
-                    datasets = list(self.bigquery_client.list_datasets(max_results=1))
-                    self.logger.info("GCP BigQuery connection test successful")
-                    connection_tested = True
+                    # Try to list buckets (this will fail if credentials are invalid)
+                    list(self.storage_client.list_buckets(max_results=1))
+                    self.logger.info("Cloud Storage connection test successful")
                 except Exception as e:
-                    self.logger.warning(f"BigQuery test failed: {e}")
+                    self.logger.error(f"Cloud Storage connection test failed: {e}")
+                    return False
             
-            if connection_tested:
-                self.logger.info("GCP connection test successful")
-                return True
-            else:
-                error_msg = "No GCP services could be tested - check credentials and project ID"
-                self.logger.error(error_msg)
-                raise Exception(error_msg)
-                
+            
+            return True
+            
         except Exception as e:
-            error_msg = f"GCP connection test failed: {e}"
-            self.logger.error(error_msg)
-            raise Exception(error_msg)
+            self.logger.error(f"GCP connection test failed: {e}")
+            return False
     
     def validate_config(self) -> bool:
         """Validate GCP connector configuration"""
-        if not self.services:
-            self.logger.error("No GCP services configured")
-            return False
-        
         if not self.project_id:
-            self.logger.error("No GCP project ID configured")
+            self.logger.error("Project ID is required")
             return False
         
-        # Validate credentials
-        if not self.credentials:
-            self.logger.warning("No GCP credentials configured. Make sure service account JSON or credentials file is provided.")
+        # Check if at least one service is specified
+        if not self.services:
+            self.logger.error("At least one service must be specified")
             return False
+        
+        # Validate service account JSON if provided
+        if self.service_account_json:
+            try:
+                if isinstance(self.service_account_json, str):
+                    json.loads(self.service_account_json)
+                else:
+                    # Already a dict, validate required fields
+                    required_fields = ['type', 'project_id', 'private_key', 'client_email']
+                    for field in required_fields:
+                        if field not in self.service_account_json:
+                            self.logger.error(f"Service account JSON missing required field: {field}")
+                            return False
+            except json.JSONDecodeError:
+                self.logger.error("Invalid service account JSON format")
+                return False
         
         return True
     
-    def _discover_bigquery_routines(self, bq_client, dataset) -> List[Dict[str, Any]]:
-        """Discover BigQuery routines (functions & procedures)"""
-        assets = []
-        
-        try:
-            routines = bq_client.list_routines(dataset.reference)
-            
-            for routine in routines:
-                routine_ref = bq_client.get_routine(routine.reference)
-                
-                routine_asset = {
-                    'name': routine.routine_id,
-                    'type': 'bigquery_routine',
-                    'source': 'gcp_bigquery',
-                    'location': f"bigquery://{self.project_id}/{dataset.dataset_id}/{routine.routine_id}",
-                    'size': 0,
-                    'created_date': routine_ref.created,
-                    'modified_date': routine_ref.modified,
-                    'schema': {
-                        'arguments': [{'name': arg.name, 'data_type': arg.data_type.type_kind} 
-                                    for arg in routine_ref.arguments] if routine_ref.arguments else []
-                    },
-                    'tags': ['gcp', 'bigquery', 'routine'],
-                    'metadata': {
-                        'service': 'bigquery',
-                        'resource_type': 'routine',
-                        'project_id': self.project_id,
-                        'dataset_id': dataset.dataset_id,
-                        'routine_type': routine_ref.routine_type,
-                        'language': routine_ref.language,
-                        'definition_body': routine_ref.definition_body[:500] + '...' if routine_ref.definition_body and len(routine_ref.definition_body) > 500 else routine_ref.definition_body
-                    }
-                }
-                assets.append(routine_asset)
-                
-        except Exception as e:
-            self.logger.error(f"Error discovering BigQuery routines: {e}")
-        
-        return assets
-    
-    def _discover_bigquery_models(self, bq_client, dataset) -> List[Dict[str, Any]]:
-        """Discover BigQuery ML models"""
-        assets = []
-        
-        try:
-            # List models in dataset
-            models = bq_client.list_models(dataset.reference)
-            
-            for model in models:
-                model_ref = bq_client.get_model(model.reference)
-                
-                model_asset = {
-                    'name': model.model_id,
-                    'type': 'bigquery_model',
-                    'source': 'gcp_bigquery',
-                    'location': f"bigquery://{self.project_id}/{dataset.dataset_id}/{model.model_id}",
-                    'size': 0,
-                    'created_date': model_ref.created,
-                    'modified_date': model_ref.modified,
-                    'schema': {},
-                    'tags': ['gcp', 'bigquery', 'model', 'ml'],
-                    'metadata': {
-                        'service': 'bigquery',
-                        'resource_type': 'model',
-                        'project_id': self.project_id,
-                        'dataset_id': dataset.dataset_id,
-                        'model_type': model_ref.model_type,
-                        'training_runs': len(model_ref.training_runs) if model_ref.training_runs else 0,
-                        'feature_columns': [col.name for col in model_ref.feature_columns] if model_ref.feature_columns else [],
-                        'label_columns': [col.name for col in model_ref.label_columns] if model_ref.label_columns else []
-                    }
-                }
-                assets.append(model_asset)
-                
-        except Exception as e:
-            self.logger.error(f"Error discovering BigQuery models: {e}")
-        
-        return assets
-    
-    def _discover_bigquery_scheduled_queries(self, bq_client) -> List[Dict[str, Any]]:
-        """Discover BigQuery scheduled queries"""
-        assets = []
-        
-        try:
-            from google.cloud import bigquery_datatransfer
-            
-            transfer_client = bigquery_datatransfer.DataTransferServiceClient()
-            project_path = f"projects/{self.project_id}"
-            
-            # List scheduled queries
-            scheduled_queries = transfer_client.list_transfer_configs(parent=project_path)
-            
-            for config in scheduled_queries:
-                if config.data_source_id == 'scheduled_query':
-                    asset = {
-                        'name': config.display_name,
-                        'type': 'bigquery_scheduled_query',
-                        'source': 'gcp_bigquery',
-                        'location': f"bigquery://{self.project_id}/scheduled_queries/{config.name.split('/')[-1]}",
-                        'size': 0,
-                        'created_date': config.create_time,
-                        'modified_date': config.update_time,
-                        'schema': {},
-                        'tags': ['gcp', 'bigquery', 'scheduled_query'],
-                        'metadata': {
-                            'service': 'bigquery',
-                            'resource_type': 'scheduled_query',
-                            'project_id': self.project_id,
-                            'schedule': config.schedule,
-                            'state': config.state.name,
-                            'destination_dataset_id': config.destination_dataset_id,
-                            'query': config.params.get('query', '')[:500] + '...' if config.params.get('query') and len(config.params.get('query', '')) > 500 else config.params.get('query', '')
-                        }
-                    }
-                    assets.append(asset)
-                    
-        except Exception as e:
-            self.logger.error(f"Error discovering BigQuery scheduled queries: {e}")
-        
-        return assets
-    
-    def _discover_bigquery_data_transfers(self, bq_client) -> List[Dict[str, Any]]:
-        """Discover BigQuery data transfers"""
-        assets = []
-        
-        try:
-            from google.cloud import bigquery_datatransfer
-            
-            transfer_client = bigquery_datatransfer.DataTransferServiceClient()
-            project_path = f"projects/{self.project_id}"
-            
-            # List data transfers
-            transfers = transfer_client.list_transfer_configs(parent=project_path)
-            
-            for transfer in transfers:
-                if transfer.data_source_id != 'scheduled_query':  # Skip scheduled queries
-                    asset = {
-                        'name': transfer.display_name,
-                        'type': 'bigquery_data_transfer',
-                        'source': 'gcp_bigquery',
-                        'location': f"bigquery://{self.project_id}/transfers/{transfer.name.split('/')[-1]}",
-                        'size': 0,
-                        'created_date': transfer.create_time,
-                        'modified_date': transfer.update_time,
-                        'schema': {},
-                        'tags': ['gcp', 'bigquery', 'data_transfer'],
-                        'metadata': {
-                            'service': 'bigquery',
-                            'resource_type': 'data_transfer',
-                            'project_id': self.project_id,
-                            'data_source_id': transfer.data_source_id,
-                            'destination_dataset_id': transfer.destination_dataset_id,
-                            'state': transfer.state.name,
-                            'schedule': transfer.schedule
-                        }
-                    }
-                    assets.append(asset)
-                    
-        except Exception as e:
-            self.logger.error(f"Error discovering BigQuery data transfers: {e}")
-        
-        return assets
-    
-    def _discover_bigquery_reservations(self, bq_client) -> List[Dict[str, Any]]:
-        """Discover BigQuery reservations"""
-        assets = []
-        
-        try:
-            from google.cloud import bigquery_reservation
-            
-            reservation_client = bigquery_reservation.ReservationServiceClient()
-            project_path = f"projects/{self.project_id}"
-            
-            # List reservations
-            reservations = reservation_client.list_reservations(parent=project_path)
-            
-            for reservation in reservations:
-                asset = {
-                    'name': reservation.name.split('/')[-1],
-                    'type': 'bigquery_reservation',
-                    'source': 'gcp_bigquery',
-                    'location': f"bigquery://{self.project_id}/reservations/{reservation.name.split('/')[-1]}",
-                    'size': 0,
-                    'created_date': datetime.now(),  # Reservations don't have creation time
-                    'modified_date': datetime.now(),
-                    'schema': {},
-                    'tags': ['gcp', 'bigquery', 'reservation'],
-                    'metadata': {
-                        'service': 'bigquery',
-                        'resource_type': 'reservation',
-                        'project_id': self.project_id,
-                        'slot_capacity': reservation.slot_capacity,
-                        'ignore_idle_slots': reservation.ignore_idle_slots,
-                        'location': reservation.location
-                    }
-                }
-                assets.append(asset)
-                
-        except Exception as e:
-            self.logger.error(f"Error discovering BigQuery reservations: {e}")
-        
-        return assets
+    def get_connection_info(self) -> Dict[str, Any]:
+        """Get GCP connection information"""
+        return {
+            'connector_type': self.__class__.__name__,
+            'project_id': self.project_id,
+            'services': self.services,
+            'region': self.region,
+            'has_credentials': self.credentials is not None,
+            'clients_initialized': {
+                'bigquery': self.bigquery_client is not None,
+                'cloud_storage': self.storage_client is not None
+            }
+        }

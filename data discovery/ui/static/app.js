@@ -360,20 +360,27 @@ async function openConnectorModal(connectorId, connectorName) {
         if (connectorId === 'gcp') {
             modalBody += `
                 <div class="mb-3">
-                    <label for="project-id" class="form-label">Project ID</label>
-                    <input type="text" class="form-control" id="project-id" value="${config.config?.project_id || ''}" placeholder="your-project-id">
+                    <label for="project-id" class="form-label">Project ID *</label>
+                    <input type="text" class="form-control" id="project-id" value="${config.config?.project_id || ''}" placeholder="your-project-id" required>
+                    <small class="text-muted">Your Google Cloud Project ID</small>
                 </div>
                 <div class="mb-3">
-                    <label for="credentials-path" class="form-label">Credentials Path</label>
-                    <input type="text" class="form-control" id="credentials-path" value="${config.config?.credentials_path || ''}" placeholder="service-account.json">
+                    <label for="service-account-json" class="form-label">Service Account JSON *</label>
+                    <textarea class="form-control" id="service-account-json" rows="6" placeholder='{"type": "service_account", "project_id": "..."}' required>${config.config?.service_account_json || ''}</textarea>
+                    <small class="text-muted">Paste your Google Cloud service account JSON key</small>
+                </div>
+                <div class="mb-3">
+                    <label for="credentials-path" class="form-label">OR Credentials Path (Alternative)</label>
+                    <input type="text" class="form-control" id="credentials-path" value="${config.config?.credentials_path || ''}" placeholder="path/to/service-account.json">
+                    <small class="text-muted">Alternative: Path to service account JSON file</small>
                 </div>
                 <div class="mb-3">
                     <label for="services" class="form-label">Services</label>
                     <select class="form-select" id="services" multiple>
                         <option value="bigquery" ${config.config?.services?.includes('bigquery') ? 'selected' : ''}>BigQuery</option>
                         <option value="cloud_storage" ${config.config?.services?.includes('cloud_storage') ? 'selected' : ''}>Cloud Storage</option>
-                        <option value="cloud_sql" ${config.config?.services?.includes('cloud_sql') ? 'selected' : ''}>Cloud SQL</option>
                     </select>
+                    <small class="text-muted">Select which GCP services to discover</small>
                 </div>
             `;
         } else if (connectorId === 'oracle_cloud' || connectorId === 'oracle cloud' || connectorId === 'oracle cloud infrastructure') {
@@ -870,14 +877,28 @@ async function saveConnectorConfig() {
         if (connectorId === 'gcp') {
             const projectId = document.getElementById('project-id').value;
             const credentialsPath = document.getElementById('credentials-path').value;
+            const serviceAccountJson = document.getElementById('service-account-json').value;
             const servicesSelect = document.getElementById('services');
             const services = Array.from(servicesSelect.selectedOptions).map(option => option.value);
             
             config.config = {
                 project_id: projectId,
-                credentials_path: credentialsPath,
                 services: services
             };
+            
+            // Add credentials if provided
+            if (serviceAccountJson.trim()) {
+                try {
+                    // Validate JSON format
+                    JSON.parse(serviceAccountJson);
+                    config.config.service_account_json = serviceAccountJson;
+                } catch (e) {
+                    showNotification('Invalid JSON format in Service Account JSON field', 'error');
+                    return;
+                }
+            } else if (credentialsPath.trim()) {
+                config.config.credentials_path = credentialsPath;
+            }
         } else if (connectorId === 'oracle_cloud' || connectorId === 'oracle cloud' || connectorId === 'oracle cloud infrastructure') {
             const compartmentId = document.getElementById('compartment-id').value;
             const region = document.getElementById('region').value;
@@ -1154,84 +1175,96 @@ async function testConnection(connectorId) {
     try {
         showNotification('Testing connection...', 'info');
         
-        // Override for GCP to show success and datasets
+        // Test GCP connector with real API call
         if (connectorId === 'gcp') {
-            showNotification('✅ BigQuery Connected! Discovering assets...', 'success');
+            // First, add the connector with the current configuration
+            const projectId = document.getElementById('project-id').value;
+            const serviceAccountJson = document.getElementById('service-account-json').value;
+            const credentialsPath = document.getElementById('credentials-path').value;
+            const servicesSelect = document.getElementById('services');
+            const services = Array.from(servicesSelect.selectedOptions).map(option => option.value);
             
-            // Mock your actual BigQuery datasets
-            const mockAssets = [
-                {
-                    'name': 'BANK_EDW_DataMart',
-                    'type': 'bigquery_dataset',
-                    'source': 'bigquery',
-                    'location': 'bigquery://bank-edw-datalake/BANK_EDW_DataMart',
-                    'size': 0,
-                    'created_date': '2023-01-15T10:30:00Z',
-                    'modified_date': '2024-12-01T14:20:00Z',
-                    'schema': {},
-                    'tags': ['gcp', 'bigquery', 'dataset', 'banking'],
-                    'metadata': {
-                        'service': 'bigquery',
-                        'resource_type': 'dataset',
-                        'project_id': 'bank-edw-datalake',
-                        'dataset_id': 'BANK_EDW_DataMart'
-                    }
-                },
-                {
-                    'name': 'banking_pii',
-                    'type': 'bigquery_dataset',
-                    'source': 'bigquery',
-                    'location': 'bigquery://bank-edw-datalake/banking_pii',
-                    'size': 0,
-                    'created_date': '2023-02-20T09:15:00Z',
-                    'modified_date': '2024-11-28T16:45:00Z',
-                    'schema': {},
-                    'tags': ['gcp', 'bigquery', 'dataset', 'pii', 'sensitive'],
-                    'metadata': {
-                        'service': 'bigquery',
-                        'resource_type': 'dataset',
-                        'project_id': 'bank-edw-datalake',
-                        'dataset_id': 'banking_pii'
-                    }
-                },
-                {
-                    'name': 'consent_management',
-                    'type': 'bigquery_dataset',
-                    'source': 'bigquery',
-                    'location': 'bigquery://bank-edw-datalake/consent_management',
-                    'size': 0,
-                    'created_date': '2023-03-10T11:00:00Z',
-                    'modified_date': '2024-12-15T13:30:00Z',
-                    'schema': {},
-                    'tags': ['gcp', 'bigquery', 'dataset', 'consent'],
-                    'metadata': {
-                        'service': 'bigquery',
-                        'resource_type': 'dataset',
-                        'project_id': 'bank-edw-datalake',
-                        'dataset_id': 'consent_management'
-                    }
-                },
-                {
-                    'name': 'torro_operation_us',
-                    'type': 'bigquery_dataset',
-                    'source': 'bigquery',
-                    'location': 'bigquery://bank-edw-datalake/torro_operation_us',
-                    'size': 0,
-                    'created_date': '2023-04-05T08:45:00Z',
-                    'modified_date': '2024-12-10T17:20:00Z',
-                    'schema': {},
-                    'tags': ['gcp', 'bigquery', 'dataset', 'operations'],
-                    'metadata': {
-                        'service': 'bigquery',
-                        'resource_type': 'dataset',
-                        'project_id': 'bank-edw-datalake',
-                        'dataset_id': 'torro_operation_us'
-                    }
+            if (!projectId.trim()) {
+                showNotification('Please enter a Project ID', 'error');
+                return;
+            }
+            
+            // Prepare config
+            const config = {
+                project_id: projectId,
+                services: services.length > 0 ? services : ['bigquery', 'cloud_storage']
+            };
+            
+            if (serviceAccountJson.trim()) {
+                try {
+                    JSON.parse(serviceAccountJson);
+                    config.service_account_json = serviceAccountJson;
+                } catch (e) {
+                    showNotification('Invalid JSON format in Service Account JSON field', 'error');
+                    return;
                 }
-            ];
+            } else if (credentialsPath.trim()) {
+                config.credentials_path = credentialsPath;
+            }
             
-            showNotification(`✅ BigQuery Connected! Discovered ${mockAssets.length} datasets`, 'success');
-            showAssetsModal(connectorId, mockAssets);
+            // Add connector first
+            const addResponse = await fetch(`/api/connectors/gcp/add`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    enabled: true,
+                    config: config
+                })
+            });
+            
+            if (!addResponse.ok) {
+                const error = await addResponse.json();
+                showNotification(`Failed to add connector: ${error.detail || 'Unknown error'}`, 'error');
+                return;
+            }
+            
+            showNotification('GCP connector added successfully! Testing connection...', 'info');
+            
+            // Test connection
+            const testResponse = await fetch(`/api/config/gcp/test`, {
+                method: 'POST'
+            });
+            
+            const testResult = await testResponse.json();
+            
+            if (testResult.status === 'success' && testResult.connection_status === 'connected') {
+                showNotification('✅ GCP Connected! Discovering assets...', 'success');
+                
+                // Discover assets
+                const discoverResponse = await fetch(`/api/discovery/test/gcp`, {
+                    method: 'POST'
+                });
+                
+                const discoverResult = await discoverResponse.json();
+                
+                if (discoverResult.status === 'success') {
+                    const assetsCount = discoverResult.assets_discovered || 0;
+                    showNotification(`✅ GCP Connected! Discovered ${assetsCount} assets`, 'success');
+                    
+                    // Show assets in a modal
+                    if (discoverResult.assets && discoverResult.assets.length > 0) {
+                        showAssetsModal(connectorId, discoverResult.assets);
+                    }
+                    
+                    // Refresh the assets view if we're on the assets page
+                    if (window.location.hash === '#assets' || document.getElementById('assets-content')) {
+                        loadAssets();
+                    }
+                } else {
+                    showNotification('Connection successful, but asset discovery failed', 'warning');
+                }
+                
+            } else {
+                showNotification(`❌ Connection failed: ${testResult.message || 'Unknown error'}`, 'error');
+            }
+            
             return;
         }
         
@@ -3291,24 +3324,153 @@ function testConnectionWizard() {
 
 async function testActualConnection(connectorId, testButton, resultsDiv) {
     try {
-        // Override for GCP to show success
+        // Real connection test for GCP
         if (connectorId === 'gcp') {
-            resultsDiv.innerHTML = `
-                <div class="connection-test-success">
-                    <i class="fas fa-check-circle fa-3x mb-3"></i>
-                    <h5>Connection Successful!</h5>
-                    <p>✅ BigQuery Connected! Discovered 4 datasets</p>
-                    <div class="mt-3">
-                        <small class="text-muted">
-                            Found: BANK_EDW_DataMart, banking_pii, consent_management, torro_operation_us
-                        </small>
+            // Get form data
+            const projectId = document.getElementById('project-id')?.value;
+            const serviceAccountJson = document.getElementById('service-account-json')?.value;
+            const credentialsPath = document.getElementById('credentials-path')?.value;
+            
+            if (!projectId || (!serviceAccountJson && !credentialsPath)) {
+                resultsDiv.innerHTML = `
+                    <div class="connection-test-error">
+                        <i class="fas fa-exclamation-circle fa-3x mb-3"></i>
+                        <h5>Configuration Required</h5>
+                        <p>Please provide Project ID and Service Account JSON</p>
                     </div>
-                </div>
-            `;
-            testButton.innerHTML = '<i class="fas fa-check me-2"></i>Connection Successful';
-            testButton.disabled = false;
-            testButton.classList.remove('btn-primary');
-            testButton.classList.add('btn-success');
+                `;
+                testButton.innerHTML = '<i class="fas fa-exclamation-circle me-2"></i>Configuration Required';
+                testButton.disabled = false;
+                testButton.classList.remove('btn-primary');
+                testButton.classList.add('btn-warning');
+                return;
+            }
+            
+            // Prepare config
+            const config = {
+                project_id: projectId,
+                services: ['bigquery', 'cloud_storage']
+            };
+            
+            if (serviceAccountJson && serviceAccountJson.trim()) {
+                try {
+                    JSON.parse(serviceAccountJson);
+                    config.service_account_json = serviceAccountJson;
+                } catch (e) {
+                    resultsDiv.innerHTML = `
+                        <div class="connection-test-error">
+                            <i class="fas fa-exclamation-circle fa-3x mb-3"></i>
+                            <h5>Invalid JSON Format</h5>
+                            <p>Please check your Service Account JSON format</p>
+                        </div>
+                    `;
+                    testButton.innerHTML = '<i class="fas fa-exclamation-circle me-2"></i>Invalid JSON';
+                    testButton.disabled = false;
+                    testButton.classList.remove('btn-primary');
+                    testButton.classList.add('btn-warning');
+                    return;
+                }
+            } else if (credentialsPath && credentialsPath.trim()) {
+                config.credentials_path = credentialsPath;
+            }
+            
+            // Add connector first
+            const addResponse = await fetch(`/api/connectors/gcp/add`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    enabled: true,
+                    config: config
+                })
+            });
+            
+            if (!addResponse.ok) {
+                const error = await addResponse.json();
+                resultsDiv.innerHTML = `
+                    <div class="connection-test-error">
+                        <i class="fas fa-exclamation-circle fa-3x mb-3"></i>
+                        <h5>Failed to Add Connector</h5>
+                        <p>${error.detail || 'Unknown error'}</p>
+                    </div>
+                `;
+                testButton.innerHTML = '<i class="fas fa-exclamation-circle me-2"></i>Connection Failed';
+                testButton.disabled = false;
+                testButton.classList.remove('btn-primary');
+                testButton.classList.add('btn-danger');
+                return;
+            }
+            
+            // Test connection
+            const testResponse = await fetch(`/api/config/gcp/test`, {
+                method: 'POST'
+            });
+            
+            const testResult = await testResponse.json();
+            
+            if (testResult.status === 'success' && testResult.connection_status === 'connected') {
+                // Discover assets
+                const discoverResponse = await fetch(`/api/discovery/test/gcp`, {
+                    method: 'POST'
+                });
+                
+                const discoverResult = await discoverResponse.json();
+                
+                if (discoverResult.status === 'success' && discoverResult.assets && discoverResult.assets.length > 0) {
+                    // Show real discovered assets
+                    const assets = discoverResult.assets;
+                    const assetNames = assets.map(asset => asset.name).slice(0, 4);
+                    
+                    resultsDiv.innerHTML = `
+                        <div class="connection-test-success">
+                            <i class="fas fa-check-circle fa-3x mb-3"></i>
+                            <h5>Connection Successful!</h5>
+                            <p>✅ BigQuery Connected! Discovered ${assets.length} assets</p>
+                            <div class="mt-3">
+                                <small class="text-muted">
+                                    Found: ${assetNames.join(', ')}${assets.length > 4 ? ` and ${assets.length - 4} more...` : ''}
+                                </small>
+                            </div>
+                        </div>
+                    `;
+                    testButton.innerHTML = '<i class="fas fa-check me-2"></i>Connection Successful';
+                    testButton.disabled = false;
+                    testButton.classList.remove('btn-primary');
+                    testButton.classList.add('btn-success');
+                } else {
+                    resultsDiv.innerHTML = `
+                        <div class="connection-test-success">
+                            <i class="fas fa-check-circle fa-3x mb-3"></i>
+                            <h5>Connection Successful!</h5>
+                            <p>✅ Connected to GCP Project: ${projectId}</p>
+                            <p>No assets discovered (empty project or no access)</p>
+                        </div>
+                    `;
+                    testButton.innerHTML = '<i class="fas fa-check me-2"></i>Connected (No Assets)';
+                    testButton.disabled = false;
+                    testButton.classList.remove('btn-primary');
+                    testButton.classList.add('btn-success');
+                }
+            } else {
+                resultsDiv.innerHTML = `
+                    <div class="connection-test-error">
+                        <i class="fas fa-exclamation-circle fa-3x mb-3"></i>
+                        <h5>Connection Failed</h5>
+                        <p>❌ ${testResult.message || 'Unable to connect to GCP'}</p>
+                        <div class="mt-3">
+                            <small class="text-muted">
+                                Check your Project ID and Service Account credentials
+                            </small>
+                        </div>
+                    </div>
+                `;
+                testButton.innerHTML = '<i class="fas fa-exclamation-circle me-2"></i>Connection Failed';
+                testButton.disabled = false;
+                testButton.classList.remove('btn-primary');
+                testButton.classList.add('btn-danger');
+            }
+            
             return;
         }
         
@@ -3479,42 +3641,109 @@ function loadConnectionSummary() {
                             <i class="fas fa-database me-2"></i>Discovered Data Assets
                         </div>
                         <div class="connection-summary-value">
-                            <div class="discovered-assets-list">
-                                <div class="asset-item">
-                                    <i class="fas fa-database text-primary me-2"></i>
-                                    <strong>BANK_EDW_DataMart</strong>
-                                    <span class="badge bg-primary ms-2">Dataset</span>
+                            <div id="discovered-assets-container">
+                                <div class="text-muted">
+                                    <i class="fas fa-spinner fa-spin me-2"></i>
+                                    Loading discovered assets...
                                 </div>
-                                <div class="asset-item">
-                                    <i class="fas fa-database text-warning me-2"></i>
-                                    <strong>banking_pii</strong>
-                                    <span class="badge bg-warning ms-2">Dataset (Sensitive)</span>
-                                </div>
-                                <div class="asset-item">
-                                    <i class="fas fa-database text-info me-2"></i>
-                                    <strong>consent_management</strong>
-                                    <span class="badge bg-info ms-2">Dataset</span>
-                                </div>
-                                <div class="asset-item">
-                                    <i class="fas fa-database text-success me-2"></i>
-                                    <strong>torro_operation_us</strong>
-                                    <span class="badge bg-success ms-2">Dataset</span>
-                                </div>
-                            </div>
-                            <div class="mt-2">
-                                <small class="text-success">
-                                    <i class="fas fa-check-circle me-1"></i>
-                                    Successfully discovered 4 BigQuery datasets
-                                </small>
                             </div>
                         </div>
                     </div>
                 `;
+                
+                // Load real discovered assets
+                setTimeout(() => loadDiscoveredAssets(), 100);
             }
             break;
     }
     
     summaryDiv.innerHTML = summaryHTML;
+}
+
+async function loadDiscoveredAssets() {
+    const container = document.getElementById('discovered-assets-container');
+    if (!container) return;
+    
+    try {
+        // Fetch real discovered assets from the API
+        const response = await fetch('/api/discovery/test/gcp', {
+            method: 'POST'
+        });
+        
+        const result = await response.json();
+        
+        if (result.status === 'success' && result.assets && result.assets.length > 0) {
+            const assets = result.assets;
+            const datasets = assets.filter(asset => asset.type === 'bigquery_dataset');
+            const tables = assets.filter(asset => asset.type === 'bigquery_table');
+            
+            let assetsHTML = '<div class="discovered-assets-list">';
+            
+            // Show datasets
+            datasets.forEach((asset, index) => {
+                const badgeColors = ['primary', 'warning', 'info', 'success'];
+                const badgeColor = badgeColors[index % badgeColors.length];
+                const isPII = asset.name.includes('pii');
+                const isConsent = asset.name.includes('consent');
+                
+                assetsHTML += `
+                    <div class="asset-item">
+                        <i class="fas fa-database text-${badgeColor} me-2"></i>
+                        <strong>${asset.name.split('.').pop()}</strong>
+                        <span class="badge bg-${badgeColor} ms-2">
+                            Dataset${isPII ? ' (PII)' : isConsent ? ' (Consent)' : ''}
+                        </span>
+                    </div>
+                `;
+            });
+            
+            // Show some tables
+            tables.slice(0, 2).forEach((asset, index) => {
+                assetsHTML += `
+                    <div class="asset-item">
+                        <i class="fas fa-table text-secondary me-2"></i>
+                        <strong>${asset.name.split('.').pop()}</strong>
+                        <span class="badge bg-secondary ms-2">Table (${asset.schema?.num_rows || 0} rows)</span>
+                    </div>
+                `;
+            });
+            
+            assetsHTML += '</div>';
+            
+            assetsHTML += `
+                <div class="mt-2">
+                    <small class="text-success">
+                        <i class="fas fa-check-circle me-1"></i>
+                        Successfully discovered ${assets.length} BigQuery assets (${datasets.length} datasets, ${tables.length} tables)
+                    </small>
+                </div>
+            `;
+            
+            container.innerHTML = assetsHTML;
+        } else if (result.status === 'success' && result.assets_discovered === 0) {
+            container.innerHTML = `
+                <div class="text-warning">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    Connected successfully, but no assets found in project
+                </div>
+            `;
+        } else {
+            container.innerHTML = `
+                <div class="text-danger">
+                    <i class="fas fa-exclamation-circle me-2"></i>
+                    Failed to discover assets: ${result.message || 'Unknown error'}
+                </div>
+            `;
+        }
+    } catch (error) {
+        console.error('Error loading discovered assets:', error);
+        container.innerHTML = `
+            <div class="text-danger">
+                <i class="fas fa-exclamation-circle me-2"></i>
+                Error loading assets: ${error.message}
+            </div>
+        `;
+    }
 }
 
 async function saveWizardConnection() {

@@ -361,85 +361,35 @@ async def test_source_discovery(source: str):
     """Test discovery for specific data source and return assets immediately"""
     try:
         if source == 'gcp':
-            # Return your actual BigQuery datasets for immediate display
-            mock_assets = [
-                {
-                    'name': 'BANK_EDW_DataMart',
-                    'type': 'bigquery_dataset',
-                    'source': 'bigquery',
-                    'location': 'bigquery://bank-edw-datalake/BANK_EDW_DataMart',
-                    'size': 0,
-                    'created_date': '2023-01-15T10:30:00Z',
-                    'modified_date': '2024-12-01T14:20:00Z',
-                    'schema': {},
-                    'tags': ['gcp', 'bigquery', 'dataset', 'banking'],
-                    'metadata': {
-                        'service': 'bigquery',
-                        'resource_type': 'dataset',
-                        'project_id': 'bank-edw-datalake',
-                        'dataset_id': 'BANK_EDW_DataMart'
-                    }
-                },
-                {
-                    'name': 'banking_pii',
-                    'type': 'bigquery_dataset',
-                    'source': 'bigquery',
-                    'location': 'bigquery://bank-edw-datalake/banking_pii',
-                    'size': 0,
-                    'created_date': '2023-02-20T09:15:00Z',
-                    'modified_date': '2024-11-28T16:45:00Z',
-                    'schema': {},
-                    'tags': ['gcp', 'bigquery', 'dataset', 'pii', 'sensitive'],
-                    'metadata': {
-                        'service': 'bigquery',
-                        'resource_type': 'dataset',
-                        'project_id': 'bank-edw-datalake',
-                        'dataset_id': 'banking_pii'
-                    }
-                },
-                {
-                    'name': 'consent_management',
-                    'type': 'bigquery_dataset',
-                    'source': 'bigquery',
-                    'location': 'bigquery://bank-edw-datalake/consent_management',
-                    'size': 0,
-                    'created_date': '2023-03-10T11:00:00Z',
-                    'modified_date': '2024-12-15T13:30:00Z',
-                    'schema': {},
-                    'tags': ['gcp', 'bigquery', 'dataset', 'consent'],
-                    'metadata': {
-                        'service': 'bigquery',
-                        'resource_type': 'dataset',
-                        'project_id': 'bank-edw-datalake',
-                        'dataset_id': 'consent_management'
-                    }
-                },
-                {
-                    'name': 'torro_operation_us',
-                    'type': 'bigquery_dataset',
-                    'source': 'bigquery',
-                    'location': 'bigquery://bank-edw-datalake/torro_operation_us',
-                    'size': 0,
-                    'created_date': '2023-04-05T08:45:00Z',
-                    'modified_date': '2024-12-10T17:20:00Z',
-                    'schema': {},
-                    'tags': ['gcp', 'bigquery', 'dataset', 'operations'],
-                    'metadata': {
-                        'service': 'bigquery',
-                        'resource_type': 'dataset',
-                        'project_id': 'bank-edw-datalake',
-                        'dataset_id': 'torro_operation_us'
-                    }
+            # Use the real GCP connector if available
+            if source in discovery_engine.connectors:
+                connector = discovery_engine.connectors[source]
+                assets = connector.discover_assets()
+                
+                # Update asset catalog
+                try:
+                    for asset in assets:
+                        await discovery_engine.asset_catalog.add_or_update_asset(asset)
+                except Exception as catalog_error:
+                    print(f"Failed to update asset catalog: {catalog_error}")
+                
+                return {
+                    "status": "success",
+                    "source": source,
+                    "assets_discovered": len(assets),
+                    "assets": assets,
+                    "timestamp": datetime.now().isoformat()
                 }
-            ]
-            
-            return {
-                "status": "success",
-                "source": source,
-                "assets_discovered": len(mock_assets),
-                "assets": mock_assets,
-                "timestamp": datetime.now().isoformat()
-            }
+            else:
+                # Return error if GCP connector is not configured
+                return {
+                    "status": "error",
+                    "source": source,
+                    "message": "GCP connector not configured. Please add GCP connector with valid credentials first.",
+                    "assets_discovered": 0,
+                    "assets": [],
+                    "timestamp": datetime.now().isoformat()
+                }
         elif source in discovery_engine.connectors:
             connector = discovery_engine.connectors[source]
             assets = connector.discover_assets()
