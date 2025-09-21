@@ -7,7 +7,6 @@ A comprehensive data discovery system that automatically scans and catalogs data
 - **Multi-Source Discovery**: Automatically discovers data assets from:
   - Local and network file systems
   - **Network Storage**: NAS, SFTP, SMB/CIFS, FTP, NFS
-  - AWS (S3, RDS, DynamoDB, Redshift)
   - Azure (Blob Storage, SQL Database, Cosmos DB)
   - Google Cloud Platform (Cloud Storage, BigQuery, Cloud SQL)
   - Various databases (PostgreSQL, MySQL, MongoDB, SQLite, SQL Server)

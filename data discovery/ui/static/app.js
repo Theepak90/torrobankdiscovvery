@@ -421,7 +421,6 @@ async function loadMyConnections() {
 function getConnectorDisplayName(connectorId) {
     const displayNames = {
         'gcp': 'Google Cloud Platform',
-        'aws': 'Amazon Web Services',
         'azure': 'Microsoft Azure',
         'mysql': 'MySQL Database',
         'postgresql': 'PostgreSQL Database',
@@ -1085,7 +1084,6 @@ async function saveConnectorConfig() {
     const connectorIdMapping = {
         'bigquery': 'gcp',
         'storage': 'gcp',
-        's3': 'aws',
         'blob': 'azure',
         'warehouse': 'data_warehouses',
         'workspace': 'data_warehouses',
@@ -3067,224 +3065,6 @@ function loadConnectionForm() {
     let formHTML = '';
     
     switch(selectedConnectionType) {
-        // AWS Connection Types
-        case 's3':
-            formHTML = `
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="connection-form-group">
-                            <label class="connection-form-label">Connection Name</label>
-                            <input type="text" class="form-control connection-form-input" id="connection-name" placeholder="My S3 Connection" required>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="connection-form-group">
-                            <label class="connection-form-label">AWS Access Key ID</label>
-                            <input type="text" class="form-control connection-form-input" id="access-key-id" placeholder="AKIA..." required>
-                        </div>
-                    </div>
-                </div>
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="connection-form-group">
-                            <label class="connection-form-label">AWS Secret Access Key</label>
-                            <input type="password" class="form-control connection-form-input" id="secret-access-key" placeholder="Secret Key" required>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="connection-form-group">
-                            <label class="connection-form-label">AWS Region</label>
-                            <select class="form-select connection-form-input" id="region" required>
-                                <option value="">Select Region</option>
-                                <option value="us-east-1">US East (N. Virginia)</option>
-                                <option value="us-west-2">US West (Oregon)</option>
-                                <option value="eu-west-1">Europe (Ireland)</option>
-                                <option value="ap-southeast-1">Asia Pacific (Singapore)</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="connection-form-group">
-                            <label class="connection-form-label">S3 Bucket Name</label>
-                            <input type="text" class="form-control connection-form-input" id="bucket-name" placeholder="my-data-bucket" required>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="connection-form-group">
-                            <label class="connection-form-label">Prefix (Optional)</label>
-                            <input type="text" class="form-control connection-form-input" id="prefix" placeholder="data/raw/">
-                            <small class="text-muted">Specify a folder path within the bucket</small>
-                        </div>
-                    </div>
-                </div>
-            `;
-            break;
-            
-        case 'rds':
-            formHTML = `
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="connection-form-group">
-                            <label class="connection-form-label">Connection Name</label>
-                            <input type="text" class="form-control connection-form-input" id="connection-name" placeholder="My RDS Connection" required>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="connection-form-group">
-                            <label class="connection-form-label">RDS Engine</label>
-                            <select class="form-select connection-form-input" id="engine" required>
-                                <option value="">Select Engine</option>
-                                <option value="mysql">MySQL</option>
-                                <option value="postgresql">PostgreSQL</option>
-                                <option value="oracle">Oracle</option>
-                                <option value="sqlserver">SQL Server</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
-                <div class="row">
-                    <div class="col-md-12">
-                        <div class="connection-form-group">
-                            <label class="connection-form-label">RDS Endpoint</label>
-                            <input type="text" class="form-control connection-form-input" id="endpoint" placeholder="mydb.123456789012.us-east-1.rds.amazonaws.com" required>
-                        </div>
-                    </div>
-                </div>
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="connection-form-group">
-                            <label class="connection-form-label">Port</label>
-                            <input type="number" class="form-control connection-form-input" id="port" placeholder="3306" required>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="connection-form-group">
-                            <label class="connection-form-label">Database Name</label>
-                            <input type="text" class="form-control connection-form-input" id="database" placeholder="mydb" required>
-                        </div>
-                    </div>
-                </div>
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="connection-form-group">
-                            <label class="connection-form-label">Username</label>
-                            <input type="text" class="form-control connection-form-input" id="username" placeholder="admin" required>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="connection-form-group">
-                            <label class="connection-form-label">Password</label>
-                            <input type="password" class="form-control connection-form-input" id="password" placeholder="password" required>
-                        </div>
-                    </div>
-                </div>
-            `;
-            break;
-            
-        case 'redshift':
-            formHTML = `
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="connection-form-group">
-                            <label class="connection-form-label">Connection Name</label>
-                            <input type="text" class="form-control connection-form-input" id="connection-name" placeholder="My Redshift Connection" required>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="connection-form-group">
-                            <label class="connection-form-label">Port</label>
-                            <input type="number" class="form-control connection-form-input" id="port" placeholder="5439" required>
-                        </div>
-                    </div>
-                </div>
-                <div class="row">
-                    <div class="col-md-12">
-                        <div class="connection-form-group">
-                            <label class="connection-form-label">Cluster Endpoint</label>
-                            <input type="text" class="form-control connection-form-input" id="endpoint" placeholder="mycluster.123456789012.us-east-1.redshift.amazonaws.com" required>
-                        </div>
-                    </div>
-                </div>
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="connection-form-group">
-                            <label class="connection-form-label">Database Name</label>
-                            <input type="text" class="form-control connection-form-input" id="database" placeholder="dev" required>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="connection-form-group">
-                            <label class="connection-form-label">Schema</label>
-                            <input type="text" class="form-control connection-form-input" id="schema" placeholder="public" required>
-                        </div>
-                    </div>
-                </div>
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="connection-form-group">
-                            <label class="connection-form-label">Username</label>
-                            <input type="text" class="form-control connection-form-input" id="username" placeholder="admin" required>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="connection-form-group">
-                            <label class="connection-form-label">Password</label>
-                            <input type="password" class="form-control connection-form-input" id="password" placeholder="password" required>
-                        </div>
-                    </div>
-                </div>
-            `;
-            break;
-            
-        case 'dynamodb':
-            formHTML = `
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="connection-form-group">
-                            <label class="connection-form-label">Connection Name</label>
-                            <input type="text" class="form-control connection-form-input" id="connection-name" placeholder="My DynamoDB Connection" required>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="connection-form-group">
-                            <label class="connection-form-label">AWS Access Key ID</label>
-                            <input type="text" class="form-control connection-form-input" id="access-key-id" placeholder="AKIA..." required>
-                        </div>
-                    </div>
-                </div>
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="connection-form-group">
-                            <label class="connection-form-label">AWS Secret Access Key</label>
-                            <input type="password" class="form-control connection-form-input" id="secret-access-key" placeholder="Secret Key" required>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="connection-form-group">
-                            <label class="connection-form-label">AWS Region</label>
-                            <select class="form-select connection-form-input" id="region" required>
-                                <option value="">Select Region</option>
-                                <option value="us-east-1">US East (N. Virginia)</option>
-                                <option value="us-west-2">US West (Oregon)</option>
-                                <option value="eu-west-1">Europe (Ireland)</option>
-                                <option value="ap-southeast-1">Asia Pacific (Singapore)</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
-                <div class="row">
-                    <div class="col-md-12">
-                        <div class="connection-form-group">
-                            <label class="connection-form-label">Table Name (Optional)</label>
-                            <input type="text" class="form-control connection-form-input" id="table-name" placeholder="my-table">
-                            <small class="text-muted">Leave empty to scan all tables</small>
-                        </div>
-                    </div>
-                </div>
-            `;
-            break;
             
         case 'database':
             formHTML = `
@@ -3360,7 +3140,6 @@ function loadConnectionForm() {
                             <label class="connection-form-label">Cloud Provider</label>
                             <select class="form-select connection-form-input" id="cloud-provider">
                                 <option value="">Select Provider</option>
-                                <option value="aws">Amazon Web Services</option>
                                 <option value="azure">Microsoft Azure</option>
                                 <option value="gcp">Google Cloud Platform</option>
                             </select>
@@ -4080,7 +3859,6 @@ function loadConnectionForm() {
                             <label class="connection-form-label">Cloud Provider</label>
                             <select class="form-select connection-form-input" id="cloud-provider" required>
                                 <option value="">Select Provider</option>
-                                <option value="aws">Amazon Web Services</option>
                                 <option value="azure">Microsoft Azure</option>
                                 <option value="gcp">Google Cloud Platform</option>
                             </select>
@@ -5367,12 +5145,6 @@ function loadConnectorSpecificTypes(connectorId, connectorName) {
     
     // Define connector-specific connection types
     const connectorTypes = {
-        'aws': [
-            { type: 's3', icon: 'fas fa-cloud-arrow-up', title: 'S3 Storage', description: 'Connect to Amazon S3 buckets and objects' },
-            { type: 'rds', icon: 'fas fa-database', title: 'RDS Database', description: 'Connect to Amazon RDS instances (MySQL, PostgreSQL, etc.)' },
-            { type: 'redshift', icon: 'fas fa-chart-line', title: 'Redshift', description: 'Connect to Amazon Redshift data warehouse' },
-            { type: 'dynamodb', icon: 'fas fa-table', title: 'DynamoDB', description: 'Connect to Amazon DynamoDB NoSQL database' }
-        ],
         'azure': [
             { type: 'blob', icon: 'fas fa-cloud-arrow-up', title: 'Blob Storage', description: 'Connect to Azure Blob Storage containers' },
             { type: 'sql', icon: 'fas fa-database', title: 'Azure SQL', description: 'Connect to Azure SQL Database' },
@@ -5564,7 +5336,6 @@ function getConnectionTypeFromId(connectorId) {
         'elasticsearch': 'indices',
         
         // Cloud Providers
-        'aws': 's3',
         'azure': 'blob',
         'gcp': 'storage',
         
@@ -5753,7 +5524,6 @@ async function testMyConnection(connectionId) {
         // Map connection type to proper connector ID
         let connectorId = connection.type.toLowerCase().replace(/\s+/g, '_');
         if (connection.type.includes('Google Cloud')) connectorId = 'gcp';
-        if (connection.type.includes('AWS')) connectorId = 'aws';
         if (connection.type.includes('Azure')) connectorId = 'azure';
         
         // Make API call to test the connection using the existing endpoint
@@ -7172,8 +6942,7 @@ function showColumnLineage(assetId) {
         showColumnLineageEmpty();
     }
     
-    // Scroll to column lineage card
-    columnCard.scrollIntoView({ behavior: 'smooth' });
+    // Note: Removed automatic scrolling to prevent page jumping to bottom
 }
 
 // Update column lineage header with asset info

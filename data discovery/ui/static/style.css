@@ -266,7 +266,6 @@ body {
     opacity: 1;
 }
 
-.connector-icon.aws { background: linear-gradient(135deg, #ff9900, #ff6600); }
 .connector-icon.azure { background: linear-gradient(135deg, #0078d4, #40e0d0); }
 .connector-icon.gcp { background: linear-gradient(135deg, #4285f4, #34a853); }
 .connector-icon.database { background: linear-gradient(135deg, #336791, #4a90e2); }
