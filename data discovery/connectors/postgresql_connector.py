@@ -27,7 +27,7 @@ class PostgreSQLConnector(BaseConnector):
     
     def __init__(self, config: Dict[str, Any]):
         super().__init__(config)
-        self.host = config.get('host', 'localhost')
+        self.host = config.get('host')
         self.port = config.get('port', 5432)
         self.database = config.get('database', 'postgres')
         self.username = config.get('username', 'postgres')

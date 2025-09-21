@@ -27,7 +27,7 @@ class MySQLConnector(BaseConnector):
     
     def __init__(self, config: Dict[str, Any]):
         super().__init__(config)
-        self.host = config.get('host', 'localhost')
+        self.host = config.get('host')
         self.port = config.get('port', 3306)
         self.database = config.get('database')
         self.username = config.get('username')

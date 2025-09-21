@@ -86,14 +86,21 @@ class AssetCatalog:
             True if successful, False otherwise
         """
         try:
+            # Generate fingerprint if not present
+            fingerprint = asset.get('metadata', {}).get('asset_fingerprint')
+            if not fingerprint:
+                # Generate fingerprint from location and name
+                import hashlib
+                fingerprint_data = f"{asset.get('source', '')}-{asset.get('location', '')}-{asset.get('name', '')}"
+                fingerprint = hashlib.md5(fingerprint_data.encode()).hexdigest()
+                
+                # Add fingerprint to metadata
+                if 'metadata' not in asset:
+                    asset['metadata'] = {}
+                asset['metadata']['asset_fingerprint'] = fingerprint
+            
             conn = sqlite3.connect(self.catalog_db_path)
             cursor = conn.cursor()
-            
-            fingerprint = asset.get('metadata', {}).get('asset_fingerprint', '')
-            if not fingerprint:
-                self.logger.warning(f"Asset {asset.get('name')} has no fingerprint, skipping")
-                conn.close()
-                return False
             
             # Check if asset already exists
             cursor.execute('SELECT * FROM assets WHERE fingerprint = ?', (fingerprint,))
@@ -116,6 +123,54 @@ class AssetCatalog:
             self.logger.error(f"Error adding/updating asset {asset.get('name', 'unknown')}: {e}")
             return False
     
+    def add_asset(self, asset: Dict[str, Any]) -> bool:
+        """
+        Synchronous version of add_or_update_asset for use by discovery engine
+        
+        Args:
+            asset: Asset dictionary
+            
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
+            # Generate fingerprint if not present
+            fingerprint = asset.get('metadata', {}).get('asset_fingerprint')
+            if not fingerprint:
+                # Generate fingerprint from location and name
+                import hashlib
+                fingerprint_data = f"{asset.get('source', '')}-{asset.get('location', '')}-{asset.get('name', '')}"
+                fingerprint = hashlib.md5(fingerprint_data.encode()).hexdigest()
+                
+                # Add fingerprint to metadata
+                if 'metadata' not in asset:
+                    asset['metadata'] = {}
+                asset['metadata']['asset_fingerprint'] = fingerprint
+            
+            conn = sqlite3.connect(self.catalog_db_path)
+            cursor = conn.cursor()
+            
+            # Check if asset already exists
+            cursor.execute('SELECT * FROM assets WHERE fingerprint = ?', (fingerprint,))
+            existing_asset = cursor.fetchone()
+            
+            current_time = datetime.now().isoformat()
+            
+            if existing_asset:
+                # Update existing asset
+                self._update_existing_asset(cursor, asset, fingerprint, current_time)
+            else:
+                # Insert new asset
+                self._insert_new_asset(cursor, asset, fingerprint, current_time)
+            
+            conn.commit()
+            conn.close()
+            return True
+            
+        except Exception as e:
+            self.logger.error(f"Error adding asset {asset.get('name', 'unknown')}: {e}")
+            return False
+    
     def _insert_new_asset(self, cursor, asset: Dict[str, Any], fingerprint: str, current_time: str):
         """Insert a new asset into the catalog"""
         cursor.execute('''
@@ -129,8 +184,8 @@ class AssetCatalog:
             asset.get('source', ''),
             asset.get('location', ''),
             asset.get('size', 0),
-            asset.get('created_date', '').isoformat() if asset.get('created_date') else None,
-            asset.get('modified_date', '').isoformat() if asset.get('modified_date') else None,
+            asset.get('created_date') if isinstance(asset.get('created_date'), str) else (asset.get('created_date').isoformat() if asset.get('created_date') else None),
+            asset.get('modified_date') if isinstance(asset.get('modified_date'), str) else (asset.get('modified_date').isoformat() if asset.get('modified_date') else None),
             current_time,
             current_time,
             json.dumps(asset.get('schema', {})),
@@ -165,7 +220,7 @@ class AssetCatalog:
             asset.get('source', ''),
             asset.get('location', ''),
             asset.get('size', 0),
-            asset.get('modified_date', '').isoformat() if asset.get('modified_date') else None,
+            asset.get('modified_date') if isinstance(asset.get('modified_date'), str) else (asset.get('modified_date').isoformat() if asset.get('modified_date') else None),
             current_time,
             json.dumps(asset.get('schema', {})),
             json.dumps(asset.get('tags', [])),
@@ -468,3 +523,168 @@ class AssetCatalog:
         except Exception as e:
             self.logger.error(f"Error cleaning up old history: {e}")
             return False
+    
+    # Custom Lineage Relationship Management
+    async def add_custom_relationship(self, relationship_data: dict) -> bool:
+        """Add a custom lineage relationship"""
+        try:
+            # Initialize relationships table if it doesn't exist
+            self._initialize_relationships_table()
+            
+            conn = sqlite3.connect(self.catalog_db_path)
+            cursor = conn.cursor()
+            
+            cursor.execute('''
+                INSERT OR REPLACE INTO custom_relationships 
+                (id, source_asset, target_asset, relationship_type, confidence, description, created_by, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (
+                relationship_data['id'],
+                relationship_data['source'],
+                relationship_data['target'],
+                relationship_data['relationship'],
+                relationship_data['confidence'],
+                relationship_data.get('description', ''),
+                relationship_data.get('created_by', 'user'),
+                relationship_data['created_at']
+            ))
+            
+            conn.commit()
+            conn.close()
+            
+            self.logger.info(f"Added custom relationship: {relationship_data['id']}")
+            return True
+            
+        except Exception as e:
+            self.logger.error(f"Error adding custom relationship: {e}")
+            return False
+    
+    async def get_custom_relationships(self) -> list:
+        """Get all custom lineage relationships"""
+        try:
+            self._initialize_relationships_table()
+            
+            conn = sqlite3.connect(self.catalog_db_path)
+            cursor = conn.cursor()
+            
+            cursor.execute('''
+                SELECT id, source_asset, target_asset, relationship_type, confidence, 
+                       description, created_by, created_at
+                FROM custom_relationships
+                ORDER BY created_at DESC
+            ''')
+            
+            relationships = []
+            for row in cursor.fetchall():
+                relationships.append({
+                    'id': row[0],
+                    'source': row[1],
+                    'target': row[2],
+                    'relationship': row[3],
+                    'confidence': row[4],
+                    'description': row[5],
+                    'created_by': row[6],
+                    'created_at': row[7]
+                })
+            
+            conn.close()
+            return relationships
+            
+        except Exception as e:
+            self.logger.error(f"Error getting custom relationships: {e}")
+            return []
+    
+    async def delete_custom_relationship(self, relationship_id: str) -> bool:
+        """Delete a custom lineage relationship"""
+        try:
+            self._initialize_relationships_table()
+            
+            conn = sqlite3.connect(self.catalog_db_path)
+            cursor = conn.cursor()
+            
+            cursor.execute('DELETE FROM custom_relationships WHERE id = ?', (relationship_id,))
+            deleted_count = cursor.rowcount
+            
+            conn.commit()
+            conn.close()
+            
+            if deleted_count > 0:
+                self.logger.info(f"Deleted custom relationship: {relationship_id}")
+                return True
+            else:
+                self.logger.warning(f"Relationship not found: {relationship_id}")
+                return False
+                
+        except Exception as e:
+            self.logger.error(f"Error deleting custom relationship: {e}")
+            return False
+    
+    async def get_asset_relationships(self, asset_id: str) -> list:
+        """Get all relationships for a specific asset"""
+        try:
+            self._initialize_relationships_table()
+            
+            conn = sqlite3.connect(self.catalog_db_path)
+            cursor = conn.cursor()
+            
+            # Get relationships where asset is either source or target
+            cursor.execute('''
+                SELECT id, source_asset, target_asset, relationship_type, confidence, 
+                       description, created_by, created_at
+                FROM custom_relationships
+                WHERE source_asset = ? OR target_asset = ?
+                ORDER BY created_at DESC
+            ''', (asset_id, asset_id))
+            
+            relationships = []
+            for row in cursor.fetchall():
+                relationships.append({
+                    'id': row[0],
+                    'source': row[1],
+                    'target': row[2],
+                    'relationship': row[3],
+                    'confidence': row[4],
+                    'description': row[5],
+                    'created_by': row[6],
+                    'created_at': row[7],
+                    'direction': 'upstream' if row[2] == asset_id else 'downstream'
+                })
+            
+            conn.close()
+            return relationships
+            
+        except Exception as e:
+            self.logger.error(f"Error getting asset relationships: {e}")
+            return []
+    
+    def _initialize_relationships_table(self):
+        """Initialize the custom relationships table"""
+        try:
+            conn = sqlite3.connect(self.catalog_db_path)
+            cursor = conn.cursor()
+            
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS custom_relationships (
+                    id TEXT PRIMARY KEY,
+                    source_asset TEXT NOT NULL,
+                    target_asset TEXT NOT NULL,
+                    relationship_type TEXT NOT NULL,
+                    confidence REAL DEFAULT 1.0,
+                    description TEXT,
+                    created_by TEXT DEFAULT 'user',
+                    created_at TEXT NOT NULL,
+                    FOREIGN KEY (source_asset) REFERENCES assets(fingerprint),
+                    FOREIGN KEY (target_asset) REFERENCES assets(fingerprint)
+                )
+            ''')
+            
+            # Create indexes for better performance
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_source_asset ON custom_relationships(source_asset)')
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_target_asset ON custom_relationships(target_asset)')
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_relationship_type ON custom_relationships(relationship_type)')
+            
+            conn.commit()
+            conn.close()
+            
+        except Exception as e:
+            self.logger.error(f"Error initializing relationships table: {e}")

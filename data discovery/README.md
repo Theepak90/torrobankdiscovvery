@@ -69,7 +69,7 @@ discovery:
     enabled: true
     database_connections:
       - type: "postgresql"
-        host: "localhost"
+        host: "your-database-host"
         database: "mydatabase"
         username: "myuser"
         password: "mypassword"
@@ -261,7 +261,7 @@ discovery:
     enabled: true
     database_connections:
       - type: "postgresql"
-        host: "localhost"
+        host: "your-database-host"
         port: 5432
         database: "mydatabase"
         username: "myuser"

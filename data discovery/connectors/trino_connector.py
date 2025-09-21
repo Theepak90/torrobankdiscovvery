@@ -25,9 +25,9 @@ class TrinoConnector(BaseConnector):
     
     def __init__(self, config: Dict[str, Any]):
         super().__init__(config)
-        self.host = config.get('host', 'localhost')
+        self.host = config.get('host')
         self.port = config.get('port', 8080)
-        self.username = config.get('username', 'admin')
+        self.username = config.get('username')
         self.password = config.get('password', '')
         self.catalog = config.get('catalog', 'system')
         self.schema = config.get('schema', 'information_schema')

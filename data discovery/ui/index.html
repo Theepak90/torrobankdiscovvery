@@ -4,10 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Torro Data Discovery System - Enterprise Dashboard</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
     <link href="static/style.css" rel="stylesheet">
 </head>
 <body>
@@ -20,11 +19,11 @@
             </a>
             <div class="navbar-nav ms-auto">
                 <span class="navbar-text me-3">
-                    <i class="fas fa-circle text-success me-1"></i>
+                    <i class="fas fa-dot-circle text-success me-1"></i>
                     <span id="system-status">System Online</span>
                 </span>
                 <button class="btn btn-outline-light btn-sm" onclick="refreshDashboard()" data-bs-toggle="tooltip" title="Refresh dashboard data">
-                    <i class="fas fa-sync-alt"></i> Refresh
+                    <i class="fas fa-rotate"></i> Refresh
                 </button>
             </div>
         </div>
@@ -35,60 +34,48 @@
         <!-- System Overview Cards -->
         <div class="row mb-4 animate-stagger">
             <div class="col-md-3">
-                <div class="card bg-primary text-white fade-in">
+                <div class="card bg-primary text-white fade-in subtle-pulse">
                     <div class="card-body">
-                        <div class="d-flex justify-content-between">
+                        <div class="d-flex align-items-center">
                             <div>
                                 <h2 id="total-assets" class="fw-bold mb-1">0</h2>
                                 <p class="mb-0 opacity-90">Total Assets</p>
                             </div>
-                            <div class="align-self-center">
-                                <i class="far fa-database fa-3x"></i>
-                            </div>
                         </div>
                     </div>
                 </div>
             </div>
             <div class="col-md-3">
-                <div class="card bg-success text-white fade-in">
+                <div class="card bg-success text-white fade-in subtle-pulse">
                     <div class="card-body">
-                        <div class="d-flex justify-content-between">
+                        <div class="d-flex align-items-center">
                             <div>
                                 <h2 id="active-connectors" class="fw-bold mb-1">0</h2>
                                 <p class="mb-0 opacity-90">Active Connectors</p>
                             </div>
-                            <div class="align-self-center">
-                                <i class="far fa-plug fa-3x"></i>
-                            </div>
                         </div>
                     </div>
                 </div>
             </div>
             <div class="col-md-3">
-                <div class="card bg-info text-white fade-in">
+                <div class="card bg-info text-white fade-in subtle-pulse">
                     <div class="card-body">
-                        <div class="d-flex justify-content-between">
+                        <div class="d-flex align-items-center">
                             <div>
                                 <h2 id="last-scan" class="fw-bold mb-1">Never</h2>
                                 <p class="mb-0 opacity-90">Last Scan</p>
                             </div>
-                            <div class="align-self-center">
-                                <i class="far fa-clock fa-3x"></i>
-                            </div>
                         </div>
                     </div>
                 </div>
             </div>
             <div class="col-md-3">
-                <div class="card bg-warning text-white fade-in">
+                <div class="card bg-warning text-white fade-in subtle-pulse">
                     <div class="card-body">
-                        <div class="d-flex justify-content-between">
+                        <div class="d-flex align-items-center">
                             <div>
                                 <h2 id="monitoring-status" class="fw-bold mb-1">Disabled</h2>
                                 <p class="mb-0 opacity-90">Monitoring</p>
-                            </div>
-                            <div class="align-self-center">
-                                <i class="far fa-eye fa-3x"></i>
                             </div>
                         </div>
                     </div>
@@ -100,27 +87,27 @@
         <ul class="nav nav-tabs" id="mainTabs" role="tablist">
             <li class="nav-item" role="presentation">
                 <button class="nav-link active" id="dashboard-tab" data-bs-toggle="tab" data-bs-target="#dashboard" type="button" role="tab">
-                    <i class="fas fa-tachometer-alt me-1"></i> Dashboard
+                    <i class="fas fa-chart-pie me-1"></i> Dashboard
                 </button>
             </li>
             <li class="nav-item" role="presentation">
                 <button class="nav-link" id="connectors-tab" data-bs-toggle="tab" data-bs-target="#connectors" type="button" role="tab">
-                    <i class="fas fa-plug me-1"></i> Connectors
+                    <i class="fas fa-link me-1"></i> Connectors
                 </button>
             </li>
             <li class="nav-item" role="presentation">
                 <button class="nav-link" id="assets-tab" data-bs-toggle="tab" data-bs-target="#assets" type="button" role="tab">
-                    <i class="fas fa-database me-1"></i> Assets
+                    <i class="fas fa-table me-1"></i> Assets
                 </button>
             </li>
             <li class="nav-item" role="presentation">
                 <button class="nav-link" id="discovery-tab" data-bs-toggle="tab" data-bs-target="#discovery" type="button" role="tab">
-                    <i class="fas fa-search me-1"></i> Discovery
+                    <i class="fas fa-radar me-1"></i> Discovery
                 </button>
             </li>
             <li class="nav-item" role="presentation">
-                <button class="nav-link" id="monitoring-tab" data-bs-toggle="tab" data-bs-target="#monitoring" type="button" role="tab">
-                    <i class="fas fa-eye me-1"></i> Monitoring
+                <button class="nav-link" id="lineage-tab" data-bs-toggle="tab" data-bs-target="#lineage" type="button" role="tab">
+                    <i class="fas fa-sitemap me-1"></i> Data Lineage
                 </button>
             </li>
         </ul>
@@ -134,7 +121,7 @@
                     <div class="col-md-6 mb-4">
                         <div class="card">
                             <div class="card-header">
-                                <h5><i class="fas fa-heartbeat me-2"></i>System Health</h5>
+                                <h5><i class="fas fa-shield-alt me-2"></i>System Health</h5>
                             </div>
                             <div class="card-body" id="system-health">
                                 <div class="d-flex justify-content-center">
@@ -150,7 +137,7 @@
                     <div class="col-md-6 mb-4">
                         <div class="card">
                             <div class="card-header">
-                                <h5><i class="fas fa-history me-2"></i>Recent Activity</h5>
+                                <h5><i class="fas fa-clock me-2"></i>Recent Activity</h5>
                             </div>
                             <div class="card-body" id="recent-activity">
                                 <div class="list-group list-group-flush">
@@ -166,7 +153,7 @@
                     <div class="col-12 mb-4">
                         <div class="card">
                             <div class="card-header">
-                                <h5><i class="fas fa-chart-bar me-2"></i>Discovery Statistics</h5>
+                                <h5><i class="fas fa-chart-line me-2"></i>Discovery Statistics</h5>
                             </div>
                             <div class="card-body">
                                 <canvas id="discoveryChart" width="400" height="100"></canvas>
@@ -184,10 +171,10 @@
                     </div>
                     <div class="col-md-6 text-end">
                         <button class="btn btn-success me-2" onclick="openNewConnectionWizard()" data-bs-toggle="tooltip" title="Create a new data connection">
-                            <i class="fas fa-plus me-1"></i> New Connection
+                            <i class="fas fa-plus-circle me-1"></i> New Connection
                         </button>
                         <button class="btn btn-primary" onclick="loadConnectors()" data-bs-toggle="tooltip" title="Reload connector status">
-                            <i class="fas fa-sync-alt me-1"></i> Refresh Connectors
+                            <i class="fas fa-rotate me-1"></i> Refresh Connectors
                         </button>
                     </div>
                 </div>
@@ -202,10 +189,6 @@
                     </div>
                     <div class="card-body">
                         <div id="my-connections" class="row">
-                            <div class="col-12 text-center text-muted">
-                                <i class="fas fa-info-circle me-2"></i>
-                                No active connections yet. Add a connection below to get started.
-                            </div>
                         </div>
                     </div>
                 </div>
@@ -223,7 +206,7 @@
                     <div class="accordion-item">
                         <h2 class="accordion-header">
                             <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#cloudProviders">
-                                <i class="fas fa-cloud me-2"></i> Cloud Providers
+                                <i class="fas fa-cloud-arrow-up me-2"></i> Cloud Providers
                             </button>
                         </h2>
                         <div id="cloudProviders" class="accordion-collapse collapse show" data-bs-parent="#connectorAccordion">
@@ -255,7 +238,7 @@
                     <div class="accordion-item">
                         <h2 class="accordion-header">
                             <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#dataWarehouses">
-                                <i class="fas fa-warehouse me-2"></i> Data Warehouses
+                                <i class="fas fa-building me-2"></i> Data Warehouses
                             </button>
                         </h2>
                         <div id="dataWarehouses" class="accordion-collapse collapse" data-bs-parent="#connectorAccordion">
@@ -269,7 +252,7 @@
                     <div class="accordion-item">
                         <h2 class="accordion-header">
                             <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#networkStorage">
-                                <i class="fas fa-network-wired me-2"></i> Network Storage
+                                <i class="fas fa-server me-2"></i> Network Storage
                             </button>
                         </h2>
                         <div id="networkStorage" class="accordion-collapse collapse" data-bs-parent="#connectorAccordion">
@@ -287,11 +270,25 @@
             <div class="tab-pane fade" id="assets" role="tabpanel">
                 <div class="row mb-3">
                     <div class="col-md-8">
-                        <div class="input-group">
-                            <input type="text" class="form-control" id="asset-search" placeholder="Search assets...">
-                            <button class="btn btn-outline-secondary" onclick="searchAssets()">
-                                <i class="fas fa-search"></i>
-                            </button>
+                        <div class="search-container position-relative">
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="asset-search" placeholder="Search assets by name, type, or source..." autocomplete="off">
+                                <button class="btn btn-outline-secondary" onclick="searchAssets()">
+                                    <i class="fas fa-search"></i>
+                                </button>
+                                <button class="btn btn-outline-secondary" onclick="clearSearch()" title="Clear search">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                            <!-- Search Recommendations Dropdown -->
+                            <div id="search-recommendations" class="search-recommendations" style="display: none;">
+                                <div class="recommendations-header">
+                                    <small class="text-muted">Search Suggestions</small>
+                                </div>
+                                <div id="recommendations-list" class="recommendations-list">
+                                    <!-- Recommendations will be populated here -->
+                                </div>
+                            </div>
                         </div>
                     </div>
                     <div class="col-md-4 text-end">
@@ -318,6 +315,12 @@
                             <i class="fas fa-filter me-1"></i> Apply Filters
                         </button>
                     </div>
+                </div>
+
+                <!-- Assets Count Display -->
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="mb-0">Discovered Assets</h5>
+                    <span id="assets-count" class="badge bg-primary fs-6">0 assets</span>
                 </div>
 
                 <!-- Assets Table -->
@@ -405,43 +408,587 @@
                 </div>
             </div>
 
-            <!-- Monitoring Tab -->
-            <div class="tab-pane fade" id="monitoring" role="tabpanel">
-                <div class="row">
-                    <div class="col-md-6 mb-4">
+            
+            <!-- Data Lineage Tab -->
+            <div class="tab-pane fade" id="lineage" role="tabpanel">
+                <div class="row mb-3">
+                    <div class="col-md-8">
+                        <h4>Data Lineage Explorer <span class="badge bg-info" id="lineage-assets-count">0</span>
+                            <small class="text-success ms-2" id="lineage-sync-status" style="display: none;">
+                                <i class="fas fa-sync-alt fa-spin"></i> Syncing with Assets...
+                            </small>
+                        </h4>
+                        <p class="text-muted">Explore data flow and dependencies with column-level lineage tracking</p>
+                        <p class="text-muted small mb-0">
+                            <i class="fas fa-info-circle"></i> 
+                            Automatically syncs with Assets tab - new discoveries appear here instantly
+                        </p>
+                    </div>
+                    <div class="col-md-4 text-end">
+                        <button class="btn btn-success me-2" onclick="fitLineageToScreen()" data-bs-toggle="tooltip" title="Auto-fit graph to screen size">
+                            <i class="fas fa-expand-arrows-alt me-1"></i> Fit to Screen
+                        </button>
+                        <button class="btn btn-primary me-2" onclick="refreshLineage()" data-bs-toggle="tooltip" title="Refresh lineage visualization">
+                            <i class="fas fa-sync-alt me-1"></i> Refresh Lineage
+                        </button>
+                        <button class="btn btn-outline-secondary" onclick="exportLineage()" data-bs-toggle="tooltip" title="Export lineage data">
+                            <i class="fas fa-download me-1"></i> Export
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Asset Selection -->
+                <div class="row mb-4">
+                    <div class="col-md-6">
                         <div class="card">
                             <div class="card-header">
-                                <h5><i class="fas fa-cog me-2"></i>Monitoring Controls</h5>
+                                <h5><i class="fas fa-search me-2"></i>Asset Selection</h5>
                             </div>
                             <div class="card-body">
-                                <div class="form-check form-switch mb-3">
-                                    <input class="form-check-input" type="checkbox" id="real-time-monitoring">
-                                    <label class="form-check-label" for="real-time-monitoring">
-                                        Real-time File Watching
-                                    </label>
+                                <div class="input-group mb-3">
+                                    <input type="text" class="form-control" id="lineage-asset-search" placeholder="Search assets for lineage...">
+                                    <button class="btn btn-outline-secondary" onclick="searchLineageAssets()">
+                                        <i class="fas fa-search"></i>
+                                    </button>
                                 </div>
-                                
-                                <div class="d-grid gap-2">
-                                    <button class="btn btn-success" onclick="startMonitoring()">
-                                        <i class="fas fa-play me-2"></i> Start Monitoring
-                                    </button>
-                                    <button class="btn btn-danger" onclick="stopMonitoring()">
-                                        <i class="fas fa-stop me-2"></i> Stop Monitoring
-                                    </button>
+                                <select class="form-select mb-3" id="lineage-asset-select" onchange="selectAssetForLineage()">
+                                    <option value="">Select an asset to view its lineage...</option>
+                                </select>
+                                <div class="d-flex gap-2">
+                                    <select class="form-select" id="lineage-direction">
+                                        <option value="both">Upstream & Downstream</option>
+                                        <option value="upstream">Upstream Only</option>
+                                        <option value="downstream">Downstream Only</option>
+                                    </select>
+                                    <select class="form-select" id="lineage-depth">
+                                        <option value="3">3 Levels</option>
+                                        <option value="2">2 Levels</option>
+                                        <option value="1">1 Level</option>
+                                        <option value="5">5 Levels</option>
+                                    </select>
                                 </div>
                             </div>
                         </div>
                     </div>
-
-                    <div class="col-md-6 mb-4">
+                    
+                    <div class="col-md-6">
                         <div class="card">
                             <div class="card-header">
-                                <h5><i class="fas fa-eye me-2"></i>Monitoring Status</h5>
+                                <h5><i class="fas fa-info-circle me-2"></i>Lineage Summary</h5>
                             </div>
-                            <div class="card-body" id="monitoring-status-card">
-                                <p>Status: <span class="badge bg-secondary">Disabled</span></p>
-                                <p>Real-time Watching: <span class="badge bg-secondary">Disabled</span></p>
-                                <p>Watch Interval: <span>5 seconds</span></p>
+                            <div class="card-body" id="lineage-summary">
+                                <div class="text-center text-muted py-3">
+                                    <i class="fas fa-project-diagram fa-3x mb-3 opacity-50"></i>
+                                    <p>Select an asset to view its lineage summary</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Lineage Relationship Management -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <h5 class="mb-0">
+                                    <i class="fas fa-edit me-2"></i>Manage Relationships
+                                </h5>
+                                <div class="btn-group" role="group">
+                                    <button class="btn btn-outline-primary btn-sm" id="toggle-edit-mode" onclick="toggleLineageEditMode()">
+                                        <i class="fas fa-edit me-1"></i>Edit Mode
+                                    </button>
+                                    <button class="btn btn-outline-success btn-sm" onclick="addNewRelationship()">
+                                        <i class="fas fa-plus me-1"></i>Add Relationship
+                                    </button>
+                                    <button class="btn btn-outline-info btn-sm" onclick="showRelationshipList()">
+                                        <i class="fas fa-list me-1"></i>View All
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="card-body" id="relationship-management-body">
+                                <!-- Edit Mode Instructions -->
+                                <div id="edit-mode-instructions" style="display: none;">
+                                    <div class="alert alert-info">
+                                        <h6><i class="fas fa-info-circle me-2"></i>Edit Mode Active</h6>
+                                        <p class="mb-2">You can now create relationships between assets:</p>
+                                        <ul class="mb-0">
+                                            <li><strong>Click</strong> on a source node to select it</li>
+                                            <li><strong>Click</strong> on a target node to create a relationship</li>
+                                            <li><strong>Right-click</strong> on an edge to delete a relationship</li>
+                                            <li>Use the controls below to specify relationship details</li>
+                                        </ul>
+                                    </div>
+                                </div>
+
+                                <!-- Relationship Form -->
+                                <div id="relationship-form" style="display: none;">
+                                    <div class="row">
+                                        <div class="col-md-4">
+                                            <label class="form-label">Source Asset</label>
+                                            <select class="form-select" id="source-asset-select">
+                                                <option value="">Select source asset...</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label">Target Asset</label>
+                                            <select class="form-select" id="target-asset-select">
+                                                <option value="">Select target asset...</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label">Relationship Type</label>
+                                            <select class="form-select" id="relationship-type">
+                                                <option value="feeds_into">Feeds Into</option>
+                                                <option value="derived_from">Derived From</option>
+                                                <option value="transforms_to">Transforms To</option>
+                                                <option value="aggregates_to">Aggregates To</option>
+                                                <option value="joins_with">Joins With</option>
+                                                <option value="custom">Custom</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="row mt-3">
+                                        <div class="col-md-6">
+                                            <label class="form-label">Confidence Level</label>
+                                            <input type="range" class="form-range" id="confidence-level" min="0" max="1" step="0.1" value="0.9">
+                                            <small class="text-muted">Confidence: <span id="confidence-display">0.9</span></small>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label">Description (Optional)</label>
+                                            <input type="text" class="form-control" id="relationship-description" placeholder="Describe this relationship...">
+                                        </div>
+                                    </div>
+                                    <div class="row mt-3">
+                                        <div class="col-12">
+                                            <button class="btn btn-success me-2" onclick="saveRelationship()">
+                                                <i class="fas fa-save me-1"></i>Save Relationship
+                                            </button>
+                                            <button class="btn btn-secondary" onclick="cancelRelationship()">
+                                                <i class="fas fa-times me-1"></i>Cancel
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Default State -->
+                                <div id="relationship-default-state">
+                                    <div class="text-center text-muted py-4">
+                                        <i class="fas fa-project-diagram fa-3x mb-3 opacity-25"></i>
+                                        <h5>Relationship Management</h5>
+                                        <p>Use the buttons above to add custom upstream and downstream relationships between your data assets.</p>
+                                        <div class="mt-3">
+                                            <small class="text-muted">
+                                                <i class="fas fa-lightbulb me-1"></i>
+                                                Tip: Enable Edit Mode to visually connect nodes in the graph below
+                                            </small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Lineage Visualization -->
+                <div class="card mb-4">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            <i class="fas fa-sitemap me-2"></i>Lineage Visualization
+                        </h5>
+                        <div class="btn-group" role="group">
+                            <input type="radio" class="btn-check" name="lineage-view" id="graph-view" autocomplete="off" checked onchange="switchLineageView('graph')">
+                            <label class="btn btn-outline-primary btn-sm" for="graph-view">
+                                <i class="fas fa-project-diagram me-1"></i>Graph
+                            </label>
+                            <input type="radio" class="btn-check" name="lineage-view" id="table-view" autocomplete="off" onchange="switchLineageView('table')">
+                            <label class="btn btn-outline-primary btn-sm" for="table-view">
+                                <i class="fas fa-table me-1"></i>Table
+                            </label>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <!-- Graph View -->
+                        <div id="lineage-graph-view">
+                            <div id="lineage-graph" style="height: 500px; border: 1px solid #dee2e6; border-radius: 8px;">
+                                <div class="d-flex align-items-center justify-content-center h-100 text-muted">
+                                    <div class="text-center">
+                                        <i class="fas fa-project-diagram fa-4x mb-3 opacity-25"></i>
+                                        <h5>No Asset Selected</h5>
+                                        <p>Select an asset from the dropdown above to view its data lineage</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Table View -->
+                        <div id="lineage-table-view" style="display: none;">
+                            <div class="table-responsive">
+                                <table class="table table-striped" id="lineage-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Asset</th>
+                                            <th>Type</th>
+                                            <th>Source</th>
+                                            <th>Direction</th>
+                                            <th>Level</th>
+                                            <th>Columns</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="lineage-table-body">
+                                        <tr>
+                                            <td colspan="7" class="text-center text-muted py-4">
+                                                No lineage data available. Select an asset to view its lineage.
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Lineage Analysis Panel -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5><i class="fas fa-analytics me-2"></i>Lineage Analysis</h5>
+                    </div>
+                    <div class="card-body">
+                        <!-- Analysis Tabs -->
+                        <ul class="nav nav-tabs" id="analysisTab" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="overview-tab" data-bs-toggle="tab" data-bs-target="#overview" type="button" role="tab">
+                                    Overview
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="transformations-tab" data-bs-toggle="tab" data-bs-target="#transformations" type="button" role="tab">
+                                    Transformations
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="architecture-tab" data-bs-toggle="tab" data-bs-target="#architecture" type="button" role="tab">
+                                    Architecture
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="code-analysis-tab" data-bs-toggle="tab" data-bs-target="#code-analysis" type="button" role="tab">
+                                    Code Analysis
+                                </button>
+                            </li>
+                        </ul>
+
+                        <!-- Tab Content -->
+                        <div class="tab-content mt-3" id="analysisTabContent">
+                            <!-- Overview Tab -->
+                            <div class="tab-pane fade show active" id="overview" role="tabpanel">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="card border-primary">
+                                            <div class="card-header bg-primary text-white">
+                                                <h6 class="mb-0"><i class="fas fa-info-circle me-2"></i>Lineage Summary</h6>
+                                            </div>
+                                            <div class="card-body" id="overview-summary">
+                                                <div class="text-center text-muted py-3">
+                                                    <i class="fas fa-project-diagram fa-2x mb-2"></i>
+                                                    <p>Select an asset to view lineage overview</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="card border-info">
+                                            <div class="card-header bg-info text-white">
+                                                <h6 class="mb-0"><i class="fas fa-chart-pie me-2"></i>Asset Statistics</h6>
+                                            </div>
+                                            <div class="card-body" id="overview-stats">
+                                                <div class="row text-center">
+                                                    <div class="col-4">
+                                                        <h4 class="text-primary mb-0" id="stat-upstream">0</h4>
+                                                        <small class="text-muted">Upstream</small>
+                                                    </div>
+                                                    <div class="col-4">
+                                                        <h4 class="text-success mb-0" id="stat-current">0</h4>
+                                                        <small class="text-muted">Current</small>
+                                                    </div>
+                                                    <div class="col-4">
+                                                        <h4 class="text-info mb-0" id="stat-downstream">0</h4>
+                                                        <small class="text-muted">Downstream</small>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row mt-3">
+                                    <div class="col-12">
+                                        <div class="card border-success">
+                                            <div class="card-header bg-success text-white">
+                                                <h6 class="mb-0"><i class="fas fa-timeline me-2"></i>Data Flow Timeline</h6>
+                                            </div>
+                                            <div class="card-body" id="overview-timeline">
+                                                <div class="timeline-container">
+                                                    <div class="text-center text-muted py-3">
+                                                        <i class="fas fa-clock fa-2x mb-2"></i>
+                                                        <p>Timeline will appear when asset is selected</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Transformations Tab -->
+                            <div class="tab-pane fade" id="transformations" role="tabpanel">
+                                <div class="row">
+                                    <div class="col-md-8">
+                                        <div class="card">
+                                            <div class="card-header">
+                                                <h6><i class="fas fa-exchange-alt me-2"></i>Data Transformations</h6>
+                                            </div>
+                                            <div class="card-body" id="transformations-list">
+                                                <div class="text-center text-muted py-4">
+                                                    <i class="fas fa-cogs fa-3x mb-3"></i>
+                                                    <p>Select an asset to view its transformations</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="card">
+                                            <div class="card-header">
+                                                <h6><i class="fas fa-chart-bar me-2"></i>Transformation Types</h6>
+                                            </div>
+                                            <div class="card-body" id="transformation-types">
+                                                <canvas id="transformationChart" width="300" height="200"></canvas>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Architecture Tab -->
+                            <div class="tab-pane fade" id="architecture" role="tabpanel">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="card">
+                                            <div class="card-header">
+                                                <h6><i class="fas fa-sitemap me-2"></i>System Architecture</h6>
+                                            </div>
+                                            <div class="card-body" id="architecture-diagram">
+                                                <div class="architecture-view">
+                                                    <div class="text-center text-muted py-4">
+                                                        <i class="fas fa-building fa-3x mb-3"></i>
+                                                        <p>Architecture diagram will be generated based on lineage</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="card">
+                                            <div class="card-header">
+                                                <h6><i class="fas fa-layer-group me-2"></i>Data Layers</h6>
+                                            </div>
+                                            <div class="card-body" id="data-layers">
+                                                <div class="layer-list">
+                                                    <div class="text-center text-muted py-4">
+                                                        <i class="fas fa-stack fa-3x mb-3"></i>
+                                                        <p>Data layer analysis will appear here</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Code Analysis Tab -->
+                            <div class="tab-pane fade" id="code-analysis" role="tabpanel">
+                                <div class="row">
+                                    <div class="col-md-8">
+                                        <div class="card">
+                                            <div class="card-header">
+                                                <h6><i class="fas fa-code me-2"></i>Generated Code Analysis</h6>
+                                            </div>
+                                            <div class="card-body" id="code-analysis-content">
+                                                <div class="code-analysis-container">
+                                                    <div class="text-center text-muted py-4">
+                                                        <i class="fas fa-file-code fa-3x mb-3"></i>
+                                                        <p>Code analysis will be generated based on lineage patterns</p>
+                                                        <button class="btn btn-primary mt-2" onclick="generateCodeAnalysis()">
+                                                            <i class="fas fa-play me-1"></i>Generate Analysis
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="card">
+                                            <div class="card-header">
+                                                <h6><i class="fas fa-bug me-2"></i>Quality Metrics</h6>
+                                            </div>
+                                            <div class="card-body" id="quality-metrics">
+                                                <div class="metrics-list">
+                                                    <div class="metric-item mb-2">
+                                                        <div class="d-flex justify-content-between">
+                                                            <span>Complexity Score</span>
+                                                            <span class="badge bg-warning" id="complexity-score">-</span>
+                                                        </div>
+                                                    </div>
+                                                    <div class="metric-item mb-2">
+                                                        <div class="d-flex justify-content-between">
+                                                            <span>Data Quality</span>
+                                                            <span class="badge bg-success" id="data-quality">-</span>
+                                                        </div>
+                                                    </div>
+                                                    <div class="metric-item mb-2">
+                                                        <div class="d-flex justify-content-between">
+                                                            <span>Performance</span>
+                                                            <span class="badge bg-info" id="performance-score">-</span>
+                                                        </div>
+                                                    </div>
+                                                    <div class="metric-item mb-2">
+                                                        <div class="d-flex justify-content-between">
+                                                            <span>Maintainability</span>
+                                                            <span class="badge bg-primary" id="maintainability">-</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Column-Level Lineage -->
+                <div class="card" id="column-lineage-card" style="display: none;">
+                    <div class="card-header">
+                        <h5><i class="fas fa-columns me-2"></i>Column-Level Lineage</h5>
+                        <small class="text-muted">Detailed column-to-column relationships and transformations</small>
+                    </div>
+                    <div class="card-body">
+                        <!-- Column Lineage Controls -->
+                        <div class="row mb-3">
+                            <div class="col-md-8">
+                                <div class="d-flex align-items-center">
+                                    <div class="me-3">
+                                        <label class="form-label mb-0">Selected Asset:</label>
+                                        <span class="badge bg-primary ms-2" id="column-lineage-asset-name">None</span>
+                                    </div>
+                                    <div class="me-3">
+                                        <label class="form-label mb-0">Columns:</label>
+                                        <span class="badge bg-info ms-2" id="column-lineage-column-count">0</span>
+                                    </div>
+                                    <div>
+                                        <label class="form-label mb-0">Relationships:</label>
+                                        <span class="badge bg-success ms-2" id="column-lineage-relationship-count">0</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4 text-end">
+                                <button class="btn btn-success btn-sm me-2" onclick="refreshColumnLineage()" data-bs-toggle="tooltip" title="Refresh column lineage data">
+                                    <i class="fas fa-sync-alt me-1"></i> Refresh
+                                </button>
+                                <div class="btn-group" role="group">
+                                    <button class="btn btn-outline-primary btn-sm active" id="column-view-detailed" onclick="switchColumnView('detailed')">
+                                        <i class="fas fa-list me-1"></i> Detailed
+                                    </button>
+                                    <button class="btn btn-outline-primary btn-sm" id="column-view-matrix" onclick="switchColumnView('matrix')">
+                                        <i class="fas fa-table me-1"></i> Matrix
+                                    </button>
+                                    <button class="btn btn-outline-primary btn-sm" id="column-view-flow" onclick="switchColumnView('flow')">
+                                        <i class="fas fa-project-diagram me-1"></i> Flow
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Column Lineage Content -->
+                        <div id="column-lineage-content">
+                            <!-- Default Empty State -->
+                            <div id="column-lineage-empty" class="text-center text-muted py-5">
+                                <i class="fas fa-columns fa-4x mb-3 opacity-25"></i>
+                                <h5>No Column Data Available</h5>
+                                <p>Select an asset from the lineage graph above to view detailed column relationships</p>
+                                <div class="mt-3">
+                                    <small class="text-muted">
+                                        <i class="fas fa-info-circle me-1"></i>
+                                        Column lineage shows upstream sources, downstream targets, and transformations for each column
+                                    </small>
+                                </div>
+                            </div>
+
+                            <!-- Detailed View -->
+                            <div id="column-lineage-detailed" style="display: none;">
+                                <div class="row" id="column-lineage-cards">
+                                    <!-- Column cards will be populated here -->
+                                </div>
+                            </div>
+
+                            <!-- Matrix View -->
+                            <div id="column-lineage-matrix" style="display: none;">
+                                <div class="table-responsive">
+                                    <table class="table table-bordered table-hover">
+                                        <thead class="table-dark">
+                                            <tr>
+                                                <th>Column</th>
+                                                <th>Type</th>
+                                                <th>Upstream Sources</th>
+                                                <th>Downstream Targets</th>
+                                                <th>Transformations</th>
+                                                <th>Confidence</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="column-lineage-matrix-body">
+                                            <!-- Matrix rows will be populated here -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <!-- Flow View -->
+                            <div id="column-lineage-flow" style="display: none;">
+                                <div class="column-flow-container">
+                                    <div class="row">
+                                        <div class="col-md-3">
+                                            <div class="card border-success">
+                                                <div class="card-header bg-success text-white">
+                                                    <h6 class="mb-0"><i class="fas fa-arrow-left me-2"></i>Upstream Sources</h6>
+                                                </div>
+                                                <div class="card-body p-2" id="column-flow-upstream">
+                                                    <!-- Upstream columns -->
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="card border-primary">
+                                                <div class="card-header bg-primary text-white">
+                                                    <h6 class="mb-0"><i class="fas fa-database me-2"></i>Current Asset Columns</h6>
+                                                </div>
+                                                <div class="card-body p-2" id="column-flow-current">
+                                                    <!-- Current asset columns -->
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <div class="card border-info">
+                                                <div class="card-header bg-info text-white">
+                                                    <h6 class="mb-0"><i class="fas fa-arrow-right me-2"></i>Downstream Targets</h6>
+                                                </div>
+                                                <div class="card-body p-2" id="column-flow-downstream">
+                                                    <!-- Downstream columns -->
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -598,11 +1145,91 @@
         <div class="modal-dialog modal-xl">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">Asset Details</h5>
+                    <h5 class="modal-title" id="asset-modal-title">Asset Details</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
-                <div class="modal-body" id="asset-modal-body">
-                    <!-- Dynamic content -->
+                <div class="modal-body">
+                    <!-- Asset Details Tabs -->
+                    <ul class="nav nav-tabs" id="assetDetailsTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="asset-overview-tab" data-bs-toggle="tab" data-bs-target="#asset-overview" type="button" role="tab">
+                                <i class="fas fa-info-circle me-1"></i> Overview
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="asset-schema-tab" data-bs-toggle="tab" data-bs-target="#asset-schema" type="button" role="tab">
+                                <i class="fas fa-table me-1"></i> Schema
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="asset-profiling-tab" data-bs-toggle="tab" data-bs-target="#asset-profiling" type="button" role="tab">
+                                <i class="fas fa-chart-bar me-1"></i> Data Profiling
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="asset-ai-analysis-tab" data-bs-toggle="tab" data-bs-target="#asset-ai-analysis" type="button" role="tab">
+                                <i class="fas fa-brain me-1"></i> AI Analysis
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="asset-pii-scan-tab" data-bs-toggle="tab" data-bs-target="#asset-pii-scan" type="button" role="tab">
+                                <i class="fas fa-shield-alt me-1"></i> PII Scan
+                            </button>
+                        </li>
+                    </ul>
+                    
+                    <!-- Tab Content -->
+                    <div class="tab-content mt-3" id="assetDetailsTabContent">
+                        <!-- Overview Tab -->
+                        <div class="tab-pane fade show active" id="asset-overview" role="tabpanel">
+                            <div id="asset-overview-content">
+                                <!-- Dynamic overview content -->
+                            </div>
+                        </div>
+                        
+                        <!-- Schema Tab -->
+                        <div class="tab-pane fade" id="asset-schema" role="tabpanel">
+                            <div id="asset-schema-content">
+                                <!-- Dynamic schema content -->
+                            </div>
+                        </div>
+                        
+                        <!-- Data Profiling Tab -->
+                        <div class="tab-pane fade" id="asset-profiling" role="tabpanel">
+                            <div id="asset-profiling-content">
+                                <div class="text-center py-4">
+                                    <div class="spinner-border text-primary" role="status">
+                                        <span class="visually-hidden">Loading profiling data...</span>
+                                    </div>
+                                    <p class="mt-2 text-muted">Analyzing data...</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- AI Analysis Tab -->
+                        <div class="tab-pane fade" id="asset-ai-analysis" role="tabpanel">
+                            <div id="asset-ai-analysis-content">
+                                <div class="text-center py-4">
+                                    <div class="spinner-border text-primary" role="status">
+                                        <span class="visually-hidden">Loading AI analysis...</span>
+                                    </div>
+                                    <p class="mt-2 text-muted">Performing AI analysis with Gemini...</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- PII Scan Tab -->
+                        <div class="tab-pane fade" id="asset-pii-scan" role="tabpanel">
+                            <div id="asset-pii-scan-content">
+                                <div class="text-center py-4">
+                                    <div class="spinner-border text-primary" role="status">
+                                        <span class="visually-hidden">Scanning for PII...</span>
+                                    </div>
+                                    <p class="mt-2 text-muted">Scanning for personally identifiable information...</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

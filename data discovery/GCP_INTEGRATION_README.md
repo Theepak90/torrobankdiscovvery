@@ -68,7 +68,7 @@ export GOOGLE_APPLICATION_CREDENTIALS="/path/to/service-account.json"
 
 ### Via API
 ```bash
-curl -X POST http://localhost:8000/api/connectors/gcp/add \
+curl -X POST http://your-server:8000/api/connectors/gcp/add \
   -H "Content-Type: application/json" \
   -d '{
     "enabled": true,
@@ -81,7 +81,7 @@ curl -X POST http://localhost:8000/api/connectors/gcp/add \
 ```
 
 ### Via UI
-1. Open the Data Discovery UI at `http://localhost:8000`
+1. Open the Data Discovery UI at `http://your-server:8000`
 2. Go to Connectors section
 3. Find "Google Cloud Platform" connector
 4. Click "Configure"
@@ -158,12 +158,12 @@ curl -X POST http://localhost:8000/api/connectors/gcp/add \
 
 ### Test Connection
 ```bash
-curl -X POST http://localhost:8000/api/config/gcp/test
+curl -X POST http://your-server:8000/api/config/gcp/test
 ```
 
 ### Discover Assets
 ```bash
-curl -X POST http://localhost:8000/api/discovery/test/gcp
+curl -X POST http://your-server:8000/api/discovery/test/gcp
 ```
 
 ### Run Test Script

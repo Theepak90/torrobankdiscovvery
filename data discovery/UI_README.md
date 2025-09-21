@@ -17,9 +17,9 @@ python start_ui.py
 ```
 
 ### 3. Access the Dashboard
-- **Main Dashboard:** http://localhost:8000
-- **API Documentation:** http://localhost:8000/docs
-- **Interactive API:** http://localhost:8000/redoc
+- **Main Dashboard:** http://your-server:8000
+- **API Documentation:** http://your-server:8000/docs
+- **Interactive API:** http://your-server:8000/redoc
 
 ## 📊 What You Get
 
@@ -133,14 +133,14 @@ POST /api/monitoring/stop
 import requests
 
 # Start discovery
-response = requests.post('http://localhost:8000/api/discovery/scan')
+response = requests.post('http://your-server:8000/api/discovery/scan')
 
 # Get assets
-assets = requests.get('http://localhost:8000/api/assets').json()
+assets = requests.get('http://your-server:8000/api/assets').json()
 
 # Search assets
 search_results = requests.post(
-    'http://localhost:8000/api/assets/search',
+    'http://your-server:8000/api/assets/search',
     json={'query': 'customer_data'}
 ).json()
 ```
@@ -183,7 +183,7 @@ data discovery/
 ```javascript
 // Start discovery from your platform
 function startDataDiscovery() {
-    fetch('http://localhost:8000/api/discovery/scan', {
+    fetch('http://your-server:8000/api/discovery/scan', {
         method: 'POST'
     }).then(response => response.json())
       .then(data => console.log('Discovery started:', data));
@@ -191,7 +191,7 @@ function startDataDiscovery() {
 
 // Get discovered assets
 function getAssets() {
-    fetch('http://localhost:8000/api/assets')
+    fetch('http://your-server:8000/api/assets')
         .then(response => response.json())
         .then(assets => displayAssets(assets));
 }
@@ -212,7 +212,7 @@ config = {
 }
 
 response = requests.post(
-    'http://localhost:8000/api/config/gcp',
+    'http://your-server:8000/api/config/gcp',
     json=config
 )
 ```

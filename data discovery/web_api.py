@@ -4,7 +4,7 @@ Web API for Data Discovery - FastAPI REST API for UI Integration
 Provides all endpoints your senior needs for the UI
 """
 
-from fastapi import FastAPI, HTTPException, BackgroundTasks
+from fastapi import FastAPI, HTTPException, BackgroundTasks, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
@@ -16,6 +16,12 @@ from datetime import datetime
 import yaml
 import os
 import uvicorn
+import json
+import aiohttp
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 from dynamic_discovery_engine import DynamicDataDiscoveryEngine
 
@@ -92,16 +98,91 @@ async def get_system_health():
 
 @app.get("/api/system/status")
 async def get_system_status():
-    """Get discovery system status"""
+    """Get discovery system status with enhanced metrics"""
     try:
+        # Get basic system health
+        system_health = discovery_engine.get_system_health()
+        connectors = discovery_engine.get_connector_status()
+        
+        # Get asset statistics
+        asset_stats = discovery_engine.asset_catalog.get_catalog_statistics()
+        
+        # Calculate active connectors
+        active_connectors = sum(1 for conn_status in connectors.values() 
+                               if conn_status.get('enabled', False) and conn_status.get('connected', False))
+        
+        # Get recent activity (last 24 hours)
+        recent_assets = discovery_engine.asset_catalog.search_assets('', limit=1000)
+        from datetime import datetime, timedelta
+        now = datetime.now()
+        recent_count = 0
+        
+        for asset in recent_assets:
+            try:
+                discovered_date = datetime.fromisoformat(asset.get('discovered_date', ''))
+                if (now - discovered_date).days < 1:
+                    recent_count += 1
+            except:
+                continue
+        
         return {
             "status": "success",
-            "system_health": discovery_engine.get_system_health(),
-            "connectors": discovery_engine.get_connector_status(),
+            "system_health": system_health,
+            "connectors": connectors,
+            "dashboard_metrics": {
+                "total_assets": asset_stats.get('total_assets', 0),
+                "active_connectors": active_connectors,
+                "total_connectors": len(connectors),
+                "assets_discovered_today": recent_count,
+                "last_scan": system_health.get('last_scan'),
+                "monitoring_enabled": False,  # TODO: Get from monitoring service
+                "assets_by_type": asset_stats.get('assets_by_type', {}),
+                "assets_by_source": asset_stats.get('assets_by_source', {}),
+                "total_data_size": asset_stats.get('total_size_bytes', 0),
+                "recent_discoveries": asset_stats.get('recent_discoveries', 0)
+            },
             "timestamp": datetime.now().isoformat()
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/system/activity")
+async def get_recent_activity():
+    """Get recent system activity for dashboard"""
+    try:
+        activities = []
+        
+        # Get recent asset discoveries
+        recent_assets = discovery_engine.asset_catalog.search_assets('', limit=20)
+        
+        for asset in recent_assets:
+            activities.append({
+                "type": "asset_discovered",
+                "timestamp": asset.get('discovered_date'),
+                "message": f"Discovered {asset.get('type')} '{asset.get('name')}' from {asset.get('source')}",
+                "details": {
+                    "asset_name": asset.get('name'),
+                    "asset_type": asset.get('type'),
+                    "source": asset.get('source'),
+                    "size": asset.get('size', 0)
+                }
+            })
+        
+        # Sort by timestamp (most recent first)
+        activities.sort(key=lambda x: x.get('timestamp', ''), reverse=True)
+        
+        return {
+            "status": "success",
+            "activities": activities[:10],  # Return last 10 activities
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": str(e),
+            "activities": [],
+            "timestamp": datetime.now().isoformat()
+        }
 
 # Configuration Management Endpoints
 @app.get("/api/config")
@@ -428,11 +509,838 @@ async def get_discovery_status():
     """Get current discovery status"""
     return discovery_engine.get_discovery_status()
 
+# Data Lineage Endpoints
+@app.get("/api/lineage/assets")
+async def get_lineage_assets():
+    """Get assets available for lineage analysis - dynamically synced with main assets"""
+    try:
+        # Get the most current assets from the catalog
+        assets = discovery_engine.asset_catalog.search_assets('', limit=1000)
+        
+        # Filter assets that have potential lineage information
+        lineage_assets = []
+        for asset in assets:
+            # Generate asset ID if not present
+            asset_id = asset.get('metadata', {}).get('asset_fingerprint')
+            if not asset_id:
+                # Generate a consistent ID based on asset properties (same as frontend generateAssetId)
+                import base64
+                id_string = f"{asset.get('source', '')}-{asset.get('location', '')}-{asset.get('name', '')}"
+                asset_id = base64.b64encode(id_string.encode()).decode().replace('=', '').replace('+', '').replace('/', '')[:16]
+            
+            # Add all assets but highlight those with potential relationships
+            asset_info = {
+                "id": asset_id,
+                "name": asset.get('name', ''),
+                "type": asset.get('type', ''),
+                "source": asset.get('source', ''),
+                "location": asset.get('location', ''),
+                "has_schema": bool(asset.get('schema', [])),
+                "column_count": len(asset.get('schema', [])),
+                "metadata": asset.get('metadata', {}),
+                "created_date": asset.get('created_date'),
+                "last_scanned": asset.get('last_scanned'),
+                "size": asset.get('size', 0)
+            }
+            lineage_assets.append(asset_info)
+        
+        return {
+            "status": "success",
+            "count": len(lineage_assets),
+            "assets": lineage_assets,
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        return {"status": "error", "message": str(e), "assets": [], "timestamp": datetime.now().isoformat()}
+
+@app.get("/api/lineage/{asset_id}")
+async def get_asset_lineage(asset_id: str, direction: str = "both", depth: int = 3):
+    """Get lineage for a specific asset - dynamically updated"""
+    try:
+        # Get the most current assets from the catalog
+        assets = discovery_engine.asset_catalog.search_assets('', limit=1000)
+        target_asset = None
+        
+        # Find target asset by ID (try both fingerprint and generated ID)
+        for asset in assets:
+            asset_fingerprint = asset.get('metadata', {}).get('asset_fingerprint')
+            if asset_fingerprint == asset_id:
+                target_asset = asset
+                break
+                
+            # Also check frontend-compatible generated ID (same as generateAssetId in app.js)
+            import base64
+            id_string = f"{asset.get('source', '')}-{asset.get('location', '')}-{asset.get('name', '')}"
+            # Use base64 encoding like frontend, then clean and truncate
+            generated_id = base64.b64encode(id_string.encode()).decode().replace('=', '').replace('+', '').replace('/', '')[:16]
+            if generated_id == asset_id:
+                target_asset = asset
+                break
+        
+        if not target_asset:
+            raise HTTPException(status_code=404, detail=f"Asset with ID '{asset_id}' not found")
+        
+        # Generate real-time lineage data based on current asset relationships
+        lineage_data = await generate_lineage_data(target_asset, assets, direction, depth)
+        
+        return {
+            "status": "success",
+            "asset": target_asset,
+            "lineage": lineage_data,
+            "direction": direction,
+            "depth": depth,
+            "total_assets_analyzed": len(assets),
+            "timestamp": datetime.now().isoformat()
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        return {
+            "status": "error", 
+            "message": str(e), 
+            "lineage": {},
+            "timestamp": datetime.now().isoformat()
+        }
+
+@app.get("/api/lineage/{asset_id}/columns")
+async def get_column_lineage(asset_id: str):
+    """Get column-level lineage for a specific asset"""
+    try:
+        # Get the asset details
+        assets = discovery_engine.asset_catalog.search_assets('')
+        target_asset = None
+        for asset in assets:
+            # Check both asset_fingerprint and generated ID
+            fingerprint = asset.get('metadata', {}).get('asset_fingerprint')
+            if fingerprint == asset_id:
+                target_asset = asset
+                break
+            
+            # Also check frontend-compatible generated ID (same as generateAssetId in app.js)
+            import base64
+            id_string = f"{asset.get('source', '')}-{asset.get('location', '')}-{asset.get('name', '')}"
+            # Use base64 encoding like frontend, then clean and truncate
+            generated_id = base64.b64encode(id_string.encode()).decode().replace('=', '').replace('+', '').replace('/', '')[:16]
+            if generated_id == asset_id:
+                target_asset = asset
+                break
+        
+        if not target_asset:
+            return {"status": "error", "message": f"Asset not found: {asset_id}", "column_lineage": {}}
+        
+        # Generate column-level lineage
+        column_lineage = await generate_column_lineage(target_asset, assets)
+        
+        return {
+            "status": "success",
+            "asset": target_asset,
+            "column_lineage": column_lineage
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        return {"status": "error", "message": str(e), "column_lineage": {}}
+
+# Lineage Relationship Management Endpoints
+@app.post("/api/lineage/relationships")
+async def create_lineage_relationship(request: Request):
+    """Create a new custom lineage relationship"""
+    try:
+        # Parse JSON from request body
+        relationship_data = await request.json()
+        
+        # Validate required fields
+        required_fields = ['source', 'target', 'relationship', 'confidence']
+        for field in required_fields:
+            if field not in relationship_data:
+                return {"status": "error", "message": f"Missing required field: {field}"}
+        
+        # Add metadata
+        relationship_data['id'] = f"{relationship_data['source']}-{relationship_data['target']}-{relationship_data['relationship']}"
+        relationship_data['created_at'] = datetime.now().isoformat()
+        relationship_data['created_by'] = relationship_data.get('created_by', 'user')
+        
+        # Store in asset catalog (we'll extend this to use a proper relationships table)
+        success = await discovery_engine.asset_catalog.add_custom_relationship(relationship_data)
+        
+        if success:
+            return {
+                "status": "success",
+                "message": "Relationship created successfully",
+                "relationship": relationship_data
+            }
+        else:
+            return {"status": "error", "message": "Failed to create relationship"}
+            
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+@app.get("/api/lineage/relationships")
+async def get_all_relationships():
+    """Get all custom lineage relationships"""
+    try:
+        relationships = await discovery_engine.asset_catalog.get_custom_relationships()
+        
+        # Enrich with asset names
+        assets = discovery_engine.asset_catalog.search_assets('')
+        asset_names = {asset.get('metadata', {}).get('asset_fingerprint', ''): asset.get('name', '') for asset in assets}
+        
+        for rel in relationships:
+            rel['source_name'] = asset_names.get(rel['source'], rel['source'])
+            rel['target_name'] = asset_names.get(rel['target'], rel['target'])
+        
+        return {
+            "status": "success",
+            "relationships": relationships
+        }
+        
+    except Exception as e:
+        return {"status": "error", "message": str(e), "relationships": []}
+
+@app.delete("/api/lineage/relationships/{relationship_id}")
+async def delete_relationship(relationship_id: str):
+    """Delete a custom lineage relationship"""
+    try:
+        success = await discovery_engine.asset_catalog.delete_custom_relationship(relationship_id)
+        
+        if success:
+            return {"status": "success", "message": "Relationship deleted successfully"}
+        else:
+            return {"status": "error", "message": "Relationship not found or could not be deleted"}
+            
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+@app.get("/api/lineage/relationships/{asset_id}")
+async def get_asset_relationships(asset_id: str):
+    """Get all relationships for a specific asset"""
+    try:
+        relationships = await discovery_engine.asset_catalog.get_asset_relationships(asset_id)
+        
+        return {
+            "status": "success",
+            "asset_id": asset_id,
+            "relationships": relationships
+        }
+        
+    except Exception as e:
+        return {"status": "error", "message": str(e), "relationships": []}
+
+# Helper functions for lineage generation
+async def generate_lineage_data(target_asset: Dict[str, Any], all_assets: List[Dict[str, Any]], direction: str, depth: int) -> Dict[str, Any]:
+    """Generate lineage data based on asset relationships"""
+    lineage = {
+        "nodes": [],
+        "edges": [],
+        "levels": {}
+    }
+    
+    # Add the target asset as the central node
+    # Generate consistent ID for target node
+    target_asset_id = target_asset.get('metadata', {}).get('asset_fingerprint')
+    if not target_asset_id:
+        import base64
+        id_string = f"{target_asset.get('source', '')}-{target_asset.get('location', '')}-{target_asset.get('name', '')}"
+        target_asset_id = base64.b64encode(id_string.encode()).decode().replace('=', '').replace('+', '').replace('/', '')[:16]
+    
+    target_node = {
+        "id": target_asset_id,
+        "name": target_asset.get('name', ''),
+        "type": target_asset.get('type', ''),
+        "source": target_asset.get('source', ''),
+        "level": 0,
+        "is_target": True,
+        "schema": target_asset.get('schema', []),
+        "metadata": target_asset.get('metadata', {})
+    }
+    lineage["nodes"].append(target_node)
+    lineage["levels"][0] = [target_node["id"]]
+    
+    # Generate related assets based on naming patterns and sources
+    related_assets = find_related_assets(target_asset, all_assets)
+    
+    # Add custom relationships
+    custom_relationships = await discovery_engine.asset_catalog.get_asset_relationships(target_asset_id)
+    await add_custom_relationships_to_lineage(lineage, target_asset_id, custom_relationships, all_assets)
+    
+    # Generate upstream relationships (sources)
+    if direction in ['both', 'upstream']:
+        upstream_assets = generate_upstream_assets(target_asset, related_assets, depth)
+        for level, assets in upstream_assets.items():
+            if level not in lineage["levels"]:
+                lineage["levels"][level] = []
+            for asset in assets:
+                # Generate consistent ID for upstream asset
+                asset_id = asset.get('metadata', {}).get('asset_fingerprint')
+                if not asset_id:
+                    import base64
+                    id_string = f"{asset.get('source', '')}-{asset.get('location', '')}-{asset.get('name', '')}"
+                    asset_id = base64.b64encode(id_string.encode()).decode().replace('=', '').replace('+', '').replace('/', '')[:16]
+                
+                node = {
+                    "id": asset_id,
+                    "name": asset.get('name', ''),
+                    "type": asset.get('type', ''),
+                    "source": asset.get('source', ''),
+                    "level": level,
+                    "direction": "upstream",
+                    "schema": asset.get('schema', []),
+                    "metadata": asset.get('metadata', {})
+                }
+                lineage["nodes"].append(node)
+                lineage["levels"][level].append(node["id"])
+                
+                # Add edge from upstream to target
+                lineage["edges"].append({
+                    "source": node["id"],
+                    "target": target_node["id"],
+                    "relationship": "feeds_into",
+                    "confidence": 0.8
+                })
+    
+    # Generate downstream relationships (targets)
+    if direction in ['both', 'downstream']:
+        downstream_assets = generate_downstream_assets(target_asset, related_assets, depth)
+        for level, assets in downstream_assets.items():
+            if level not in lineage["levels"]:
+                lineage["levels"][level] = []
+            for asset in assets:
+                # Generate consistent ID for downstream asset
+                asset_id = asset.get('metadata', {}).get('asset_fingerprint')
+                if not asset_id:
+                    import base64
+                    id_string = f"{asset.get('source', '')}-{asset.get('location', '')}-{asset.get('name', '')}"
+                    asset_id = base64.b64encode(id_string.encode()).decode().replace('=', '').replace('+', '').replace('/', '')[:16]
+                
+                node = {
+                    "id": asset_id,
+                    "name": asset.get('name', ''),
+                    "type": asset.get('type', ''),
+                    "source": asset.get('source', ''),
+                    "level": level,
+                    "direction": "downstream",
+                    "schema": asset.get('schema', []),
+                    "metadata": asset.get('metadata', {})
+                }
+                lineage["nodes"].append(node)
+                lineage["levels"][level].append(node["id"])
+                
+                # Add edge from target to downstream
+                lineage["edges"].append({
+                    "source": target_node["id"],
+                    "target": node["id"],
+                    "relationship": "feeds_into",
+                    "confidence": 0.8
+                })
+    
+    return lineage
+
+def find_related_assets(target_asset: Dict[str, Any], all_assets: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Find assets that might be related to the target asset"""
+    related = []
+    target_name = target_asset.get('name', '').lower()
+    target_source = target_asset.get('source', '')
+    target_location = target_asset.get('location', '').lower()
+    
+    # Extract meaningful parts from the target name for better matching
+    target_parts = set()
+    if '.' in target_name:
+        # BigQuery style: project.dataset.table
+        parts = target_name.split('.')
+        target_parts.update(parts)
+        if len(parts) >= 3:
+            target_parts.add(parts[-2])  # dataset name
+            target_parts.add(parts[-1])  # table name
+    
+    # Add keywords from the name
+    name_keywords = ['customer', 'order', 'transaction', 'account', 'user', 'product', 'sales', 'client', 'employee', 'banking', 'loan', 'card']
+    for keyword in name_keywords:
+        if keyword in target_name:
+            target_parts.add(keyword)
+    
+    print(f"🔍 Finding related assets for: {target_name}")
+    print(f"📊 Target parts: {target_parts}")
+    
+    for asset in all_assets:
+        if asset.get('metadata', {}).get('asset_fingerprint') == target_asset.get('metadata', {}).get('asset_fingerprint'):
+            continue  # Skip the target asset itself
+        
+        asset_name = asset.get('name', '').lower()
+        asset_source = asset.get('source', '')
+        asset_location = asset.get('location', '').lower()
+        
+        # Calculate relationship score
+        score = 0
+        
+        # Same source bonus
+        if asset_source == target_source:
+            score += 2
+        
+        # Same project/dataset for BigQuery
+        if 'bigquery' in target_source and 'bigquery' in asset_source:
+            if '.' in target_name and '.' in asset_name:
+                target_project_dataset = '.'.join(target_name.split('.')[:2])
+                asset_project_dataset = '.'.join(asset_name.split('.')[:2])
+                if target_project_dataset == asset_project_dataset:
+                    score += 3  # Same project and dataset
+                elif target_name.split('.')[0] == asset_name.split('.')[0]:
+                    score += 2  # Same project
+        
+        # Keyword matching
+        for part in target_parts:
+            if part in asset_name:
+                score += 1
+        
+        # Name similarity
+        if target_name in asset_name or asset_name in target_name:
+            score += 2
+        
+        # Location similarity
+        if target_location and asset_location and target_location in asset_location:
+            score += 1
+        
+        # Add if score is high enough
+        if score >= 2:
+            asset['_relationship_score'] = score
+            related.append(asset)
+            print(f"✅ Related asset found: {asset_name} (score: {score})")
+    
+    # Sort by relationship score
+    related.sort(key=lambda x: x.get('_relationship_score', 0), reverse=True)
+    
+    print(f"🎯 Found {len(related)} related assets")
+    return related
+
+def generate_upstream_assets(target_asset: Dict[str, Any], related_assets: List[Dict[str, Any]], depth: int) -> Dict[int, List[Dict[str, Any]]]:
+    """Generate upstream assets (data sources)"""
+    upstream = {}
+    target_name = target_asset.get('name', '').lower()
+    target_type = target_asset.get('type', '').lower()
+    
+    print(f"🔺 Generating upstream for: {target_name} (type: {target_type})")
+    
+    # Different logic based on asset type and naming patterns
+    used_assets = set()
+    
+    for level in range(1, depth + 1):
+        level_assets = []
+        
+        for asset in related_assets:
+            asset_id = asset.get('metadata', {}).get('asset_fingerprint')
+            if not asset_id:
+                import base64
+                id_string = f"{asset.get('source', '')}-{asset.get('location', '')}-{asset.get('name', '')}"
+                asset_id = base64.b64encode(id_string.encode()).decode().replace('=', '').replace('+', '').replace('/', '')[:16]
+            if asset_id in used_assets:
+                continue
+                
+            asset_name = asset.get('name', '').lower()
+            asset_type = asset.get('type', '').lower()
+            score = asset.get('_relationship_score', 0)
+            
+            # Upstream logic based on patterns
+            is_upstream = False
+            
+            # Tables/views that look like sources
+            if any(keyword in asset_name for keyword in ['raw', 'source', 'input', 'base', 'staging', 'landing']):
+                is_upstream = True
+                
+            # For BigQuery, dataset-level assets are often upstream of table-level
+            elif 'dataset' in asset_type and 'table' in target_type:
+                is_upstream = True
+                
+            # Tables with simpler names are often upstream of aggregated ones
+            elif ('agg' in target_name or 'summary' in target_name or 'mart' in target_name) and asset_type == 'bigquery_table':
+                is_upstream = True
+                
+            # Same project/dataset but different table suggests relationship
+            elif score >= 4 and level == 1:  # High score suggests close relationship
+                is_upstream = True
+            
+            if is_upstream:
+                level_assets.append(asset)
+                used_assets.add(asset_id)
+                print(f"  📊 Level -{level} upstream: {asset_name}")
+                
+                # Don't add too many per level
+                if len(level_assets) >= 3:
+                    break
+        
+        if level_assets:
+            upstream[-level] = level_assets
+    
+    print(f"🔺 Generated {len(upstream)} upstream levels")
+    return upstream
+
+def generate_downstream_assets(target_asset: Dict[str, Any], related_assets: List[Dict[str, Any]], depth: int) -> Dict[int, List[Dict[str, Any]]]:
+    """Generate downstream assets (data targets)"""
+    downstream = {}
+    target_name = target_asset.get('name', '').lower()
+    target_type = target_asset.get('type', '').lower()
+    
+    print(f"🔻 Generating downstream for: {target_name} (type: {target_type})")
+    
+    # Different logic based on asset type and naming patterns
+    used_assets = set()
+    
+    for level in range(1, depth + 1):
+        level_assets = []
+        
+        for asset in related_assets:
+            asset_id = asset.get('metadata', {}).get('asset_fingerprint')
+            if not asset_id:
+                import base64
+                id_string = f"{asset.get('source', '')}-{asset.get('location', '')}-{asset.get('name', '')}"
+                asset_id = base64.b64encode(id_string.encode()).decode().replace('=', '').replace('+', '').replace('/', '')[:16]
+            if asset_id in used_assets:
+                continue
+                
+            asset_name = asset.get('name', '').lower()
+            asset_type = asset.get('type', '').lower()
+            score = asset.get('_relationship_score', 0)
+            
+            # Downstream logic based on patterns
+            is_downstream = False
+            
+            # Tables/views that look like processed outputs
+            if any(keyword in asset_name for keyword in ['processed', 'output', 'mart', 'agg', 'summary', 'report', 'analytics']):
+                is_downstream = True
+                
+            # Views are often downstream of tables
+            elif 'view' in asset_type and 'table' in target_type:
+                is_downstream = True
+                
+            # Tables with more complex names are often downstream of simpler ones
+            elif ('raw' in target_name or 'base' in target_name or 'source' in target_name) and asset_type == 'bigquery_table':
+                is_downstream = True
+                
+            # Aggregated/summary tables are downstream
+            elif any(keyword in asset_name for keyword in ['master', 'dim', 'fact', 'cube']) and score >= 3:
+                is_downstream = True
+                
+            # Same project but different patterns suggest downstream relationship
+            elif score >= 3 and level == 1 and len(asset_name) > len(target_name):
+                is_downstream = True
+            
+            if is_downstream:
+                level_assets.append(asset)
+                used_assets.add(asset_id)
+                print(f"  📊 Level +{level} downstream: {asset_name}")
+                
+                # Don't add too many per level
+                if len(level_assets) >= 3:
+                    break
+        
+        if level_assets:
+            downstream[level] = level_assets
+    
+    print(f"🔻 Generated {len(downstream)} downstream levels")
+    return downstream
+
+async def generate_column_lineage(target_asset: Dict[str, Any], all_assets: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """Generate column-level lineage for an asset"""
+    schema = target_asset.get('schema', [])
+    target_name = target_asset.get('name', '')
+    
+    print(f"🔍 Generating column lineage for {target_name} with {len(schema)} columns")
+    
+    column_lineage = {
+        "columns": [],
+        "relationships": []
+    }
+    
+    # Find related assets with schemas for column mapping
+    related_with_schema = [asset for asset in all_assets 
+                          if asset.get('schema') and 
+                          asset.get('metadata', {}).get('asset_fingerprint') != target_asset.get('metadata', {}).get('asset_fingerprint')]
+    
+    for column in schema:
+        # Handle both string and dict column formats
+        if isinstance(column, str):
+            col_name = column.lower()
+            col_type = 'STRING'  # Default type for string columns
+            column_dict = {
+                'name': column,
+                'type': col_type,
+                'description': f'Column: {column}'
+            }
+        else:
+            col_name = column.get('name', '').lower()
+            col_type = column.get('type', 'STRING')
+            column_dict = column
+            
+        col_info = {
+            "name": column_dict.get('name', col_name),
+            "type": col_type,
+            "description": column_dict.get('description', ''),
+            "upstream_columns": [],
+            "downstream_columns": [],
+            "transformations": []
+        }
+        
+        # Find matching columns in related assets
+        for related_asset in related_with_schema[:5]:  # Limit to avoid too much data
+            related_schema = related_asset.get('schema', [])
+            related_name = related_asset.get('name', '')
+            
+            for related_column in related_schema:
+                # Handle both string and dict column formats
+                if isinstance(related_column, str):
+                    related_col_name = related_column.lower()
+                    related_col_type = 'STRING'
+                    related_column_dict = {
+                        'name': related_column,
+                        'type': related_col_type
+                    }
+                else:
+                    related_col_name = related_column.get('name', '').lower()
+                    related_col_type = related_column.get('type', 'STRING')
+                    related_column_dict = related_column
+                
+                # Calculate column relationship score
+                match_score = 0
+                
+                # Exact name match
+                if col_name == related_col_name:
+                    match_score = 0.95
+                # Similar names (common patterns)
+                elif any([
+                    col_name in related_col_name or related_col_name in col_name,
+                    col_name.replace('_', '') == related_col_name.replace('_', ''),
+                    col_name.endswith('_id') and related_col_name.endswith('_id') and col_name.split('_')[0] == related_col_name.split('_')[0]
+                ]):
+                    match_score = 0.8
+                # Type compatibility
+                elif col_type == related_col_type and len(col_name) > 2:
+                    # Check for common naming patterns
+                    if any(pattern in col_name for pattern in ['customer', 'user', 'account', 'order', 'transaction']):
+                        if any(pattern in related_col_name for pattern in ['customer', 'user', 'account', 'order', 'transaction']):
+                            match_score = 0.6
+                
+                if match_score > 0.5:
+                    # Determine if upstream or downstream based on asset names
+                    is_upstream = determine_upstream_relationship(target_name, related_name)
+                    
+                    relationship = {
+                        "asset": related_name,
+                        "column": related_column_dict.get('name', related_col_name),
+                        "confidence": match_score
+                    }
+                    
+                    if is_upstream:
+                        col_info["upstream_columns"].append(relationship)
+                    else:
+                        col_info["downstream_columns"].append(relationship)
+        
+        # Determine transformations based on column patterns
+        transformations = determine_column_transformations(col_name, col_type, col_info)
+        col_info["transformations"] = transformations
+        
+        column_lineage["columns"].append(col_info)
+        
+        print(f"  📊 {col_info['name']}: {len(col_info['upstream_columns'])} upstream, {len(col_info['downstream_columns'])} downstream")
+    
+    print(f"✅ Generated column lineage with {len(column_lineage['columns'])} columns")
+    return column_lineage
+
+def determine_upstream_relationship(target_name: str, related_name: str) -> bool:
+    """Determine if related asset is upstream based on naming patterns"""
+    target_lower = target_name.lower()
+    related_lower = related_name.lower()
+    
+    # Raw/source patterns are typically upstream
+    if any(keyword in related_lower for keyword in ['raw', 'source', 'base', 'landing', 'staging']):
+        return True
+    
+    # Marts/aggregated patterns are typically downstream
+    if any(keyword in target_lower for keyword in ['mart', 'agg', 'summary', 'report']):
+        return True
+    
+    # Views are often downstream of tables
+    if 'view' in target_lower and 'table' in related_lower:
+        return True
+    
+    # Default: simpler/shorter names are often upstream
+    return len(related_name) < len(target_name)
+
+def determine_column_transformations(col_name: str, col_type: str, col_info: dict) -> list:
+    """Determine likely transformations based on column characteristics"""
+    transformations = []
+    
+    # ID columns are often direct copies or lookups
+    if any(keyword in col_name for keyword in ['id', 'key', 'pk', 'fk']):
+        if col_info["upstream_columns"]:
+            transformations = ["direct_copy", "key_lookup"]
+        else:
+            transformations = ["generated_key"]
+    
+    # Aggregation columns
+    elif any(keyword in col_name for keyword in ['total', 'sum', 'count', 'avg', 'max', 'min']):
+        transformations = ["aggregation", "mathematical_operation"]
+        if any(keyword in col_name for keyword in ['total', 'sum']):
+            transformations.append("sum")
+        elif 'count' in col_name:
+            transformations.append("count")
+        elif 'avg' in col_name:
+            transformations.append("average")
+    
+    # Date/time columns
+    elif any(keyword in col_type.lower() for keyword in ['date', 'time', 'timestamp']):
+        transformations = ["date_formatting", "timezone_conversion"]
+    
+    # String columns
+    elif any(keyword in col_type.lower() for keyword in ['string', 'varchar', 'text']):
+        transformations = ["string_formatting", "data_cleaning"]
+        if 'name' in col_name:
+            transformations.append("concatenation")
+    
+    # Numeric columns
+    elif any(keyword in col_type.lower() for keyword in ['int', 'float', 'decimal', 'number']):
+        transformations = ["data_type_conversion", "mathematical_operation"]
+    
+    # Default transformations
+    else:
+        transformations = ["data_transformation"]
+    
+    return transformations
+
+async def add_custom_relationships_to_lineage(lineage: dict, target_asset_id: str, custom_relationships: list, all_assets: list):
+    """Add custom relationships to the lineage graph"""
+    try:
+        # Create asset lookup for quick access
+        asset_lookup = {}
+        for asset in all_assets:
+            asset_id = asset.get('metadata', {}).get('asset_fingerprint')
+            if not asset_id:
+                import base64
+                id_string = f"{asset.get('source', '')}-{asset.get('location', '')}-{asset.get('name', '')}"
+                asset_id = base64.b64encode(id_string.encode()).decode().replace('=', '').replace('+', '').replace('/', '')[:16]
+            asset_lookup[asset_id] = asset
+        
+        for rel in custom_relationships:
+            source_id = rel['source']
+            target_id = rel['target']
+            
+            # Determine if this is upstream or downstream relative to target
+            if target_id == target_asset_id:
+                # This is an upstream relationship (source -> target_asset)
+                if source_id in asset_lookup:
+                    source_asset = asset_lookup[source_id]
+                    
+                    # Check if node already exists
+                    existing_node = next((node for node in lineage["nodes"] if node["id"] == source_id), None)
+                    if not existing_node:
+                        # Add as upstream node
+                        upstream_node = {
+                            "id": source_id,
+                            "name": source_asset.get('name', ''),
+                            "type": source_asset.get('type', ''),
+                            "source": source_asset.get('source', ''),
+                            "level": -1,
+                            "direction": "upstream",
+                            "schema": source_asset.get('schema', []),
+                            "metadata": source_asset.get('metadata', {}),
+                            "custom_relationship": True
+                        }
+                        lineage["nodes"].append(upstream_node)
+                        
+                        # Add to level
+                        if -1 not in lineage["levels"]:
+                            lineage["levels"][-1] = []
+                        lineage["levels"][-1].append(source_id)
+                    
+                    # Add edge
+                    lineage["edges"].append({
+                        "source": source_id,
+                        "target": target_asset_id,
+                        "relationship": rel['relationship'],
+                        "confidence": rel['confidence'],
+                        "custom": True,
+                        "description": rel.get('description', '')
+                    })
+                    
+            elif source_id == target_asset_id:
+                # This is a downstream relationship (target_asset -> target)
+                if target_id in asset_lookup:
+                    target_asset_obj = asset_lookup[target_id]
+                    
+                    # Check if node already exists
+                    existing_node = next((node for node in lineage["nodes"] if node["id"] == target_id), None)
+                    if not existing_node:
+                        # Add as downstream node
+                        downstream_node = {
+                            "id": target_id,
+                            "name": target_asset_obj.get('name', ''),
+                            "type": target_asset_obj.get('type', ''),
+                            "source": target_asset_obj.get('source', ''),
+                            "level": 1,
+                            "direction": "downstream",
+                            "schema": target_asset_obj.get('schema', []),
+                            "metadata": target_asset_obj.get('metadata', {}),
+                            "custom_relationship": True
+                        }
+                        lineage["nodes"].append(downstream_node)
+                        
+                        # Add to level
+                        if 1 not in lineage["levels"]:
+                            lineage["levels"][1] = []
+                        lineage["levels"][1].append(target_id)
+                    
+                    # Add edge
+                    lineage["edges"].append({
+                        "source": target_asset_id,
+                        "target": target_id,
+                        "relationship": rel['relationship'],
+                        "confidence": rel['confidence'],
+                        "custom": True,
+                        "description": rel.get('description', '')
+                    })
+        
+        print(f"✅ Added {len(custom_relationships)} custom relationships to lineage")
+        
+    except Exception as e:
+        print(f"❌ Error adding custom relationships to lineage: {e}")
+
 # Asset Management Endpoints
 @app.get("/api/assets")
 async def get_all_assets():
     """Get all discovered assets"""
-    return discovery_engine.get_asset_inventory()
+    try:
+        # Get actual assets from the catalog
+        assets = discovery_engine.asset_catalog.search_assets('', limit=1000)
+        
+        # Group assets by source for the frontend
+        assets_by_source = {}
+        for asset in assets:
+            source = asset.get('source', 'unknown')
+            if source not in assets_by_source:
+                assets_by_source[source] = []
+            assets_by_source[source].append(asset)
+        
+        # Return empty assets if none found
+        if len(assets) == 0:
+            return {
+                "status": "success",
+                "total_assets": 0,
+                "assets": {},
+                "assets_list": []
+            }
+        
+        return {
+            "status": "success",
+            "total_assets": len(assets),
+            "assets": assets_by_source,
+            "assets_list": assets  # Also provide as flat list
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": str(e),
+            "assets": {},
+            "assets_list": []
+        }
 
 @app.post("/api/assets/search")
 async def search_assets(search_request: SearchRequest):
@@ -482,6 +1390,492 @@ async def get_asset_details(asset_name: str):
     if result["status"] == "error":
         raise HTTPException(status_code=404, detail=result["error"])
     return result
+
+@app.get("/api/assets/{asset_name}/profiling")
+async def get_asset_profiling(asset_name: str):
+    """Get data profiling information for a specific asset"""
+    try:
+        # Get the asset details first
+        assets = discovery_engine.asset_catalog.search_assets(asset_name)
+        if not assets:
+            raise HTTPException(status_code=404, detail="Asset not found")
+        
+        asset = assets[0]  # Get the first matching asset
+        
+        # Perform data profiling based on asset type and source
+        profiling_result = await analyze_asset_profiling(asset)
+        
+        return {
+            "status": "success",
+            "asset_name": asset_name,
+            "profiling": profiling_result,
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": str(e),
+            "timestamp": datetime.now().isoformat()
+        }
+
+@app.get("/api/assets/{asset_name}/ai-analysis")
+async def get_asset_ai_analysis(asset_name: str):
+    """Get AI analysis for a specific asset using Gemini"""
+    try:
+        # Get the asset details first
+        assets = discovery_engine.asset_catalog.search_assets(asset_name)
+        if not assets:
+            raise HTTPException(status_code=404, detail="Asset not found")
+        
+        asset = assets[0]  # Get the first matching asset
+        
+        # Perform AI analysis using Gemini
+        analysis_result = await analyze_asset_with_gemini(asset)
+        
+        return {
+            "status": "success",
+            "asset_name": asset_name,
+            "analysis": analysis_result,
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": str(e),
+            "timestamp": datetime.now().isoformat()
+        }
+
+@app.get("/api/assets/{asset_name}/pii-scan")
+async def get_asset_pii_scan(asset_name: str):
+    """Get PII scan results for a specific asset using Gemini"""
+    try:
+        # Get the asset details first
+        assets = discovery_engine.asset_catalog.search_assets(asset_name)
+        if not assets:
+            raise HTTPException(status_code=404, detail="Asset not found")
+        
+        asset = assets[0]  # Get the first matching asset
+        
+        # Perform PII scan using Gemini
+        pii_scan_result = await scan_asset_for_pii_with_gemini(asset)
+        
+        return {
+            "status": "success",
+            "asset_name": asset_name,
+            "scan": pii_scan_result,
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": str(e),
+            "timestamp": datetime.now().isoformat()
+        }
+
+async def analyze_asset_profiling(asset: Dict[str, Any]) -> Dict[str, Any]:
+    """Analyze asset for data profiling including PII detection"""
+    profiling = {
+        "data_types": {},
+        "pii_analysis": {
+            "has_pii": False,
+            "pii_columns": [],
+            "pii_types": []
+        },
+        "statistics": {
+            "total_columns": 0,
+            "nullable_columns": 0,
+            "estimated_rows": 0
+        }
+    }
+    
+    try:
+        # Extract schema information
+        schema = asset.get('schema', {})
+        
+        if isinstance(schema, dict) and 'fields' in schema:
+            # BigQuery style schema
+            fields = schema.get('fields', [])
+            profiling['statistics']['total_columns'] = len(fields)
+            profiling['statistics']['estimated_rows'] = schema.get('num_rows', 0)
+            
+            # Analyze each field
+            for field in fields:
+                field_name = field.get('name', '').lower()
+                field_type = field.get('type', 'unknown')
+                field_mode = field.get('mode', 'NULLABLE')
+                
+                # Count data types
+                if field_type in profiling['data_types']:
+                    profiling['data_types'][field_type] += 1
+                else:
+                    profiling['data_types'][field_type] = 1
+                
+                # Count nullable columns
+                if field_mode == 'NULLABLE':
+                    profiling['statistics']['nullable_columns'] += 1
+                
+                # PII Detection based on column names and types
+                pii_indicators = detect_pii_in_field(field_name, field_type)
+                if pii_indicators:
+                    profiling['pii_analysis']['has_pii'] = True
+                    profiling['pii_analysis']['pii_columns'].append({
+                        'column': field.get('name'),
+                        'type': field_type,
+                        'pii_types': pii_indicators
+                    })
+                    profiling['pii_analysis']['pii_types'].extend(pii_indicators)
+        
+        elif isinstance(schema, dict) and 'columns' in schema:
+            # Generic schema format
+            columns = schema.get('columns', [])
+            profiling['statistics']['total_columns'] = len(columns)
+            
+            for column in columns:
+                if isinstance(column, str):
+                    # Simple column name
+                    pii_indicators = detect_pii_in_field(column.lower(), 'unknown')
+                    if pii_indicators:
+                        profiling['pii_analysis']['has_pii'] = True
+                        profiling['pii_analysis']['pii_columns'].append({
+                            'column': column,
+                            'type': 'unknown',
+                            'pii_types': pii_indicators
+                        })
+                        profiling['pii_analysis']['pii_types'].extend(pii_indicators)
+        
+        # Remove duplicate PII types
+        profiling['pii_analysis']['pii_types'] = list(set(profiling['pii_analysis']['pii_types']))
+        
+        # Calculate percentages for data types
+        total_cols = profiling['statistics']['total_columns']
+        if total_cols > 0:
+            profiling['data_type_distribution'] = {
+                dtype: {
+                    'count': count,
+                    'percentage': round((count / total_cols) * 100, 1)
+                }
+                for dtype, count in profiling['data_types'].items()
+            }
+        
+    except Exception as e:
+        profiling['error'] = f"Profiling analysis failed: {str(e)}"
+    
+    return profiling
+
+def detect_pii_in_field(field_name: str, field_type: str) -> List[str]:
+    """Detect potential PII in a field based on name and type"""
+    pii_indicators = []
+    
+    # Email detection
+    if any(keyword in field_name for keyword in ['email', 'e_mail', 'mail']):
+        pii_indicators.append('Email Address')
+    
+    # Phone number detection
+    if any(keyword in field_name for keyword in ['phone', 'mobile', 'tel', 'contact']):
+        pii_indicators.append('Phone Number')
+    
+    # Name detection
+    if any(keyword in field_name for keyword in ['name', 'first_name', 'last_name', 'full_name', 'firstname', 'lastname']):
+        pii_indicators.append('Personal Name')
+    
+    # Address detection
+    if any(keyword in field_name for keyword in ['address', 'street', 'city', 'zip', 'postal', 'location']):
+        pii_indicators.append('Address')
+    
+    # ID detection
+    if any(keyword in field_name for keyword in ['ssn', 'social_security', 'passport', 'license', 'id_number']):
+        pii_indicators.append('Government ID')
+    
+    # Financial detection
+    if any(keyword in field_name for keyword in ['credit_card', 'account_number', 'bank', 'iban', 'routing']):
+        pii_indicators.append('Financial Data')
+    
+    # Date of birth detection
+    if any(keyword in field_name for keyword in ['birth', 'dob', 'birthday', 'born']):
+        pii_indicators.append('Date of Birth')
+    
+    # IP address detection
+    if any(keyword in field_name for keyword in ['ip_address', 'ip', 'client_ip']):
+        pii_indicators.append('IP Address')
+    
+    # User ID detection
+    if any(keyword in field_name for keyword in ['user_id', 'customer_id', 'client_id']):
+        pii_indicators.append('User Identifier')
+    
+    return pii_indicators
+
+# Gemini AI Configuration
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent"
+
+async def call_gemini_api(prompt: str) -> Dict[str, Any]:
+    """Call Gemini API with the given prompt"""
+    if not GEMINI_API_KEY:
+        return {"success": False, "error": "GEMINI_API_KEY environment variable not set"}
+    
+    headers = {
+        "Content-Type": "application/json",
+    }
+    
+    payload = {
+        "contents": [{
+            "parts": [{
+                "text": prompt
+            }]
+        }]
+    }
+    
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                f"{GEMINI_API_URL}?key={GEMINI_API_KEY}",
+                headers=headers,
+                json=payload
+            ) as response:
+                if response.status == 200:
+                    result = await response.json()
+                    if "candidates" in result and len(result["candidates"]) > 0:
+                        content = result["candidates"][0]["content"]["parts"][0]["text"]
+                        return {"success": True, "content": content}
+                    else:
+                        return {"success": False, "error": "No response content"}
+                else:
+                    error_text = await response.text()
+                    return {"success": False, "error": f"API error: {response.status} - {error_text}"}
+    except Exception as e:
+        return {"success": False, "error": f"Request failed: {str(e)}"}
+
+async def analyze_asset_with_gemini(asset: Dict[str, Any]) -> Dict[str, Any]:
+    """Analyze asset using Gemini AI"""
+    try:
+        # Prepare asset information for analysis
+        asset_info = {
+            "name": asset.get("name", "Unknown"),
+            "type": asset.get("type", "Unknown"),
+            "source": asset.get("source", "Unknown"),
+            "location": asset.get("location", "Unknown"),
+            "size": asset.get("size", 0),
+            "schema": asset.get("schema", {}),
+            "metadata": asset.get("metadata", {})
+        }
+        
+        # Create comprehensive prompt for AI analysis
+        prompt = f"""
+        Analyze this data asset and provide comprehensive insights:
+        
+        Asset Details:
+        - Name: {asset_info['name']}
+        - Type: {asset_info['type']}
+        - Source: {asset_info['source']}
+        - Location: {asset_info['location']}
+        - Size: {asset_info['size']} bytes
+        - Schema: {json.dumps(asset_info['schema'], indent=2) if asset_info['schema'] else 'Not available'}
+        - Metadata: {json.dumps(asset_info['metadata'], indent=2) if asset_info['metadata'] else 'Not available'}
+        
+        Please provide a detailed analysis in the following JSON format:
+        {{
+            "summary": "Brief summary of the data asset and its purpose",
+            "insights": ["Key insight 1", "Key insight 2", "Key insight 3"],
+            "quality_score": 85,
+            "quality_notes": "Assessment of data quality",
+            "issues": ["Potential issue 1", "Potential issue 2"],
+            "recommendations": "Specific recommendations for this asset"
+        }}
+        
+        Focus on:
+        1. Data structure and organization
+        2. Potential use cases and business value
+        3. Data quality assessment
+        4. Security considerations
+        5. Performance implications
+        6. Maintenance recommendations
+        
+        Respond only with the JSON object, no additional text.
+        """
+        
+        # Call Gemini API
+        gemini_response = await call_gemini_api(prompt)
+        
+        if gemini_response["success"]:
+            try:
+                # Parse the JSON response
+                analysis_text = gemini_response["content"].strip()
+                # Remove any markdown code blocks if present
+                if analysis_text.startswith("```json"):
+                    analysis_text = analysis_text[7:]
+                if analysis_text.endswith("```"):
+                    analysis_text = analysis_text[:-3]
+                
+                analysis = json.loads(analysis_text.strip())
+                
+                # Validate and set defaults
+                return {
+                    "summary": analysis.get("summary", "AI analysis completed"),
+                    "insights": analysis.get("insights", ["Analysis completed successfully"]),
+                    "quality_score": min(100, max(0, analysis.get("quality_score", 75))),
+                    "quality_notes": analysis.get("quality_notes", "Quality assessment completed"),
+                    "issues": analysis.get("issues", []),
+                    "recommendations": analysis.get("recommendations", "No specific recommendations available")
+                }
+                
+            except json.JSONDecodeError:
+                # Fallback if JSON parsing fails
+                return {
+                    "summary": "AI analysis completed but response format was invalid",
+                    "insights": ["Analysis response received but could not be parsed"],
+                    "quality_score": 50,
+                    "quality_notes": "Could not assess quality due to parsing error",
+                    "issues": ["Response parsing failed"],
+                    "recommendations": "Please try again or contact support"
+                }
+        else:
+            return {
+                "summary": "AI analysis failed",
+                "insights": ["Unable to complete analysis"],
+                "quality_score": 0,
+                "quality_notes": "Analysis could not be completed",
+                "issues": [f"AI service error: {gemini_response['error']}"],
+                "recommendations": "Please try again later"
+            }
+            
+    except Exception as e:
+        return {
+            "summary": "Analysis failed due to system error",
+            "insights": ["System error occurred during analysis"],
+            "quality_score": 0,
+            "quality_notes": "Could not complete analysis",
+            "issues": [f"System error: {str(e)}"],
+            "recommendations": "Please contact support"
+        }
+
+async def scan_asset_for_pii_with_gemini(asset: Dict[str, Any]) -> Dict[str, Any]:
+    """Scan asset for PII using Gemini AI"""
+    try:
+        # Prepare asset information for PII scanning
+        asset_info = {
+            "name": asset.get("name", "Unknown"),
+            "type": asset.get("type", "Unknown"),
+            "schema": asset.get("schema", {}),
+            "metadata": asset.get("metadata", {})
+        }
+        
+        # Extract field information for analysis
+        fields_info = []
+        schema = asset_info.get("schema", {})
+        if isinstance(schema, dict) and "fields" in schema:
+            fields_info = [
+                {
+                    "name": field.get("name", ""),
+                    "type": field.get("type", ""),
+                    "mode": field.get("mode", ""),
+                    "description": field.get("description", "")
+                }
+                for field in schema.get("fields", [])
+            ]
+        
+        # Create comprehensive prompt for PII scanning
+        prompt = f"""
+        Analyze this data asset for personally identifiable information (PII) and sensitive data:
+        
+        Asset Details:
+        - Name: {asset_info['name']}
+        - Type: {asset_info['type']}
+        - Fields: {json.dumps(fields_info, indent=2) if fields_info else 'No field information available'}
+        
+        Please provide a detailed PII scan in the following JSON format:
+        {{
+            "pii_fields_count": 3,
+            "sensitive_fields_count": 2,
+            "total_fields_scanned": 10,
+            "risk_level": "HIGH",
+            "pii_fields": [
+                {{
+                    "field_name": "email",
+                    "pii_type": "Email Address",
+                    "confidence": 95,
+                    "risk_level": "HIGH"
+                }}
+            ],
+            "sensitive_fields": [
+                {{
+                    "field_name": "user_id",
+                    "sensitivity_type": "Identifier",
+                    "reason": "Could be used to identify individuals"
+                }}
+            ],
+            "compliance_notes": "GDPR and CCPA considerations apply"
+        }}
+        
+        Focus on identifying:
+        1. Direct PII (names, emails, phone numbers, addresses, SSN, etc.)
+        2. Indirect PII (user IDs, device IDs, IP addresses, etc.)
+        3. Sensitive data (financial, health, biometric, etc.)
+        4. Compliance implications (GDPR, CCPA, HIPAA, etc.)
+        
+        Risk levels: LOW, MEDIUM, HIGH
+        Confidence: 0-100 percentage
+        
+        Respond only with the JSON object, no additional text.
+        """
+        
+        # Call Gemini API
+        gemini_response = await call_gemini_api(prompt)
+        
+        if gemini_response["success"]:
+            try:
+                # Parse the JSON response
+                scan_text = gemini_response["content"].strip()
+                # Remove any markdown code blocks if present
+                if scan_text.startswith("```json"):
+                    scan_text = scan_text[7:]
+                if scan_text.endswith("```"):
+                    scan_text = scan_text[:-3]
+                
+                scan = json.loads(scan_text.strip())
+                
+                # Validate and set defaults
+                return {
+                    "pii_fields_count": scan.get("pii_fields_count", 0),
+                    "sensitive_fields_count": scan.get("sensitive_fields_count", 0),
+                    "total_fields_scanned": scan.get("total_fields_scanned", len(fields_info)),
+                    "risk_level": scan.get("risk_level", "LOW"),
+                    "pii_fields": scan.get("pii_fields", []),
+                    "sensitive_fields": scan.get("sensitive_fields", []),
+                    "compliance_notes": scan.get("compliance_notes", "No specific compliance issues identified")
+                }
+                
+            except json.JSONDecodeError:
+                # Fallback if JSON parsing fails
+                return {
+                    "pii_fields_count": 0,
+                    "sensitive_fields_count": 0,
+                    "total_fields_scanned": len(fields_info),
+                    "risk_level": "UNKNOWN",
+                    "pii_fields": [],
+                    "sensitive_fields": [],
+                    "compliance_notes": "PII scan completed but response format was invalid"
+                }
+        else:
+            return {
+                "pii_fields_count": 0,
+                "sensitive_fields_count": 0,
+                "total_fields_scanned": len(fields_info),
+                "risk_level": "UNKNOWN",
+                "pii_fields": [],
+                "sensitive_fields": [],
+                "compliance_notes": f"PII scan failed: {gemini_response['error']}"
+            }
+            
+    except Exception as e:
+        return {
+            "pii_fields_count": 0,
+            "sensitive_fields_count": 0,
+            "total_fields_scanned": 0,
+            "risk_level": "UNKNOWN",
+            "pii_fields": [],
+            "sensitive_fields": [],
+            "compliance_notes": f"PII scan failed due to system error: {str(e)}"
+        }
 
 # Monitoring Endpoints
 @app.post("/api/monitoring/start")
@@ -603,9 +1997,9 @@ if __name__ == "__main__":
     os.makedirs("ui/static", exist_ok=True)
     
     print("🚀 Starting Data Discovery Web API...")
-    print("📊 Dashboard: http://localhost:8000")
-    print("📚 API Docs: http://localhost:8000/docs")
-    print("🔧 Interactive API: http://localhost:8000/redoc")
+    print("📊 Dashboard: http://0.0.0.0:8000")
+    print("📚 API Docs: http://0.0.0.0:8000/docs")
+    print("🔧 Interactive API: http://0.0.0.0:8000/redoc")
     
     uvicorn.run(
         "web_api:app",
