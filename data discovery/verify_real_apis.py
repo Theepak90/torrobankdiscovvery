@@ -86,7 +86,6 @@ def check_file_for_real_apis(file_path: str) -> dict:
         real_api_count = sum(len(re.findall(pattern, content)) for pattern in real_api_patterns)
         mock_count = sum(len(re.findall(pattern, content, re.IGNORECASE)) for pattern in mock_patterns)
         
-        # Check for actual API calls
         api_call_patterns = [
             r'client\.list_',
             r'client\.get_',
@@ -117,8 +116,6 @@ def check_file_for_real_apis(file_path: str) -> dict:
 def main():
     """Main verification function"""
     
-    print("🔍 Verifying Real API Usage in Data Discovery Connectors")
-    print("=" * 60)
     
     connectors_dir = Path("connectors")
     results = {}
@@ -127,21 +124,15 @@ def main():
         if connector_file.name == "__init__.py" or connector_file.name == "base_connector.py":
             continue
             
-        print(f"\n📁 Checking {connector_file.name}...")
         
         file_results = check_file_for_real_apis(str(connector_file))
         
         if 'error' in file_results:
-            print(f"❌ Error reading file: {file_results['error']}")
             results[connector_file.name] = {'status': 'error', 'message': file_results['error']}
         else:
             uses_real_apis = file_results['uses_real_apis']
             status = "✅ Real APIs" if uses_real_apis else "⚠️  Mock/Placeholder"
             
-            print(f"{status}")
-            print(f"   Real API patterns: {file_results['real_api_count']}")
-            print(f"   API calls: {file_results['api_call_count']}")
-            print(f"   Mock patterns: {file_results['mock_count']}")
             
             results[connector_file.name] = {
                 'status': 'real_api' if uses_real_apis else 'mock',
@@ -150,46 +141,27 @@ def main():
                 'mock_count': file_results['mock_count']
             }
     
-    print("\n" + "=" * 60)
-    print("📊 SUMMARY")
-    print("=" * 60)
     
     total_files = len(results)
     real_api_files = sum(1 for r in results.values() if r.get('status') == 'real_api')
     mock_files = sum(1 for r in results.values() if r.get('status') == 'mock')
     error_files = sum(1 for r in results.values() if r.get('status') == 'error')
     
-    print(f"Total connector files: {total_files}")
-    print(f"✅ Using real APIs: {real_api_files}")
-    print(f"⚠️  Using mock/placeholder: {mock_files}")
-    print(f"❌ Errors: {error_files}")
     
     if real_api_files > 0:
-        print(f"\nReal API usage: {(real_api_files / total_files * 100):.1f}%")
     
-    print("\n📋 DETAILED RESULTS:")
-    print("-" * 40)
     
     for filename, result in results.items():
         if result['status'] == 'real_api':
-            print(f"✅ {filename}: Real APIs detected")
         elif result['status'] == 'mock':
-            print(f"⚠️  {filename}: Mock/placeholder patterns found")
         else:
-            print(f"❌ {filename}: {result['message']}")
     
-    print("\n" + "=" * 60)
     
     if real_api_files == total_files:
-        print("🎉 ALL CONNECTORS ARE USING REAL APIS!")
     elif real_api_files > total_files * 0.8:
-        print("✅ Most connectors are using real APIs. Excellent!")
     elif real_api_files > total_files * 0.5:
-        print("✅ Majority of connectors are using real APIs. Good progress!")
     else:
-        print("⚠️  Some connectors may need updates to use real APIs.")
     
-    print("=" * 60)
 
 if __name__ == "__main__":
     main()

@@ -8,7 +8,6 @@ import logging
 
 from .base_connector import BaseConnector
 
-# Import streaming libraries with fallbacks
 try:
     from kafka import KafkaConsumer, KafkaAdminClient
     from kafka.admin import ConfigResource, ConfigResourceType
@@ -42,7 +41,6 @@ class StreamingConnector(BaseConnector):
     Connector for discovering data assets in streaming platforms
     """
     
-    # Metadata for dynamic discovery
     connector_type = "streaming"
     connector_name = "Streaming Platforms"
     description = "Discover streaming data assets from Kafka, Pulsar, RabbitMQ, Kinesis, Event Hub, Pub/Sub, and NATS"
@@ -146,7 +144,6 @@ class StreamingConnector(BaseConnector):
                 authentication=pulsar.AuthenticationToken(config.get('token')) if config.get('token') else None
             )
             
-            # Try to discover topics using admin API
             try:
                 from pulsar import Client, AuthenticationToken
                 admin_client = pulsar.Admin(
@@ -179,7 +176,6 @@ class StreamingConnector(BaseConnector):
                         assets.append(asset)
                     except Exception as e:
                         self.logger.warning(f"Error getting stats for topic {topic}: {e}")
-                        # Add basic topic info without stats
                         asset = {
                             'name': topic.split('/')[-1],
                             'type': 'pulsar_topic',
@@ -244,7 +240,6 @@ class StreamingConnector(BaseConnector):
             
             channel = connection.channel()
             
-            # Try to use management API first
             try:
                 import requests
                 from requests.auth import HTTPBasicAuth
@@ -665,9 +660,7 @@ class StreamingConnector(BaseConnector):
                     
                     server_info = nc.server_info
                     
-                    # Get subject information (this requires NATS monitoring)
                     try:
-                        # Try to get subject statistics if monitoring is enabled
                         subjects = config.get('subjects', [])
                         
                         for subject in subjects:

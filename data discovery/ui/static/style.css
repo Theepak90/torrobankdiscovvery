@@ -464,7 +464,6 @@ body {
 .accordion-button:focus {
     box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
 }
-#discoveryChart {
     max-height: 300px;
 }
 .loading-overlay {
@@ -910,7 +909,6 @@ body {
     padding: 0.375rem 0.5rem;
     border-radius: var(--border-radius-sm);
 }
-#user-connections-section {
     background: rgba(255, 255, 255, 0.5);
     border-radius: var(--border-radius);
     padding: 1.5rem;
@@ -918,7 +916,6 @@ body {
     border: 1px solid var(--gray-100);
 }
 
-#user-connections-section h5 {
     color: var(--gray-800);
     font-weight: 600;
 }
@@ -1380,19 +1377,16 @@ svg .lineage-node {
         filter: brightness(1.1) drop-shadow(0 0 4px rgba(23, 162, 184, 0.4));
     }
 }
-#relationship-form {
     background: #f8f9fa;
     border-radius: 8px;
     padding: 20px;
     border: 1px solid #dee2e6;
 }
 
-#relationship-form .form-label {
     font-weight: 600;
     color: #495057;
 }
 
-#edit-mode-instructions .alert {
     border-left: 4px solid #17a2b8;
 }
 .timeline {
@@ -1604,7 +1598,6 @@ svg .lineage-node {
     color: #666;
     margin-left: 5px;
 }
-#asset-search:focus + .search-recommendations {
     display: block;
 }
 

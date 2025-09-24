@@ -23,12 +23,10 @@ class DynamicDataDiscoveryEngine:
     
     def __init__(self):
         """Initialize the dynamic data discovery engine"""
-        # Initialize components without config dependency
         self.connector_registry = ConnectorRegistry()
         self.metadata_extractor = MetadataExtractor({})
         self.asset_catalog = AssetCatalog()
         
-        # Initialize with empty connectors - all managed through UI
         self.connectors = {}
         
         self.logger = setup_logger({})
@@ -38,12 +36,10 @@ class DynamicDataDiscoveryEngine:
         
     def _initialize_connectors_dynamically(self) -> Dict:
         """Initialize connectors dynamically - all managed through UI"""
-        # Start with empty connectors - all will be added through UI
         return {}
     
     def get_available_connectors(self) -> Dict[str, Any]:
         """Get all available connectors with their metadata"""
-        # (ConnectorRegistry auto-discovers on initialization)
         available = {}
         
         for connector_type in self.connector_registry.get_available_connectors():
@@ -131,7 +127,6 @@ class DynamicDataDiscoveryEngine:
         """Get status of all connectors"""
         status = {}
         
-        # Get all available connectors from registry
         all_connectors = self.connector_registry.connectors
         
         for connector_type in all_connectors.keys():
@@ -184,7 +179,6 @@ class DynamicDataDiscoveryEngine:
     def reload_connectors(self) -> None:
         """Reload all connectors - in UI mode, this just clears and rediscoveres"""
         self.logger.info("Reloading connectors...")
-        # In UI mode, we don't reload from config - just rediscover available connectors
         self.connector_registry.discover_connectors()
         self.logger.info(f"Rediscovered {len(self.connector_registry.connectors)} available connector types")
     
@@ -202,11 +196,9 @@ class DynamicDataDiscoveryEngine:
             "supported_services": connector_info.get("services", [])
         }
         
-        # Add default values for required fields
         for field in connector_info.get("required_config", []):
             template[field] = ""
         
-        # Add default values for optional fields
         for field in connector_info.get("optional_config", []):
             template[field] = ""
         
@@ -263,7 +255,6 @@ class DynamicDataDiscoveryEngine:
     def get_asset_details(self, asset_name: str) -> Dict[str, Any]:
         """Get asset details"""
         try:
-            # Search for asset by name
             assets = self.asset_catalog.search_assets(asset_name)
             if assets:
                 return {

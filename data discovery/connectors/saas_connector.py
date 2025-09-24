@@ -9,7 +9,6 @@ import requests
 
 from .base_connector import BaseConnector
 
-# Import SaaS libraries with fallbacks
 try:
     from simple_salesforce import Salesforce
 except ImportError:
@@ -34,7 +33,6 @@ class SaaSConnector(BaseConnector):
     Connector for discovering data assets in various SaaS platforms
     """
     
-    # Metadata for dynamic discovery
     connector_type = "saas_platforms"
     connector_name = "SaaS Platforms"
     description = "Discover data assets from SaaS platforms including Salesforce, ServiceNow, Slack, Jira, HubSpot, Zendesk, Google Analytics, Workday, and Tableau"
@@ -339,7 +337,6 @@ class SaaSConnector(BaseConnector):
             accounts = admin_client.list_accounts(request=request)
             
             for account in accounts:
-                # List properties for each account
                 properties_request = ListPropertiesRequest(parent=account.name)
                 properties = admin_client.list_properties(request=properties_request)
                 
@@ -468,7 +465,6 @@ class SaaSConnector(BaseConnector):
             
             for obj_type in workday_objects:
                 try:
-                    # Try to get object metadata
                     response = requests.get(
                         f"{base_url}/{obj_type}",
                         auth=auth,
@@ -514,7 +510,6 @@ class SaaSConnector(BaseConnector):
         assets = []
         
         try:
-            # Placeholder for ADP discovery logic
             adp_objects = [
                 'workers', 'payroll', 'time_cards', 'benefits',
                 'positions', 'organizations'
@@ -545,7 +540,6 @@ class SaaSConnector(BaseConnector):
         assets = []
         
         try:
-            # Placeholder for QuickBooks discovery logic
             qb_objects = [
                 'customers', 'vendors', 'items', 'accounts',
                 'invoices', 'bills', 'payments', 'employees'
@@ -711,7 +705,6 @@ class SaaSConnector(BaseConnector):
                 'Content-Type': 'application/json'
             }
             
-            # Discover different Tableau objects
             tableau_objects = [
                 ('workbooks', 'workbook'),
                 ('datasources', 'datasource'),
@@ -829,7 +822,6 @@ class SaaSConnector(BaseConnector):
                                 security_token=saas_config.get('security_token'),
                                 domain=saas_config.get('domain', 'login')
                             )
-                            # Test with a simple query
                             sf.query("SELECT Id FROM User LIMIT 1")
                             self.logger.info("Salesforce connection test successful")
                             connection_tested = True
@@ -853,7 +845,6 @@ class SaaSConnector(BaseConnector):
                     elif platform_type == 'slack':
                         if WebClient:
                             client = WebClient(token=saas_config.get('bot_token'))
-                            # Test with auth.test
                             response = client.auth_test()
                             if response["ok"]:
                                 self.logger.info("Slack connection test successful")
@@ -874,7 +865,6 @@ class SaaSConnector(BaseConnector):
                             self.logger.warning("Jira library not available")
                     
                     elif platform_type in ['hubspot', 'zendesk']:
-                        # Test with HTTP request
                         api_key = saas_config.get('api_key')
                         if platform_type == 'hubspot':
                             url = f"https://api.hubapi.com/contacts/v1/lists/all/contacts/all?hapikey={api_key}&count=1"

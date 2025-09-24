@@ -17,7 +17,6 @@ class FileSystemConnector(BaseConnector):
     Connector for discovering data assets in file systems
     """
     
-    # Metadata for dynamic discovery
     connector_type = "file_system"
     connector_name = "File System"
     description = "Discover data assets in local and network file systems"
@@ -66,7 +65,6 @@ class FileSystemConnector(BaseConnector):
                         if item.stat().st_size > self.max_file_size:
                             continue
                         
-                        # Check if file extension is in our target list
                         if self.file_extensions and item.suffix.lower() not in self.file_extensions:
                             continue
                         
@@ -109,7 +107,6 @@ class FileSystemConnector(BaseConnector):
                 }
             }
             
-            # Try to extract additional metadata based on file type
             self._enrich_file_metadata(asset, file_path)
             
             return asset
@@ -196,7 +193,6 @@ class FileSystemConnector(BaseConnector):
                 'data_types': df.dtypes.astype(str).to_dict()
             })
             
-            # Try to get full row count (for smaller files)
             if asset['size'] < 50 * 1024 * 1024:  # 50MB limit
                 full_df = pd.read_csv(file_path)
                 asset['metadata']['row_count'] = len(full_df)

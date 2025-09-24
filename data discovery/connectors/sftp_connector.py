@@ -47,7 +47,6 @@ class SFTPConnector(BaseConnector):
             self.ssh_client = paramiko.SSHClient()
             self.ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
             
-            # Connect with password or key
             if self.private_key_path and os.path.exists(self.private_key_path):
                 private_key = paramiko.RSAKey.from_private_key_file(self.private_key_path)
                 self.ssh_client.connect(
@@ -123,7 +122,6 @@ class SFTPConnector(BaseConnector):
                 item_path = f"{directory.rstrip('/')}/{item.filename}"
                 
                 try:
-                    # Check if it's a file
                     if stat.S_ISREG(item.st_mode):
                         if item.st_size > self.max_file_size:
                             continue
@@ -221,7 +219,6 @@ class SFTPConnector(BaseConnector):
             if not self._initialize_connection():
                 return False
             
-            # Test by trying to list the root directory
             self.sftp_client.listdir('/')
             
             self.logger.info("SFTP connection test successful")
@@ -261,7 +258,6 @@ class SFTPConnector(BaseConnector):
             if not self._initialize_connection():
                 return {}
             
-            # Get server information
             stdin, stdout, stderr = self.ssh_client.exec_command('uname -a')
             server_info = stdout.read().decode().strip()
             

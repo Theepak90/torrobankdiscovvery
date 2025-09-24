@@ -14,7 +14,6 @@ class PostgreSQLConnector(BaseConnector):
     Connector for discovering data assets in PostgreSQL databases
     """
     
-    # Metadata for dynamic discovery
     connector_type = "postgresql"
     connector_name = "PostgreSQL Database"
     description = "Discover data assets from PostgreSQL database including tables, views, and schemas"
@@ -78,7 +77,6 @@ class PostgreSQLConnector(BaseConnector):
     def _create_table_asset(self, conn, schema_name: str, table_name: str, object_type: str) -> Optional[Dict[str, Any]]:
         """Create asset for PostgreSQL table/view"""
         try:
-            # Get column information
             columns_query = text("""
                 SELECT 
                     column_name, 
@@ -106,7 +104,6 @@ class PostgreSQLConnector(BaseConnector):
                     'scale': col_row[6]
                 })
             
-            # Get row count (for tables only)
             row_count = 0
             if object_type == 'table':
                 try:

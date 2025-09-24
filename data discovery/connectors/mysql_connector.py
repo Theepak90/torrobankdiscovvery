@@ -14,7 +14,6 @@ class MySQLConnector(BaseConnector):
     Connector for discovering data assets in MySQL databases
     """
     
-    # Metadata for dynamic discovery
     connector_type = "mysql"
     connector_name = "MySQL Database"
     description = "Discover data assets from MySQL database including tables, views, and schemas"
@@ -60,7 +59,6 @@ class MySQLConnector(BaseConnector):
                     table_name, table_type, table_rows, data_length, create_time, update_time = row
                     object_type = 'view' if table_type == 'VIEW' else 'table'
                     
-                    # Get column information
                     columns_query = text("""
                         SELECT 
                             COLUMN_NAME, 

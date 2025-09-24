@@ -12,7 +12,6 @@ class TrinoConnector(BaseConnector):
     Connector for discovering data assets in Trino clusters
     """
     
-    # Metadata for dynamic discovery
     connector_type = "trino"
     connector_name = "Trino"
     description = "Discover data assets from Trino cluster including catalogs, schemas, and tables"
@@ -58,7 +57,6 @@ class TrinoConnector(BaseConnector):
         assets = []
         
         try:
-            # Query Trino for catalogs
             query = "SELECT catalog_name FROM information_schema.schemata"
             result = self._execute_query(query)
             
@@ -96,7 +94,6 @@ class TrinoConnector(BaseConnector):
         assets = []
         
         try:
-            # Query Trino for schemas
             query = "SELECT catalog_name, schema_name FROM information_schema.schemata"
             result = self._execute_query(query)
             
@@ -135,7 +132,6 @@ class TrinoConnector(BaseConnector):
         assets = []
         
         try:
-            # Query Trino for tables and views
             query = """
                 SELECT 
                     table_catalog,
@@ -150,7 +146,6 @@ class TrinoConnector(BaseConnector):
             for row in result:
                 catalog_name, schema_name, table_name, table_type = row
                 
-                # Get column information
                 columns = self._get_table_columns(catalog_name, schema_name, table_name)
                 
                 asset = {
@@ -218,7 +213,6 @@ class TrinoConnector(BaseConnector):
     def _execute_query(self, query: str, params: tuple = None) -> List[tuple]:
         """Execute a query against Trino"""
         try:
-            # For Trino, we'll use a simple HTTP-based approach
             url = f"{self.base_url}/v1/statement"
             
             payload = {
@@ -243,10 +237,8 @@ class TrinoConnector(BaseConnector):
             )
             response.raise_for_status()
             
-            # Parse the response (simplified)
             result_data = response.json()
             
-            # This is a simplified implementation
             return []
             
         except Exception as e:
@@ -256,7 +248,6 @@ class TrinoConnector(BaseConnector):
     def test_connection(self) -> bool:
         """Test Trino connection"""
         try:
-            # Test with a simple query
             query = "SELECT 1"
             result = self._execute_query(query)
             self.logger.info("Trino connection test successful")

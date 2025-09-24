@@ -22,7 +22,6 @@ class GCPConnector(BaseConnector):
     Real implementation with actual Google Cloud API calls
     """
     
-    # Metadata for dynamic discovery
     connector_type = "gcp"
     connector_name = "Google Cloud Platform"
     description = "Discover data assets from GCP services including BigQuery, Cloud Storage, Cloud SQL, and Dataflow"
@@ -50,7 +49,6 @@ class GCPConnector(BaseConnector):
         """Initialize GCP credentials from service account JSON or default credentials"""
         try:
             if self.service_account_json:
-                # Use service account JSON from config
                 if isinstance(self.service_account_json, str):
                     service_account_info = json.loads(self.service_account_json)
                 else:
@@ -68,7 +66,6 @@ class GCPConnector(BaseConnector):
                 self.logger.info(f"GCP credentials initialized from file: {self.credentials_path}")
                 
             else:
-                # Try default credentials (ADC - Application Default Credentials)
                 try:
                     self.credentials, _ = default()
                     self.logger.info("GCP credentials initialized using Application Default Credentials")
@@ -170,7 +167,6 @@ class GCPConnector(BaseConnector):
                             
                             table_type = 'bigquery_view' if table_obj.table_type == 'VIEW' else 'bigquery_table'
                             
-                            # Get schema information
                             schema_info = []
                             if table_obj.schema:
                                 for field in table_obj.schema:
@@ -256,12 +252,10 @@ class GCPConnector(BaseConnector):
                     }
                 })
                 
-                # List objects in the bucket (limit to first 1000 for performance)
                 try:
                     blobs = list(self.storage_client.list_blobs(bucket_name, max_results=1000))
                     
                     for blob in blobs:
-                        # Only include significant files (skip small temp files)
                         if blob.size and blob.size > 1024:  # > 1KB
                             file_extension = os.path.splitext(blob.name)[1].lower()
                             
@@ -309,7 +303,6 @@ class GCPConnector(BaseConnector):
             
             if 'bigquery' in self.services and self.bigquery_client:
                 try:
-                    # Try to list datasets (this will fail if credentials are invalid)
                     list(self.bigquery_client.list_datasets(max_results=1))
                     self.logger.info("BigQuery connection test successful")
                     connection_successful = True
@@ -318,14 +311,12 @@ class GCPConnector(BaseConnector):
             
             if 'cloud_storage' in self.services and self.storage_client:
                 try:
-                    # Try to list buckets (this will fail if credentials are invalid)
                     list(self.storage_client.list_buckets(max_results=1))
                     self.logger.info("Cloud Storage connection test successful")
                     connection_successful = True
                 except Exception as e:
                     self.logger.error(f"Cloud Storage connection test failed: {e}")
             
-            # Return True if at least one service connection succeeded
             if connection_successful:
                 self.logger.info("GCP connection test successful - at least one service is accessible")
                 return True
@@ -343,12 +334,10 @@ class GCPConnector(BaseConnector):
             self.logger.error("Project ID is required")
             return False
         
-        # Check if at least one service is specified
         if not self.services:
             self.logger.error("At least one service must be specified")
             return False
         
-        # Validate service account JSON if provided
         if self.service_account_json:
             try:
                 if isinstance(self.service_account_json, str):

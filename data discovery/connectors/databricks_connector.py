@@ -12,7 +12,6 @@ class DatabricksConnector(BaseConnector):
     Connector for discovering data assets in Databricks workspaces
     """
     
-    # Metadata for dynamic discovery
     connector_type = "databricks"
     connector_name = "Databricks"
     description = "Discover data assets from Databricks workspace including tables, notebooks, and jobs"
@@ -201,7 +200,6 @@ class DatabricksConnector(BaseConnector):
             
             table_data = response.json()
             
-            # Extract column information
             columns = []
             for column in table_data.get('columns', []):
                 columns.append({

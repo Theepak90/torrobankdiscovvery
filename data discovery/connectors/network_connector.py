@@ -19,7 +19,6 @@ class NetworkConnector(BaseConnector):
     Connector for discovering data assets in network locations (NAS, SFTP, SMB, FTP)
     """
     
-    # Metadata for dynamic discovery
     connector_type = "network"
     connector_name = "Network Storage"
     description = "Discover data assets from network storage including SFTP, SMB/CIFS, FTP, and NFS"
@@ -77,7 +76,6 @@ class NetworkConnector(BaseConnector):
             ssh_client = paramiko.SSHClient()
             ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
             
-            # Connect with password or key
             if private_key_path:
                 private_key = paramiko.RSAKey.from_private_key_file(private_key_path)
                 ssh_client.connect(hostname, port=port, username=username, pkey=private_key, timeout=self.connection_timeout)
@@ -114,7 +112,6 @@ class NetworkConnector(BaseConnector):
                 item_path = f"{directory.rstrip('/')}/{item.filename}"
                 
                 try:
-                    # Check if it's a file
                     if stat.S_ISREG(item.st_mode):
                         if item.st_size > self.max_file_size:
                             continue
@@ -126,7 +123,6 @@ class NetworkConnector(BaseConnector):
                         if asset:
                             assets.append(asset)
                     
-                    # Recursively scan subdirectories (with depth limit)
                     elif stat.S_ISDIR(item.st_mode) and directory.count('/') < 10:  # Limit recursion depth
                         sub_assets = self._scan_sftp_directory(sftp_client, item_path, hostname, config)
                         assets.extend(sub_assets)
@@ -214,7 +210,6 @@ class NetworkConnector(BaseConnector):
                 try:
                     item_stat = smbclient.stat(item_path)
                     
-                    # Check if it's a file
                     if smbclient.path.isfile(item_path):
                         if item_stat.st_size > self.max_file_size:
                             continue
@@ -226,7 +221,6 @@ class NetworkConnector(BaseConnector):
                         if asset:
                             assets.append(asset)
                     
-                    # Recursively scan subdirectories (with depth limit)
                     elif smbclient.path.isdir(item_path) and directory.count('/') < 10:
                         sub_assets = self._scan_smb_directory(item_path, hostname, share_name, config)
                         assets.extend(sub_assets)
@@ -325,7 +319,6 @@ class NetworkConnector(BaseConnector):
                     if filename in ['.', '..']:
                         continue
                     
-                    # Check if it's a file (not directory)
                     if permissions.startswith('-'):
                         if size > self.max_file_size:
                             continue
@@ -338,7 +331,6 @@ class NetworkConnector(BaseConnector):
                         if asset:
                             assets.append(asset)
                     
-                    # Recursively scan subdirectories (with depth limit)
                     elif permissions.startswith('d') and directory.count('/') < 10:
                         sub_dir = f"{directory.rstrip('/')}/{filename}"
                         sub_assets = self._scan_ftp_directory(ftp, sub_dir, hostname, config)
@@ -348,7 +340,6 @@ class NetworkConnector(BaseConnector):
                     self.logger.warning(f"Error processing FTP item in {directory}: {e}")
                     continue
             
-            # Return to original directory
             ftp.cwd(original_dir)
         
         except Exception as e:
@@ -390,7 +381,6 @@ class NetworkConnector(BaseConnector):
         assets = []
         
         try:
-            # but with network metadata
             mount_point = config.get('mount_point')
             nfs_server = config.get('server')
             nfs_export = config.get('export')
@@ -550,7 +540,6 @@ class NetworkConnector(BaseConnector):
                     domain = source_config.get('domain', '')
                     
                     smbclient.register_session(hostname, username=username, password=password, domain=domain)
-                    # Try to list the root of the share
                     smbclient.listdir(f"//{hostname}/{share_name}")
                     
                 elif source_type == 'ftp':

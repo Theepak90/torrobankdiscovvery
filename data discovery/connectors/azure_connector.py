@@ -14,7 +14,6 @@ class AzureConnector(BaseConnector):
     Connector for discovering data assets in Azure services
     """
     
-    # Metadata for dynamic discovery
     connector_type = "azure"
     connector_name = "Microsoft Azure"
     description = "Discover data assets from Azure services including Blob Storage, SQL Database, Cosmos DB, Synapse, Data Factory, Event Hub, and Service Bus"
@@ -112,7 +111,6 @@ class AzureConnector(BaseConnector):
             blobs = container_client.list_blobs()
             
             for blob in blobs:
-                # Filter for data files
                 if not self._is_data_blob(blob.name):
                     continue
                 
@@ -269,8 +267,6 @@ class AzureConnector(BaseConnector):
             return False
         
         try:
-            # Test with a simple credential check
-            # In a real implementation, you might test access to a specific resource
             token = self.credential.get_token("https://management.azure.com/.default")
             if token:
                 self.logger.info("Azure connection test successful")

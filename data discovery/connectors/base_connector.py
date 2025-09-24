@@ -10,7 +10,6 @@ class BaseConnector(ABC):
     Abstract base class for all data source connectors
     """
     
-    # Metadata for dynamic discovery
     connector_type: str = "base"
     connector_name: str = "Base Connector"
     description: str = "Base connector class"

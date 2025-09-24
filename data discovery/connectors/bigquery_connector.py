@@ -16,7 +16,6 @@ class BigQueryConnector(BaseConnector):
     Dedicated connector for Google BigQuery data warehouse
     """
     
-    # Metadata for dynamic discovery
     connector_type = "bigquery"
     connector_name = "Google BigQuery"
     description = "Dedicated connector for Google BigQuery data warehouse"
@@ -85,7 +84,6 @@ class BigQueryConnector(BaseConnector):
         
         try:
             if self.dataset_id:
-                # Scan specific dataset
                 try:
                     dataset_ref = self.client.dataset(self.dataset_id)
                     dataset = self.client.get_dataset(dataset_ref)
@@ -133,7 +131,6 @@ class BigQueryConnector(BaseConnector):
                         else:
                             table_type = 'bigquery_table'
                         
-                        # Build schema information
                         schema_info = {}
                         if table_ref.schema:
                             schema_info = {

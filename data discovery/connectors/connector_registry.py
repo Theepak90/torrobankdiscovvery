@@ -38,10 +38,8 @@ class ConnectorRegistry:
                 
             module_name = file_path.stem
             try:
-                # Import the module
                 module = importlib.import_module(f"connectors.{module_name}")
                 
-                # Find all classes that inherit from BaseConnector
                 for name, obj in inspect.getmembers(module, inspect.isclass):
                     if (issubclass(obj, BaseConnector) and 
                         obj != BaseConnector and 
@@ -130,5 +128,4 @@ class ConnectorRegistry:
                 categories.setdefault('other', []).append(connector_type)
         
         return categories
-# Global registry instance
 connector_registry = ConnectorRegistry()

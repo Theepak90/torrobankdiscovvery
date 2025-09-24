@@ -73,12 +73,10 @@ class MetadataExtractor:
         """Extract basic metadata"""
         metadata = {
             'discovery_timestamp': datetime.now().isoformat(),
-            'asset_fingerprint': self._generate_asset_fingerprint(asset),
             'data_classification': self._classify_data_type(asset),
             'estimated_value': self._estimate_data_value(asset)
         }
         
-        # File-specific metadata
         if 'file' in asset.get('type', '').lower():
             metadata.update({
                 'file_extension': asset.get('extension', ''),
@@ -101,7 +99,6 @@ class MetadataExtractor:
             if asset.get('schema', {}).get('columns'):
                 quality_metrics['completeness_score'] = 0.8  # Default high score if schema exists
             
-            # Freshness - based on modification date
             if asset.get('modified_date'):
                 days_old = (datetime.now() - asset['modified_date']).days
                 if days_old < 1:
@@ -138,7 +135,6 @@ class MetadataExtractor:
         }
         
         try:
-            # Check column names for sensitive patterns
             columns = asset.get('schema', {}).get('columns', [])
             if isinstance(columns, list):
                 for column in columns:
@@ -149,7 +145,6 @@ class MetadataExtractor:
                             pii_detection['sensitive_columns'].append(column_name)
                             pii_detection['contains_pii'] = True
             
-            # Check asset name and location for sensitive patterns
             asset_text = f"{asset.get('name', '')} {asset.get('location', '')}"
             for pii_type, pattern in self.pii_patterns.items():
                 if re.search(pattern, asset_text, re.IGNORECASE):
@@ -179,7 +174,6 @@ class MetadataExtractor:
         }
         
         try:
-            # Infer domain from asset name and location
             name_location = f"{asset.get('name', '')} {asset.get('location', '')}".lower()
             
             domain_keywords = {
@@ -196,7 +190,6 @@ class MetadataExtractor:
                     business_context['domain'] = domain
                     break
             
-            # Determine business importance based on size and domain
             size = asset.get('size', 0)
             if business_context['domain'] in ['finance', 'hr'] or size > 1000000:  # 1MB+
                 business_context['business_importance'] = 'high'
@@ -221,17 +214,14 @@ class MetadataExtractor:
         }
         
         try:
-            # Determine compression from file extension or metadata
             asset_name = asset.get('name', '').lower()
             if any(ext in asset_name for ext in ['.gz', '.zip', '.bz2', '.lz4']):
                 technical_metadata['compression'] = 'compressed'
             
-            # Check for partitioning hints in path
             location = asset.get('location', '').lower()
             if any(pattern in location for pattern in ['year=', 'month=', 'day=', 'partition']):
                 technical_metadata['partitioning'] = 'partitioned'
             
-            # Database-specific technical metadata
             if 'database' in asset.get('source', ''):
                 technical_metadata.update({
                     'row_count': asset.get('metadata', {}).get('row_count', 0),
@@ -258,20 +248,17 @@ class MetadataExtractor:
             asset_name = asset.get('name', '').lower()
             location = asset.get('location', '').lower()
             
-            # Look for ETL/transformation hints
             etl_patterns = ['etl', 'transform', 'process', 'clean', 'stage', 'raw', 'curated']
             for pattern in etl_patterns:
                 if pattern in asset_name or pattern in location:
                     lineage_hints['transformation_hints'].append(pattern)
             
-            # Infer update frequency from name patterns
             if any(pattern in asset_name for pattern in ['daily', 'hourly', 'weekly', 'monthly']):
                 for pattern in ['daily', 'hourly', 'weekly', 'monthly']:
                     if pattern in asset_name:
                         lineage_hints['update_frequency'] = pattern
                         break
             
-            # Look for backup/archive patterns
             if any(pattern in location for pattern in ['backup', 'archive', 'historical']):
                 lineage_hints['transformation_hints'].append('archived')
             
@@ -280,7 +267,6 @@ class MetadataExtractor:
         
         return {'lineage_hints': lineage_hints}
     
-    def _generate_asset_fingerprint(self, asset: Dict[str, Any]) -> str:
         """Generate a unique fingerprint for the asset"""
         fingerprint_data = f"{asset.get('name', '')}{asset.get('location', '')}{asset.get('size', 0)}"
         return hashlib.md5(fingerprint_data.encode()).hexdigest()
@@ -353,8 +339,6 @@ class MetadataExtractor:
     
     def _has_foreign_keys(self, asset: Dict[str, Any]) -> bool:
         """Check if database table has foreign keys"""
-        # This would need to be enhanced with actual foreign key detection
-        # For now, we'll use heuristics based on column names
         columns = asset.get('schema', {}).get('columns', [])
         if isinstance(columns, list):
             for column in columns:

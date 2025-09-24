@@ -44,14 +44,12 @@ class AssetCatalog:
                 )
             ''')
             
-            # Create indexes for better performance
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_name ON assets(name)')
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_type ON assets(type)')
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_source ON assets(source)')
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_fingerprint ON assets(fingerprint)')
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_active ON assets(is_active)')
             
-            # Create asset_history table for tracking changes
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS asset_history (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -83,10 +81,8 @@ class AssetCatalog:
             True if successful, False otherwise
         """
         try:
-            # Generate fingerprint if not present
             fingerprint = asset.get('metadata', {}).get('asset_fingerprint')
             if not fingerprint:
-                # Generate fingerprint from location and name
                 import hashlib
                 fingerprint_data = f"{asset.get('source', '')}-{asset.get('location', '')}-{asset.get('name', '')}"
                 fingerprint = hashlib.md5(fingerprint_data.encode()).hexdigest()
@@ -98,7 +94,6 @@ class AssetCatalog:
             conn = sqlite3.connect(self.catalog_db_path)
             cursor = conn.cursor()
             
-            # Check if asset already exists
             cursor.execute('SELECT * FROM assets WHERE fingerprint = ?', (fingerprint,))
             existing_asset = cursor.fetchone()
             
@@ -128,10 +123,8 @@ class AssetCatalog:
             True if successful, False otherwise
         """
         try:
-            # Generate fingerprint if not present
             fingerprint = asset.get('metadata', {}).get('asset_fingerprint')
             if not fingerprint:
-                # Generate fingerprint from location and name
                 import hashlib
                 fingerprint_data = f"{asset.get('source', '')}-{asset.get('location', '')}-{asset.get('name', '')}"
                 fingerprint = hashlib.md5(fingerprint_data.encode()).hexdigest()
@@ -143,7 +136,6 @@ class AssetCatalog:
             conn = sqlite3.connect(self.catalog_db_path)
             cursor = conn.cursor()
             
-            # Check if asset already exists
             cursor.execute('SELECT * FROM assets WHERE fingerprint = ?', (fingerprint,))
             existing_asset = cursor.fetchone()
             
@@ -194,7 +186,6 @@ class AssetCatalog:
     
     def _update_existing_asset(self, cursor, asset: Dict[str, Any], fingerprint: str, current_time: str):
         """Update an existing asset in the catalog"""
-        # Get current values for history tracking
         cursor.execute('SELECT metadata_json FROM assets WHERE fingerprint = ?', (fingerprint,))
         old_metadata = cursor.fetchone()[0]
         
@@ -225,7 +216,6 @@ class AssetCatalog:
         
         self.logger.debug(f"Updated existing asset: {asset.get('name')}")
     
-    def get_asset_by_fingerprint(self, fingerprint: str) -> Optional[Dict[str, Any]]:
         """Get an asset by its fingerprint"""
         try:
             conn = sqlite3.connect(self.catalog_db_path)
@@ -470,7 +460,6 @@ class AssetCatalog:
                         writer = csv.DictWriter(f, fieldnames=assets[0].keys())
                         writer.writeheader()
                         for asset in assets:
-                            # Convert complex fields to JSON strings for CSV
                             row = asset.copy()
                             row['schema'] = json.dumps(row['schema'])
                             row['tags'] = json.dumps(row['tags'])
@@ -509,7 +498,6 @@ class AssetCatalog:
     async def add_custom_relationship(self, relationship_data: dict) -> bool:
         """Add a custom lineage relationship"""
         try:
-            # Initialize relationships table if it doesn't exist
             self._initialize_relationships_table()
             
             conn = sqlite3.connect(self.catalog_db_path)
@@ -658,7 +646,6 @@ class AssetCatalog:
                 )
             ''')
             
-            # Create indexes for better performance
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_source_asset ON custom_relationships(source_asset)')
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_target_asset ON custom_relationships(target_asset)')
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_relationship_type ON custom_relationships(relationship_type)')

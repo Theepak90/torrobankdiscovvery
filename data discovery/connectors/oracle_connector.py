@@ -5,7 +5,6 @@ Oracle Connector - Discovers data assets in Oracle databases
 from datetime import datetime
 from typing import List, Dict, Any, Optional
 
-# Oracle imports
 try:
     import cx_Oracle
 except ImportError:
@@ -17,7 +16,6 @@ class OracleConnector(BaseConnector):
     Connector for discovering data assets in Oracle databases
     """
     
-    # Metadata for dynamic discovery
     connector_type = "oracle"
     connector_name = "Oracle Database"
     description = "Discover data assets from Oracle database including tables, views, and schemas"
@@ -73,7 +71,6 @@ class OracleConnector(BaseConnector):
                 for row in cursor:
                     table_name, tablespace, num_rows, blocks, avg_row_len, last_analyzed = row
                     
-                    # Get column information
                     columns_query = """
                         SELECT 
                             column_name,
@@ -138,7 +135,6 @@ class OracleConnector(BaseConnector):
                 for row in cursor:
                     view_name, view_text = row
                     
-                    # Get column information for view
                     columns_query = """
                         SELECT 
                             column_name,

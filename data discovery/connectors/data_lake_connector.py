@@ -9,7 +9,6 @@ from pathlib import Path
 
 from .base_connector import BaseConnector
 
-# Import data lake libraries with fallbacks
 try:
     import pyarrow as pa
     import pyarrow.parquet as pq
@@ -38,7 +37,6 @@ class DataLakeConnector(BaseConnector):
     Connector for discovering data assets in data lakes and modern data formats
     """
     
-    # Metadata for dynamic discovery
     connector_type = "data_lakes"
     connector_name = "Data Lakes"
     description = "Discover data assets from data lakes including Delta Lake, Iceberg, Hudi, Parquet, MinIO, HDFS, and Ceph"
@@ -97,7 +95,6 @@ class DataLakeConnector(BaseConnector):
         try:
             base_path = config['base_path']
             
-            # Scan for Delta tables
             for table_path in config.get('table_paths', []):
                 try:
                     full_path = f"{base_path}/{table_path}"
@@ -256,7 +253,6 @@ class DataLakeConnector(BaseConnector):
         try:
             from pyspark.sql import SparkSession
             
-            # Initialize Spark session for Hudi
             spark = SparkSession.builder \
                 .appName("HudiDiscovery") \
                 .config("spark.serializer", "org.apache.spark.serializer.KryoSerializer") \
@@ -267,13 +263,11 @@ class DataLakeConnector(BaseConnector):
             base_path = config.get('base_path', '')
             table_paths = config.get('table_paths', [])
             
-            # If no specific table paths, scan base path for Hudi tables
             if not table_paths and base_path:
                 from pathlib import Path
                 base_dir = Path(base_path)
                 
                 if base_dir.exists():
-                    # Look for .hoodie directories which indicate Hudi tables
                     for item in base_dir.rglob('.hoodie'):
                         if item.is_dir():
                             table_path = str(item.parent)
@@ -296,7 +290,6 @@ class DataLakeConnector(BaseConnector):
                         ]
                     }
                     
-                    # Get row count (sample for performance)
                     try:
                         row_count = hudi_df.count()
                     except:
@@ -335,7 +328,6 @@ class DataLakeConnector(BaseConnector):
                 base_dir = Path(base_path)
                 
                 if base_dir.exists():
-                    # Look for .hoodie directories
                     for item in base_dir.rglob('.hoodie'):
                         if item.is_dir():
                             table_path = str(item.parent)
@@ -388,7 +380,6 @@ class DataLakeConnector(BaseConnector):
         try:
             base_path = config['base_path']
             
-            # Scan for Parquet files
             if config.get('scan_recursive', True):
                 parquet_files = list(Path(base_path).rglob('*.parquet'))
             else:
@@ -431,7 +422,6 @@ class DataLakeConnector(BaseConnector):
         try:
             base_path = config['base_path']
             
-            # Scan for ORC files
             if config.get('scan_recursive', True):
                 orc_files = list(Path(base_path).rglob('*.orc'))
             else:
@@ -469,7 +459,6 @@ class DataLakeConnector(BaseConnector):
         try:
             base_path = config['base_path']
             
-            # Scan for Avro files
             if config.get('scan_recursive', True):
                 avro_files = list(Path(base_path).rglob('*.avro'))
             else:
@@ -521,7 +510,6 @@ class DataLakeConnector(BaseConnector):
                     for file_name, file_status in file_list:
                         file_path = f"{path.rstrip('/')}/{file_name}"
                         
-                        # Determine if it's a directory or file
                         is_directory = file_status['type'] == 'DIRECTORY'
                         
                         asset = {
@@ -545,7 +533,6 @@ class DataLakeConnector(BaseConnector):
                         }
                         assets.append(asset)
                         
-                        # If it's a directory and we want to scan recursively
                         if is_directory and config.get('recursive', False):
                             try:
                                 sub_assets = self._discover_hdfs_assets({
@@ -562,7 +549,6 @@ class DataLakeConnector(BaseConnector):
             
         except ImportError:
             self.logger.warning("hdfs library not installed. Install with: pip install hdfs")
-            # Try alternative HDFS client
             try:
                 import subprocess
                 import json
@@ -685,7 +671,6 @@ class DataLakeConnector(BaseConnector):
             import boto3
             from botocore.exceptions import ClientError
             
-            # Create S3 client for Ceph
             s3_client = boto3.client(
                 's3',
                 endpoint_url=config['endpoint'],
@@ -746,7 +731,6 @@ class DataLakeConnector(BaseConnector):
                     for obj in objects_response.get('Contents', []):
                         object_key = obj['Key']
                         
-                        # Filter for data files
                         if self._is_data_file(object_key):
                             object_asset = {
                                 'name': object_key.split('/')[-1],
@@ -822,7 +806,6 @@ class DataLakeConnector(BaseConnector):
                                     parquet_file = pq.ParquetFile(path)
                                     schema = parquet_file.schema
                                 else:
-                                    # Directory with parquet files
                                     dataset = ds.dataset(path, format='parquet')
                                     schema = dataset.schema
                                 self.logger.info("Parquet connection test successful")

@@ -19,7 +19,6 @@ import json
 import aiohttp
 from dotenv import load_dotenv
 
-# Load environment variables from .env file
 load_dotenv()
 
 from dynamic_discovery_engine import DynamicDataDiscoveryEngine
@@ -30,7 +29,6 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# Add CORS middleware for frontend integration
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -41,7 +39,6 @@ app.add_middleware(
 
 discovery_engine = DynamicDataDiscoveryEngine()
 
-# Pydantic models for request/response
 class ConnectorConfig(BaseModel):
     enabled: bool
     config: Dict[str, Any]
@@ -54,7 +51,6 @@ class SearchRequest(BaseModel):
 class MonitoringRequest(BaseModel):
     real_time: bool = True
 
-# Serve static files for UI
 app.mount("/static", StaticFiles(directory="ui/static"), name="static")
 
 @app.get("/", response_class=HTMLResponse)
@@ -85,7 +81,6 @@ async def health_check():
         "timestamp": datetime.now().isoformat()
     }
 
-# System Information Endpoints
 @app.get("/api/system/health")
 async def get_system_health():
     """Get system health status"""
@@ -195,7 +190,6 @@ async def get_all_configs():
 async def get_connector_config(connector_type: str):
     """Get configuration for specific connector"""
     try:
-        # Get current config for the connector (from enabled connectors)
         current_config = discovery_engine.connectors.get(connector_type, {}).config if connector_type in discovery_engine.connectors else {}
         
         connector_info = discovery_engine.get_available_connectors().get(connector_type)
@@ -227,12 +221,10 @@ async def update_connector_config(connector_type: str, config: ConnectorConfig):
         }
         
         if config.enabled:
-            # Add connector dynamically if enabled
             success = discovery_engine.add_connector(connector_type, config_dict)
             if not success:
                 raise HTTPException(status_code=400, detail=f"Failed to add connector {connector_type}")
         else:
-            # Remove connector if disabled
             discovery_engine.remove_connector(connector_type)
         
         return {
@@ -260,11 +252,9 @@ async def test_bigquery_direct():
 async def test_connector_connection(connector_type: str):
     """Test connection for specific connector"""
     try:
-        # Check if connector is available
         if connector_type not in discovery_engine.get_available_connectors():
             raise HTTPException(status_code=404, detail=f"Connector type {connector_type} not available")
         
-        # Check if connector is enabled and test it
         if connector_type in discovery_engine.connectors:
             connector = discovery_engine.connectors[connector_type]
             if hasattr(connector, 'test_connection'):
@@ -309,7 +299,6 @@ async def test_connector_connection(connector_type: str):
 async def get_available_connectors():
     """Get list of all available connectors"""
     try:
-        # Get available connectors with metadata
         available_connectors = discovery_engine.get_available_connectors()
         connector_categories = discovery_engine.get_connector_categories()
         
@@ -384,9 +373,7 @@ async def start_full_discovery(background_tasks: BackgroundTasks):
     async def run_discovery():
         try:
             result = await discovery_engine.scan_all_data_sources()
-            print(f"Discovery completed: {result}")
         except Exception as e:
-            print(f"Discovery failed: {e}")
     
     background_tasks.add_task(run_discovery)
     return {
@@ -405,11 +392,8 @@ async def scan_specific_source(source: str, background_tasks: BackgroundTasks):
                 assets = connector.discover_assets()
                 for asset in assets:
                     await discovery_engine.asset_catalog.add_or_update_asset(asset)
-                print(f"Source {source} discovery completed: {len(assets)} assets")
             else:
-                print(f"Source {source} not found")
         except Exception as e:
-            print(f"Source {source} discovery failed: {e}")
     
     background_tasks.add_task(run_source_discovery)
     return {
@@ -424,7 +408,6 @@ async def test_source_discovery(source: str):
     """Test discovery for specific data source and return assets immediately"""
     try:
         if source == 'gcp':
-            # Use the real GCP connector if available
             if source in discovery_engine.connectors:
                 connector = discovery_engine.connectors[source]
                 assets = connector.discover_assets()
@@ -433,7 +416,6 @@ async def test_source_discovery(source: str):
                     for asset in assets:
                         await discovery_engine.asset_catalog.add_or_update_asset(asset)
                 except Exception as catalog_error:
-                    print(f"Failed to update asset catalog: {catalog_error}")
                 
                 return {
                     "status": "success",
@@ -443,7 +425,6 @@ async def test_source_discovery(source: str):
                     "timestamp": datetime.now().isoformat()
                 }
             else:
-                # Return error if GCP connector is not configured
                 return {
                     "status": "error",
                     "source": source,
@@ -460,7 +441,6 @@ async def test_source_discovery(source: str):
                 for asset in assets:
                     await discovery_engine.asset_catalog.add_or_update_asset(asset)
             except Exception as catalog_error:
-                print(f"Failed to update asset catalog: {catalog_error}")
             
             return {
                 "status": "success",
@@ -493,20 +473,16 @@ async def get_discovery_status():
 async def get_lineage_assets():
     """Get assets available for lineage analysis - dynamically synced with main assets"""
     try:
-        # Get the most current assets from the catalog
         assets = discovery_engine.asset_catalog.search_assets('', limit=1000)
         
-        # Filter assets that have potential lineage information
         lineage_assets = []
         for asset in assets:
-            # Generate asset ID if not present
             asset_id = asset.get('metadata', {}).get('asset_fingerprint')
             if not asset_id:
                 import base64
                 id_string = f"{asset.get('source', '')}-{asset.get('location', '')}-{asset.get('name', '')}"
                 asset_id = base64.b64encode(id_string.encode()).decode().replace('=', '').replace('+', '').replace('/', '')[:16]
             
-            # Add all assets but highlight those with potential relationships
             asset_info = {
                 "id": asset_id,
                 "name": asset.get('name', ''),
@@ -535,11 +511,9 @@ async def get_lineage_assets():
 async def get_asset_lineage(asset_id: str, direction: str = "both", depth: int = 3):
     """Get lineage for a specific asset - dynamically updated"""
     try:
-        # Get the most current assets from the catalog
         assets = discovery_engine.asset_catalog.search_assets('', limit=1000)
         target_asset = None
         
-        # Find target asset by ID (try both fingerprint and generated ID)
         for asset in assets:
             asset_fingerprint = asset.get('metadata', {}).get('asset_fingerprint')
             if asset_fingerprint == asset_id:
@@ -617,7 +591,6 @@ async def get_column_lineage(asset_id: str):
 async def create_lineage_relationship(request: Request):
     """Create a new custom lineage relationship"""
     try:
-        # Parse JSON from request body
         relationship_data = await request.json()
         
         required_fields = ['source', 'target', 'relationship', 'confidence']
@@ -649,7 +622,6 @@ async def get_all_relationships():
     try:
         relationships = await discovery_engine.asset_catalog.get_custom_relationships()
         
-        # Enrich with asset names
         assets = discovery_engine.asset_catalog.search_assets('')
         asset_names = {asset.get('metadata', {}).get('asset_fingerprint', ''): asset.get('name', '') for asset in assets}
         
@@ -694,7 +666,6 @@ async def get_asset_relationships(asset_id: str):
     except Exception as e:
         return {"status": "error", "message": str(e), "relationships": []}
 
-# Helper functions for lineage generation
 async def generate_lineage_data(target_asset: Dict[str, Any], all_assets: List[Dict[str, Any]], direction: str, depth: int) -> Dict[str, Any]:
     """Generate lineage data based on asset relationships"""
     lineage = {
@@ -703,7 +674,6 @@ async def generate_lineage_data(target_asset: Dict[str, Any], all_assets: List[D
         "levels": {}
     }
     
-    # Generate consistent ID for target node
     target_asset_id = target_asset.get('metadata', {}).get('asset_fingerprint')
     if not target_asset_id:
         import base64
@@ -734,7 +704,6 @@ async def generate_lineage_data(target_asset: Dict[str, Any], all_assets: List[D
             if level not in lineage["levels"]:
                 lineage["levels"][level] = []
             for asset in assets:
-                # Generate consistent ID for upstream asset
                 asset_id = asset.get('metadata', {}).get('asset_fingerprint')
                 if not asset_id:
                     import base64
@@ -754,7 +723,6 @@ async def generate_lineage_data(target_asset: Dict[str, Any], all_assets: List[D
                 lineage["nodes"].append(node)
                 lineage["levels"][level].append(node["id"])
                 
-                # Add edge from upstream to target
                 lineage["edges"].append({
                     "source": node["id"],
                     "target": target_node["id"],
@@ -768,7 +736,6 @@ async def generate_lineage_data(target_asset: Dict[str, Any], all_assets: List[D
             if level not in lineage["levels"]:
                 lineage["levels"][level] = []
             for asset in assets:
-                # Generate consistent ID for downstream asset
                 asset_id = asset.get('metadata', {}).get('asset_fingerprint')
                 if not asset_id:
                     import base64
@@ -788,7 +755,6 @@ async def generate_lineage_data(target_asset: Dict[str, Any], all_assets: List[D
                 lineage["nodes"].append(node)
                 lineage["levels"][level].append(node["id"])
                 
-                # Add edge from target to downstream
                 lineage["edges"].append({
                     "source": target_node["id"],
                     "target": node["id"],
@@ -805,7 +771,6 @@ def find_related_assets(target_asset: Dict[str, Any], all_assets: List[Dict[str,
     target_source = target_asset.get('source', '')
     target_location = target_asset.get('location', '').lower()
     
-    # Extract meaningful parts from the target name for better matching
     target_parts = set()
     if '.' in target_name:
         parts = target_name.split('.')
@@ -814,14 +779,11 @@ def find_related_assets(target_asset: Dict[str, Any], all_assets: List[Dict[str,
             target_parts.add(parts[-2])  # dataset name
             target_parts.add(parts[-1])  # table name
     
-    # Add keywords from the name
     name_keywords = ['customer', 'order', 'transaction', 'account', 'user', 'product', 'sales', 'client', 'employee', 'banking', 'loan', 'card']
     for keyword in name_keywords:
         if keyword in target_name:
             target_parts.add(keyword)
     
-    print(f"🔍 Finding related assets for: {target_name}")
-    print(f"📊 Target parts: {target_parts}")
     
     for asset in all_assets:
         if asset.get('metadata', {}).get('asset_fingerprint') == target_asset.get('metadata', {}).get('asset_fingerprint'):
@@ -836,7 +798,6 @@ def find_related_assets(target_asset: Dict[str, Any], all_assets: List[Dict[str,
         if asset_source == target_source:
             score += 2
         
-        # Same project/dataset for BigQuery
         if 'bigquery' in target_source and 'bigquery' in asset_source:
             if '.' in target_name and '.' in asset_name:
                 target_project_dataset = '.'.join(target_name.split('.')[:2])
@@ -856,15 +817,12 @@ def find_related_assets(target_asset: Dict[str, Any], all_assets: List[Dict[str,
         if target_location and asset_location and target_location in asset_location:
             score += 1
         
-        # Add if score is high enough
         if score >= 2:
             asset['_relationship_score'] = score
             related.append(asset)
-            print(f"✅ Related asset found: {asset_name} (score: {score})")
     
     related.sort(key=lambda x: x.get('_relationship_score', 0), reverse=True)
     
-    print(f"🎯 Found {len(related)} related assets")
     return related
 
 def generate_upstream_assets(target_asset: Dict[str, Any], related_assets: List[Dict[str, Any]], depth: int) -> Dict[int, List[Dict[str, Any]]]:
@@ -873,9 +831,7 @@ def generate_upstream_assets(target_asset: Dict[str, Any], related_assets: List[
     target_name = target_asset.get('name', '').lower()
     target_type = target_asset.get('type', '').lower()
     
-    print(f"🔺 Generating upstream for: {target_name} (type: {target_type})")
     
-    # Different logic based on asset type and naming patterns
     used_assets = set()
     
     for level in range(1, depth + 1):
@@ -899,22 +855,18 @@ def generate_upstream_assets(target_asset: Dict[str, Any], related_assets: List[
             if any(keyword in asset_name for keyword in ['raw', 'source', 'input', 'base', 'staging', 'landing']):
                 is_upstream = True
                 
-            # For BigQuery, dataset-level assets are often upstream of table-level
             elif 'dataset' in asset_type and 'table' in target_type:
                 is_upstream = True
                 
-            # Tables with simpler names are often upstream of aggregated ones
             elif ('agg' in target_name or 'summary' in target_name or 'mart' in target_name) and asset_type == 'bigquery_table':
                 is_upstream = True
                 
-            # Same project/dataset but different table suggests relationship
             elif score >= 4 and level == 1:  # High score suggests close relationship
                 is_upstream = True
             
             if is_upstream:
                 level_assets.append(asset)
                 used_assets.add(asset_id)
-                print(f"  📊 Level -{level} upstream: {asset_name}")
                 
                 if len(level_assets) >= 3:
                     break
@@ -922,7 +874,6 @@ def generate_upstream_assets(target_asset: Dict[str, Any], related_assets: List[
         if level_assets:
             upstream[-level] = level_assets
     
-    print(f"🔺 Generated {len(upstream)} upstream levels")
     return upstream
 
 def generate_downstream_assets(target_asset: Dict[str, Any], related_assets: List[Dict[str, Any]], depth: int) -> Dict[int, List[Dict[str, Any]]]:
@@ -931,9 +882,7 @@ def generate_downstream_assets(target_asset: Dict[str, Any], related_assets: Lis
     target_name = target_asset.get('name', '').lower()
     target_type = target_asset.get('type', '').lower()
     
-    print(f"🔻 Generating downstream for: {target_name} (type: {target_type})")
     
-    # Different logic based on asset type and naming patterns
     used_assets = set()
     
     for level in range(1, depth + 1):
@@ -960,21 +909,18 @@ def generate_downstream_assets(target_asset: Dict[str, Any], related_assets: Lis
             elif 'view' in asset_type and 'table' in target_type:
                 is_downstream = True
                 
-            # Tables with more complex names are often downstream of simpler ones
             elif ('raw' in target_name or 'base' in target_name or 'source' in target_name) and asset_type == 'bigquery_table':
                 is_downstream = True
                 
             elif any(keyword in asset_name for keyword in ['master', 'dim', 'fact', 'cube']) and score >= 3:
                 is_downstream = True
                 
-            # Same project but different patterns suggest downstream relationship
             elif score >= 3 and level == 1 and len(asset_name) > len(target_name):
                 is_downstream = True
             
             if is_downstream:
                 level_assets.append(asset)
                 used_assets.add(asset_id)
-                print(f"  📊 Level +{level} downstream: {asset_name}")
                 
                 if len(level_assets) >= 3:
                     break
@@ -982,7 +928,6 @@ def generate_downstream_assets(target_asset: Dict[str, Any], related_assets: Lis
         if level_assets:
             downstream[level] = level_assets
     
-    print(f"🔻 Generated {len(downstream)} downstream levels")
     return downstream
 
 async def generate_column_lineage(target_asset: Dict[str, Any], all_assets: List[Dict[str, Any]]) -> Dict[str, Any]:
@@ -990,20 +935,17 @@ async def generate_column_lineage(target_asset: Dict[str, Any], all_assets: List
     schema = target_asset.get('schema', [])
     target_name = target_asset.get('name', '')
     
-    print(f"🔍 Generating column lineage for {target_name} with {len(schema)} columns")
     
     column_lineage = {
         "columns": [],
         "relationships": []
     }
     
-    # Find related assets with schemas for column mapping
     related_with_schema = [asset for asset in all_assets 
                           if asset.get('schema') and 
                           asset.get('metadata', {}).get('asset_fingerprint') != target_asset.get('metadata', {}).get('asset_fingerprint')]
     
     for column in schema:
-        # Handle both string and dict column formats
         if isinstance(column, str):
             col_name = column.lower()
             col_type = 'STRING'  # Default type for string columns
@@ -1031,7 +973,6 @@ async def generate_column_lineage(target_asset: Dict[str, Any], all_assets: List
             related_name = related_asset.get('name', '')
             
             for related_column in related_schema:
-                # Handle both string and dict column formats
                 if isinstance(related_column, str):
                     related_col_name = related_column.lower()
                     related_col_type = 'STRING'
@@ -1055,13 +996,11 @@ async def generate_column_lineage(target_asset: Dict[str, Any], all_assets: List
                 ]):
                     match_score = 0.8
                 elif col_type == related_col_type and len(col_name) > 2:
-                    # Check for common naming patterns
                     if any(pattern in col_name for pattern in ['customer', 'user', 'account', 'order', 'transaction']):
                         if any(pattern in related_col_name for pattern in ['customer', 'user', 'account', 'order', 'transaction']):
                             match_score = 0.6
                 
                 if match_score > 0.5:
-                    # Determine if upstream or downstream based on asset names
                     is_upstream = determine_upstream_relationship(target_name, related_name)
                     
                     relationship = {
@@ -1075,15 +1014,12 @@ async def generate_column_lineage(target_asset: Dict[str, Any], all_assets: List
                     else:
                         col_info["downstream_columns"].append(relationship)
         
-        # Determine transformations based on column patterns
         transformations = determine_column_transformations(col_name, col_type, col_info)
         col_info["transformations"] = transformations
         
         column_lineage["columns"].append(col_info)
         
-        print(f"  📊 {col_info['name']}: {len(col_info['upstream_columns'])} upstream, {len(col_info['downstream_columns'])} downstream")
     
-    print(f"✅ Generated column lineage with {len(column_lineage['columns'])} columns")
     return column_lineage
 
 def determine_upstream_relationship(target_name: str, related_name: str) -> bool:
@@ -1100,7 +1036,6 @@ def determine_upstream_relationship(target_name: str, related_name: str) -> bool
     if 'view' in target_lower and 'table' in related_lower:
         return True
     
-    # Default: simpler/shorter names are often upstream
     return len(related_name) < len(target_name)
 
 def determine_column_transformations(col_name: str, col_type: str, col_info: dict) -> list:
@@ -1133,7 +1068,6 @@ def determine_column_transformations(col_name: str, col_type: str, col_info: dic
     elif any(keyword in col_type.lower() for keyword in ['int', 'float', 'decimal', 'number']):
         transformations = ["data_type_conversion", "mathematical_operation"]
     
-    # Default transformations
     else:
         transformations = ["data_transformation"]
     
@@ -1142,7 +1076,6 @@ def determine_column_transformations(col_name: str, col_type: str, col_info: dic
 async def add_custom_relationships_to_lineage(lineage: dict, target_asset_id: str, custom_relationships: list, all_assets: list):
     """Add custom relationships to the lineage graph"""
     try:
-        # Create asset lookup for quick access
         asset_lookup = {}
         for asset in all_assets:
             asset_id = asset.get('metadata', {}).get('asset_fingerprint')
@@ -1156,12 +1089,10 @@ async def add_custom_relationships_to_lineage(lineage: dict, target_asset_id: st
             source_id = rel['source']
             target_id = rel['target']
             
-            # Determine if this is upstream or downstream relative to target
             if target_id == target_asset_id:
                 if source_id in asset_lookup:
                     source_asset = asset_lookup[source_id]
                     
-                    # Check if node already exists
                     existing_node = next((node for node in lineage["nodes"] if node["id"] == source_id), None)
                     if not existing_node:
                         upstream_node = {
@@ -1194,7 +1125,6 @@ async def add_custom_relationships_to_lineage(lineage: dict, target_asset_id: st
                 if target_id in asset_lookup:
                     target_asset_obj = asset_lookup[target_id]
                     
-                    # Check if node already exists
                     existing_node = next((node for node in lineage["nodes"] if node["id"] == target_id), None)
                     if not existing_node:
                         downstream_node = {
@@ -1223,19 +1153,15 @@ async def add_custom_relationships_to_lineage(lineage: dict, target_asset_id: st
                         "description": rel.get('description', '')
                     })
         
-        print(f"✅ Added {len(custom_relationships)} custom relationships to lineage")
         
     except Exception as e:
-        print(f"❌ Error adding custom relationships to lineage: {e}")
 
 @app.get("/api/assets")
 async def get_all_assets():
     """Get all discovered assets"""
     try:
-        # Get actual assets from the catalog
         assets = discovery_engine.asset_catalog.search_assets('', limit=1000)
         
-        # Group assets by source for the frontend
         assets_by_source = {}
         for asset in assets:
             source = asset.get('source', 'unknown')
@@ -1243,7 +1169,6 @@ async def get_all_assets():
                 assets_by_source[source] = []
             assets_by_source[source].append(asset)
         
-        # Return empty assets if none found
         if len(assets) == 0:
             return {
                 "status": "success",
@@ -1325,7 +1250,6 @@ async def get_asset_profiling(asset_name: str):
         
         asset = assets[0]  # Get the first matching asset
         
-        # Perform data profiling based on asset type and source
         profiling_result = await analyze_asset_profiling(asset)
         
         return {
@@ -1351,7 +1275,6 @@ async def get_asset_ai_analysis(asset_name: str):
         
         asset = assets[0]  # Get the first matching asset
         
-        # Perform AI analysis using Gemini
         analysis_result = await analyze_asset_with_gemini(asset)
         
         return {
@@ -1377,7 +1300,6 @@ async def get_asset_pii_scan(asset_name: str):
         
         asset = assets[0]  # Get the first matching asset
         
-        # Perform PII scan using Gemini
         pii_scan_result = await scan_asset_for_pii_with_gemini(asset)
         
         return {
@@ -1410,7 +1332,6 @@ async def analyze_asset_profiling(asset: Dict[str, Any]) -> Dict[str, Any]:
     }
     
     try:
-        # Extract schema information
         schema = asset.get('schema', {})
         
         if isinstance(schema, dict) and 'fields' in schema:
@@ -1442,7 +1363,6 @@ async def analyze_asset_profiling(asset: Dict[str, Any]) -> Dict[str, Any]:
                     profiling['pii_analysis']['pii_types'].extend(pii_indicators)
         
         elif isinstance(schema, dict) and 'columns' in schema:
-            # Generic schema format
             columns = schema.get('columns', [])
             profiling['statistics']['total_columns'] = len(columns)
             
@@ -1460,7 +1380,6 @@ async def analyze_asset_profiling(asset: Dict[str, Any]) -> Dict[str, Any]:
         
         profiling['pii_analysis']['pii_types'] = list(set(profiling['pii_analysis']['pii_types']))
         
-        # Calculate percentages for data types
         total_cols = profiling['statistics']['total_columns']
         if total_cols > 0:
             profiling['data_type_distribution'] = {
@@ -1552,7 +1471,6 @@ async def call_gemini_api(prompt: str) -> Dict[str, Any]:
 async def analyze_asset_with_gemini(asset: Dict[str, Any]) -> Dict[str, Any]:
     """Analyze asset using Gemini AI"""
     try:
-        # Prepare asset information for analysis
         asset_info = {
             "name": asset.get("name", "Unknown"),
             "type": asset.get("type", "Unknown"),
@@ -1563,7 +1481,6 @@ async def analyze_asset_with_gemini(asset: Dict[str, Any]) -> Dict[str, Any]:
             "metadata": asset.get("metadata", {})
         }
         
-        # Create comprehensive prompt for AI analysis
         prompt = f"""
         Analyze this data asset and provide comprehensive insights:
         
@@ -1602,7 +1519,6 @@ async def analyze_asset_with_gemini(asset: Dict[str, Any]) -> Dict[str, Any]:
         if gemini_response["success"]:
             try:
                 analysis_text = gemini_response["content"].strip()
-                # Remove any markdown code blocks if present
                 if analysis_text.startswith("```json"):
                     analysis_text = analysis_text[7:]
                 if analysis_text.endswith("```"):
@@ -1610,7 +1526,6 @@ async def analyze_asset_with_gemini(asset: Dict[str, Any]) -> Dict[str, Any]:
                 
                 analysis = json.loads(analysis_text.strip())
                 
-                # Validate and set defaults
                 return {
                     "summary": analysis.get("summary", "AI analysis completed"),
                     "insights": analysis.get("insights", ["Analysis completed successfully"]),
@@ -1621,7 +1536,6 @@ async def analyze_asset_with_gemini(asset: Dict[str, Any]) -> Dict[str, Any]:
                 }
                 
             except json.JSONDecodeError:
-                # Fallback if JSON parsing fails
                 return {
                     "summary": "AI analysis completed but response format was invalid",
                     "insights": ["Analysis response received but could not be parsed"],
@@ -1653,7 +1567,6 @@ async def analyze_asset_with_gemini(asset: Dict[str, Any]) -> Dict[str, Any]:
 async def scan_asset_for_pii_with_gemini(asset: Dict[str, Any]) -> Dict[str, Any]:
     """Scan asset for PII using Gemini AI"""
     try:
-        # Prepare asset information for PII scanning
         asset_info = {
             "name": asset.get("name", "Unknown"),
             "type": asset.get("type", "Unknown"),
@@ -1661,7 +1574,6 @@ async def scan_asset_for_pii_with_gemini(asset: Dict[str, Any]) -> Dict[str, Any
             "metadata": asset.get("metadata", {})
         }
         
-        # Extract field information for analysis
         fields_info = []
         schema = asset_info.get("schema", {})
         if isinstance(schema, dict) and "fields" in schema:
@@ -1675,7 +1587,6 @@ async def scan_asset_for_pii_with_gemini(asset: Dict[str, Any]) -> Dict[str, Any
                 for field in schema.get("fields", [])
             ]
         
-        # Create comprehensive prompt for PII scanning
         prompt = f"""
         Analyze this data asset for personally identifiable information (PII) and sensitive data:
         
@@ -1725,7 +1636,6 @@ async def scan_asset_for_pii_with_gemini(asset: Dict[str, Any]) -> Dict[str, Any
         if gemini_response["success"]:
             try:
                 scan_text = gemini_response["content"].strip()
-                # Remove any markdown code blocks if present
                 if scan_text.startswith("```json"):
                     scan_text = scan_text[7:]
                 if scan_text.endswith("```"):
@@ -1733,7 +1643,6 @@ async def scan_asset_for_pii_with_gemini(asset: Dict[str, Any]) -> Dict[str, Any
                 
                 scan = json.loads(scan_text.strip())
                 
-                # Validate and set defaults
                 return {
                     "pii_fields_count": scan.get("pii_fields_count", 0),
                     "sensitive_fields_count": scan.get("sensitive_fields_count", 0),
@@ -1745,7 +1654,6 @@ async def scan_asset_for_pii_with_gemini(asset: Dict[str, Any]) -> Dict[str, Any
                 }
                 
             except json.JSONDecodeError:
-                # Fallback if JSON parsing fails
                 return {
                     "pii_fields_count": 0,
                     "sensitive_fields_count": 0,
@@ -1785,9 +1693,7 @@ async def start_monitoring(monitoring_request: MonitoringRequest, background_tas
             result = await discovery_engine.start_continuous_monitoring(
                 real_time=monitoring_request.real_time
             )
-            print(f"Monitoring started: {result}")
         except Exception as e:
-            print(f"Monitoring failed: {e}")
     
     background_tasks.add_task(run_monitoring)
     return {
@@ -1889,13 +1795,8 @@ async def export_assets():
         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
-    # Create UI directory if it doesn't exist
     os.makedirs("ui/static", exist_ok=True)
     
-    print("🚀 Starting Data Discovery Web API...")
-    print("📊 Dashboard: http://0.0.0.0:8000")
-    print("📚 API Docs: http://0.0.0.0:8000/docs")
-    print("🔧 Interactive API: http://0.0.0.0:8000/redoc")
     
     uvicorn.run(
         "web_api:app",

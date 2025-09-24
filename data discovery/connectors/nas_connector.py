@@ -135,7 +135,6 @@ class NASConnector(BaseConnector):
             if not self._initialize_smb_client():
                 return False
             
-            # Test connection by trying to list the share
             smb_path_str = f"\\\\{self.host}\\{self.share_name}"
             list(smb_path.listdir(smb_path_str))
             

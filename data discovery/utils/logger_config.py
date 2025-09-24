@@ -26,7 +26,6 @@ def setup_logger(config: Dict[str, Any]) -> logging.Logger:
     
     logger.handlers.clear()
     
-    # Create formatter
     formatter = logging.Formatter(
         '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
         datefmt='%Y-%m-%d %H:%M:%S'
@@ -37,7 +36,6 @@ def setup_logger(config: Dict[str, Any]) -> logging.Logger:
     console_handler.setFormatter(formatter)
     logger.addHandler(console_handler)
     
-    # File handler with rotation
     if log_file:
         try:
             log_path = Path(log_file)
