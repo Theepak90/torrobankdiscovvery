@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Data Discovery Monitoring Service
 Continuous monitoring service for data assets
@@ -9,8 +8,6 @@ import signal
 import sys
 from datetime import datetime
 from dynamic_discovery_engine import DynamicDataDiscoveryEngine
-
-
 class MonitoringService:
     """
     Continuous monitoring service for data discovery
@@ -44,7 +41,6 @@ class MonitoringService:
         self.running = True
         
         try:
-            # Start continuous monitoring
             result = await self.api.start_continuous_monitoring(real_time=real_time)
             
             if result['status'] == 'success':
@@ -52,7 +48,6 @@ class MonitoringService:
                 print("Monitoring data assets continuously...")
                 print("Press Ctrl+C to stop monitoring")
                 
-                # Keep the service running
                 while self.running:
                     await asyncio.sleep(1)
             else:
@@ -87,8 +82,6 @@ class MonitoringService:
         except Exception as e:
             print(f"Error during initial scan: {e}")
             return False
-
-
 async def main():
     """Main function for the monitoring service"""
     import argparse
@@ -100,7 +93,6 @@ async def main():
     
     args = parser.parse_args()
     
-    # Create monitoring service
     service = MonitoringService(args.config)
     
     # Run initial scan if requested
@@ -109,12 +101,9 @@ async def main():
         if not initial_success:
             print("Initial scan failed, but continuing with monitoring...")
     
-    # Start monitoring
     real_time = not args.no_realtime
     success = await service.start_monitoring(real_time=real_time)
     
     sys.exit(0 if success else 1)
-
-
 if __name__ == "__main__":
     asyncio.run(main())

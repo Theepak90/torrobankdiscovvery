@@ -16,8 +16,6 @@ from connectors.connector_registry import ConnectorRegistry
 from metadata.metadata_extractor import MetadataExtractor
 from utils.asset_catalog import AssetCatalog
 from utils.logger_config import setup_logger
-
-
 class DynamicDataDiscoveryEngine:
     """
     Dynamic data discovery engine that uses plugin-based connector loading
@@ -33,7 +31,6 @@ class DynamicDataDiscoveryEngine:
         # Initialize with empty connectors - all managed through UI
         self.connectors = {}
         
-        # Initialize logger
         self.logger = setup_logger({})
         
         self.last_scan_time = None
@@ -61,13 +58,11 @@ class DynamicDataDiscoveryEngine:
     def add_connector(self, connector_type: str, config: Dict[str, Any]) -> bool:
         """Add a new connector dynamically"""
         try:
-            # Validate configuration
             validation = self.connector_registry.validate_connector_config(connector_type, config)
             if not validation['valid']:
                 self.logger.error(f"Invalid configuration for {connector_type}: {validation['error']}")
                 return False
             
-            # Create connector instance
             connector_instance = self.connector_registry.create_connector(connector_type, config)
             self.connectors[connector_type] = connector_instance
             
@@ -118,7 +113,6 @@ class DynamicDataDiscoveryEngine:
                 assets = self.connectors[connector_type].discover_assets()
                 results[connector_type] = assets
                 
-                # Store in asset catalog
                 for asset in assets:
                     self.asset_catalog.add_asset(asset)
                 
@@ -142,7 +136,6 @@ class DynamicDataDiscoveryEngine:
         
         for connector_type in all_connectors.keys():
             if connector_type in self.connectors:
-                # Connector is enabled and configured
                 try:
                     connector = self.connectors[connector_type]
                     test_result = connector.test_connection() if hasattr(connector, 'test_connection') else True
@@ -162,7 +155,6 @@ class DynamicDataDiscoveryEngine:
                         "error": str(e)
                     }
             else:
-                # Connector is available but not enabled
                 status[connector_type] = {
                     "enabled": False,
                     "configured": False,

@@ -10,8 +10,6 @@ from pathlib import Path
 import logging
 
 from connectors.base_connector import BaseConnector
-
-
 class ConnectorRegistry:
     """
     Dynamic registry for managing connectors
@@ -34,7 +32,6 @@ class ConnectorRegistry:
             self.logger.error(f"Connectors directory {connectors_dir} not found")
             return
             
-        # Get all Python files in connectors directory
         for file_path in connectors_path.glob("*.py"):
             if file_path.name.startswith("__") or file_path.name == "base_connector.py":
                 continue
@@ -100,7 +97,6 @@ class ConnectorRegistry:
             return {"valid": False, "error": f"Connector type '{connector_type}' not found"}
         
         try:
-            # Create a temporary instance to validate config
             temp_instance = connector_class(config)
             validation_result = temp_instance.validate_config()
             return {
@@ -134,7 +130,5 @@ class ConnectorRegistry:
                 categories.setdefault('other', []).append(connector_type)
         
         return categories
-
-
 # Global registry instance
 connector_registry = ConnectorRegistry()

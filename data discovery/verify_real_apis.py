@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Direct verification that all connectors use real APIs
 """
@@ -14,7 +13,6 @@ def check_file_for_real_apis(file_path: str) -> dict:
         with open(file_path, 'r') as f:
             content = f.read()
         
-        # Real API indicators
         real_api_patterns = [
             r'boto3\.client\(',
             r'boto3\.Session\(',
@@ -75,7 +73,6 @@ def check_file_for_real_apis(file_path: str) -> dict:
             r'ibm_db\.',
         ]
         
-        # Mock/placeholder indicators
         mock_patterns = [
             r'placeholder for',
             r'mock data',
@@ -86,7 +83,6 @@ def check_file_for_real_apis(file_path: str) -> dict:
             r'Placeholder for.*discovery',
         ]
         
-        # Count matches
         real_api_count = sum(len(re.findall(pattern, content)) for pattern in real_api_patterns)
         mock_count = sum(len(re.findall(pattern, content, re.IGNORECASE)) for pattern in mock_patterns)
         
@@ -127,7 +123,6 @@ def main():
     connectors_dir = Path("connectors")
     results = {}
     
-    # Check each connector file
     for connector_file in connectors_dir.glob("*.py"):
         if connector_file.name == "__init__.py" or connector_file.name == "base_connector.py":
             continue
@@ -155,7 +150,6 @@ def main():
                 'mock_count': file_results['mock_count']
             }
     
-    # Summary
     print("\n" + "=" * 60)
     print("📊 SUMMARY")
     print("=" * 60)

@@ -4,7 +4,13 @@ let discoveryChart = null;
 let refreshInterval = null;
 
 const API_BASE = '/api';
+
+// API Base URL
+const API_BASE = '/api';
+
+// Ensure Font Awesome icons are properly loaded
 function ensureIconsLoaded() {
+    // Check if Font Awesome is loaded
     const checkFontAwesome = () => {
         const testIcon = document.createElement('i');
         testIcon.className = 'fas fa-check';
@@ -20,17 +26,20 @@ function ensureIconsLoaded() {
         return fontFamily.includes('Font Awesome');
     };
     
+    // If Font Awesome is not loaded, try to reload it
     if (!checkFontAwesome()) {
         console.warn('Font Awesome not detected, attempting to reload...');
         
+        // Create a new link element for Font Awesome
         const link = document.createElement('link');
         link.rel = 'stylesheet';
         link.href = 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css';
         link.onload = () => {
             console.log('Font Awesome reloaded successfully');
+            // Force a re-render of all icons
             document.querySelectorAll('.fas, .far, .fab, .fa').forEach(icon => {
                 icon.style.display = 'none';
-                icon.offsetHeight;
+                icon.offsetHeight; // Trigger reflow
                 icon.style.display = '';
             });
         };
@@ -43,6 +52,7 @@ function ensureIconsLoaded() {
         console.log('Font Awesome loaded successfully');
     }
     
+    // Ensure all icons have proper styling
     document.querySelectorAll('.fas, .far, .fab, .fa').forEach(icon => {
         if (!icon.style.fontFamily.includes('Font Awesome')) {
             icon.style.fontFamily = '"Font Awesome 6 Free"';
@@ -58,33 +68,45 @@ function ensureIconsLoaded() {
     });
 }
 
+// Initialize the application
 document.addEventListener('DOMContentLoaded', function() {
     console.log('🚀 Data Discovery System - UI Loaded');
     
+    // Ensure Font Awesome icons are properly loaded
     ensureIconsLoaded();
     
+    // Add loading animation to page
     addPageLoadAnimation();
     
+    // Initialize dashboard
     initializeDashboard();
     
+    // Set up auto-refresh with more frequent updates
     startAutoRefresh();
     
+    // Load initial data with staggered animations
     setTimeout(() => loadSystemHealth(), 100);
     setTimeout(() => loadConnectors(), 200);
     setTimeout(() => loadMyConnections(), 250);
     setTimeout(() => loadAssets(), 300);
     setTimeout(() => loadRecentActivity(), 400);
     
+    // Set up event listeners
     setupEventListeners();
     
+    // Initialize tooltips
     initializeTooltips();
     
+    // Start dynamic dashboard updates
     startDynamicDashboard();
     
+    // Start automatic background monitoring
     startBackgroundMonitoring();
 });
 
+// Add page load animation
 function addPageLoadAnimation() {
+    // Add fade-in animation to main container
     const mainContainer = document.querySelector('.container-fluid');
     if (mainContainer) {
         mainContainer.style.opacity = '0';
@@ -97,6 +119,7 @@ function addPageLoadAnimation() {
         }, 100);
     }
     
+    // Add staggered animation to cards
     const cards = document.querySelectorAll('.card');
     cards.forEach((card, index) => {
         card.style.opacity = '0';
@@ -110,19 +133,24 @@ function addPageLoadAnimation() {
     });
 }
 
+// Initialize tooltips
 function initializeTooltips() {
+    // Initialize Bootstrap tooltips
     const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
     tooltipTriggerList.map(function (tooltipTriggerEl) {
         return new bootstrap.Tooltip(tooltipTriggerEl);
     });
 }
 
+// Initialize dashboard
 function initializeDashboard() {
     updateSystemStatus();
     initializeChart();
 }
 
+// Set up event listeners
 function setupEventListeners() {
+    // Tab change events
     document.querySelectorAll('[data-bs-toggle="tab"]').forEach(tab => {
         tab.addEventListener('shown.bs.tab', function(event) {
             const target = event.target.getAttribute('data-bs-target');
@@ -140,6 +168,7 @@ function setupEventListeners() {
         });
     });
     
+    // Search on Enter key
     document.getElementById('asset-search').addEventListener('keypress', function(e) {
         if (e.key === 'Enter') {
             searchAssets();
@@ -179,9 +208,11 @@ async function updateSystemStatus() {
             const metrics = response.dashboard_metrics;
             const health = response.system_health;
             
+            // Update status indicators
             document.getElementById('system-status').textContent = 
                 health.status === 'healthy' ? 'System Online' : 'System Issues';
             
+            // Update overview cards with animations
             animateCounter('total-assets', metrics.total_assets || 0);
             animateCounter('active-connectors', metrics.active_connectors || 0);
             
@@ -191,6 +222,7 @@ async function updateSystemStatus() {
             animateTextUpdate('monitoring-status', 
                 metrics.monitoring_enabled ? 'Active' : 'Disabled');
             
+            // Update monitoring card color
             const monitoringCard = document.querySelector('.bg-warning');
             if (metrics.monitoring_enabled) {
                 monitoringCard.className = monitoringCard.className.replace('bg-warning', 'bg-success');
@@ -207,6 +239,7 @@ async function updateSystemStatus() {
     }
 }
 
+// Animate counter updates with enhanced visual feedback
 function animateCounter(elementId, targetValue) {
     const element = document.getElementById(elementId);
     if (!element) return;
@@ -214,6 +247,7 @@ function animateCounter(elementId, targetValue) {
     const currentValue = parseInt(element.textContent) || 0;
     if (currentValue === targetValue) return;
     
+    // Simple transition without glow effects
     element.style.transition = 'none';
     
     const increment = targetValue > currentValue ? 1 : -1;
@@ -227,11 +261,13 @@ function animateCounter(elementId, targetValue) {
         
         if (current === targetValue) {
             clearInterval(timer);
+            // Remove scaling animation - just reset styles
             element.style.textShadow = 'none';
         }
     }, stepTime);
 }
 
+// Animate text updates with visual feedback
 function animateTextUpdate(elementId, newText) {
     const element = document.getElementById(elementId);
     if (!element) return;
@@ -239,6 +275,7 @@ function animateTextUpdate(elementId, newText) {
     // Only animate if the text actually changed
     if (element.textContent === newText) return;
     
+    // Simple text update without scaling animations
     element.style.transition = 'opacity 0.3s ease';
     element.style.opacity = '0.7';
     
@@ -256,6 +293,7 @@ async function loadSystemHealth() {
         
         let healthHTML = '<div class="row">';
         
+        // System Health
         healthHTML += `
             <div class="col-md-6 mb-3">
                 <div class="d-flex align-items-center">
@@ -270,6 +308,7 @@ async function loadSystemHealth() {
             </div>
         `;
         
+        // Connectors Health
         const connectorHealth = health.connectors || {};
         healthHTML += `
             <div class="col-md-6 mb-3">
@@ -285,6 +324,7 @@ async function loadSystemHealth() {
             </div>
         `;
         
+        // Monitoring Status
         const monitoring = health.monitoring || {};
         healthHTML += `
             <div class="col-md-6 mb-3">
@@ -302,6 +342,7 @@ async function loadSystemHealth() {
             </div>
         `;
         
+        // Last Scan
         healthHTML += `
             <div class="col-md-6 mb-3">
                 <div class="d-flex align-items-center">
@@ -334,14 +375,17 @@ async function loadConnectors() {
         const availableConnectors = response.available_connectors;
         const connectorStatus = healthResponse.connector_status || {};
         
+        // Update total connectors badge
         document.getElementById('total-connectors-badge').textContent = 
             `${response.total_connectors} (${response.enabled_connectors} enabled)`;
         
+        // Render connector categories with proper metadata mapping
         renderConnectorCategory('cloud-connectors', currentConnectors.cloud_providers, 'cloud', availableConnectors, connectorStatus);
         renderConnectorCategory('database-connectors', currentConnectors.databases, 'database', availableConnectors, connectorStatus);
         renderConnectorCategory('warehouse-connectors', currentConnectors.data_warehouses, 'warehouse', availableConnectors, connectorStatus);
         renderConnectorCategory('network-storage-connectors', currentConnectors.network_storage, 'network_storage', availableConnectors, connectorStatus);
         
+        // Also refresh My Connections
         loadMyConnections();
         
     } catch (error) {
@@ -395,6 +439,7 @@ function renderMyConnections(connections) {
     const container = document.getElementById('my-connections');
     const countElement = document.getElementById('active-connections-count');
     
+    // Update count
     countElement.textContent = connections.length;
     
     if (connections.length === 0) {
@@ -465,8 +510,10 @@ async function testConnectorConnection(connectorId) {
         
         if (response) {
             showNotification('Connection test completed', 'success');
+            // Refresh the connections list
             loadMyConnections();
             
+            // Trigger asset discovery after successful connection
             await discoverAssetsForConnection(connectorId, `${connectorId} Connection`);
         } else {
             showNotification('Connection test failed', 'danger');
@@ -483,6 +530,7 @@ async function viewConnectorConnectionDetails(connectorId) {
         const response = await apiCall(`/config/${connectorId}`);
         
         if (response && response.config) {
+            // Show connection details in a modal or alert
             const configDetails = JSON.stringify(response.config, null, 2);
             alert(`Connection Details for ${connectorId}:\n\n${configDetails}`);
         } else {
@@ -508,7 +556,9 @@ async function deleteConnectorConnection(connectorId) {
         
         if (response) {
             showNotification('Connection removed successfully', 'success');
+            // Refresh the connections list
             loadMyConnections();
+            // Also refresh the connectors list
             loadConnectors();
         } else {
             showNotification('Failed to remove connection', 'danger');
@@ -541,12 +591,14 @@ function renderConnectorCategory(containerId, connectors, iconType, availableCon
     }
     
     connectorList.forEach(connectorId => {
+        // Get connector metadata from availableConnectors
         const connector = availableConnectors[connectorId];
         if (!connector) {
             console.warn(`No metadata found for connector: ${connectorId}`);
             return;
         }
         
+        // Get connector status from system health
         const status = connectorStatus[connectorId] || { enabled: false, configured: false, connected: false };
         const isEnabled = status.enabled;
         const isConfigured = status.configured;
@@ -622,6 +674,7 @@ async function openConnectorModal(connectorId, connectorName) {
             <div id="connector-config-fields">
         `;
         
+        // Add configuration fields based on connector type
         if (connectorId === 'gcp') {
             modalBody += `
                 <div class="mb-3">
@@ -648,6 +701,7 @@ async function openConnectorModal(connectorId, connectorName) {
                     <small class="text-muted">Select which GCP services to discover</small>
                 </div>
             `;
+        // Database Connectors
         } else if (connectorId === 'postgresql') {
             modalBody += `
                 <div class="mb-3">
@@ -798,6 +852,7 @@ async function openConnectorModal(connectorId, connectorName) {
                     <input type="password" class="form-control" id="password" value="${config.config?.password || ''}" placeholder="password">
                 </div>
             `;
+        // Data Warehouse Connectors
         } else if (connectorId === 'snowflake') {
             modalBody += `
                 <div class="mb-3">
@@ -1024,6 +1079,7 @@ async function saveConnectorConfig() {
     const modal = document.getElementById('connectorModal');
     let connectorId = modal.getAttribute('data-connector-id');
     
+    // Map frontend connector IDs to backend connector IDs
     const connectorIdMapping = {
         'bigquery': 'gcp',
         'storage': 'gcp',
@@ -1041,6 +1097,7 @@ async function saveConnectorConfig() {
         
         let config = { enabled };
         
+        // Get configuration based on connector type
         if (connectorId === 'gcp') {
             const projectId = document.getElementById('project-id').value;
             const credentialsPath = document.getElementById('credentials-path').value;
@@ -1066,6 +1123,7 @@ async function saveConnectorConfig() {
             } else if (credentialsPath.trim()) {
                 config.config.credentials_path = credentialsPath;
             }
+        // Database Connectors Save Handlers
         } else if (connectorId === 'postgresql') {
             const host = document.getElementById('host').value;
             const port = document.getElementById('port').value;
@@ -1158,6 +1216,7 @@ async function saveConnectorConfig() {
                 username: username || null,
                 password: password || null
             };
+        // Data Warehouse Connectors Save Handlers
         } else if (connectorId === 'snowflake') {
             const account = document.getElementById('account').value;
             const username = document.getElementById('username').value;
@@ -1301,7 +1360,9 @@ async function testConnection(connectorId) {
     try {
         showNotification('Testing connection...', 'info');
         
+        // Test GCP connector with real API call
         if (connectorId === 'gcp') {
+            // First, add the connector with the current configuration
             const projectId = document.getElementById('project-id').value;
             const serviceAccountJson = document.getElementById('service-account-json').value;
             const credentialsPath = document.getElementById('credentials-path').value;
@@ -1313,6 +1374,7 @@ async function testConnection(connectorId) {
                 return;
             }
             
+            // Prepare config
             const config = {
                 project_id: projectId,
                 services: services.length > 0 ? services : ['bigquery', 'cloud_storage']
@@ -1330,6 +1392,7 @@ async function testConnection(connectorId) {
                 config.credentials_path = credentialsPath;
             }
             
+            // Add connector first
             const addResponse = await fetch(`/api/connectors/gcp/add`, {
                 method: 'POST',
                 headers: {
@@ -1349,6 +1412,7 @@ async function testConnection(connectorId) {
             
             showNotification('GCP connector added successfully! Testing connection...', 'info');
             
+            // Test connection
             const testResponse = await fetch(`/api/config/gcp/test`, {
                 method: 'POST'
             });
@@ -1358,6 +1422,7 @@ async function testConnection(connectorId) {
             if (testResult.status === 'success' && testResult.connection_status === 'connected') {
                 showNotification('✅ GCP Connected! Discovering assets...', 'success');
                 
+                // Discover assets
                 const discoverResponse = await fetch(`/api/discovery/test/gcp`, {
                     method: 'POST'
                 });
@@ -1368,6 +1433,7 @@ async function testConnection(connectorId) {
                     const assetsCount = discoverResult.assets_discovered || 0;
                     showNotification(`✅ GCP Connected! Discovered ${assetsCount} assets`, 'success');
                     
+                    // Show assets in a modal
                     if (discoverResult.assets && discoverResult.assets.length > 0) {
                         showAssetsModal(connectorId, discoverResult.assets);
                     }
@@ -1387,6 +1453,7 @@ async function testConnection(connectorId) {
             return;
         }
         
+        // First test the connection
         const testResult = await apiCall(`/config/${connectorId}/test`, { method: 'POST' });
         
         if (testResult.status === 'success' || testResult.connection_status === 'connected') {
@@ -1400,6 +1467,7 @@ async function testConnection(connectorId) {
                     const assetsCount = discoveryResult.assets_discovered || 0;
                     showNotification(`Connection successful! Discovered ${assetsCount} assets`, 'success');
                     
+                    // Show assets in a modal
                     if (discoveryResult.assets && discoveryResult.assets.length > 0) {
                         showAssetsModal(connectorId, discoveryResult.assets);
                     }
@@ -1425,6 +1493,7 @@ async function testConnection(connectorId) {
 }
 
 function showAssetsModal(connectorId, assets) {
+    // Create the modal HTML
     const modalHtml = `
         <div class="modal fade" id="assetsModal" tabindex="-1" aria-labelledby="assetsModalLabel" aria-hidden="true">
             <div class="modal-dialog modal-xl">
@@ -1468,8 +1537,10 @@ function showAssetsModal(connectorId, assets) {
         existingModal.remove();
     }
     
+    // Add modal to body
     document.body.insertAdjacentHTML('beforeend', modalHtml);
     
+    // Show the modal
     const modal = new bootstrap.Modal(document.getElementById('assetsModal'));
     modal.show();
     
@@ -1577,11 +1648,13 @@ function showAssetsView(viewType) {
     const assets = window.currentModalAssets || [];
     const displayDiv = document.getElementById('assets-display');
     
+    // Update button states
     document.querySelectorAll('#assetsModal .btn-group button').forEach(btn => {
         btn.classList.remove('active');
     });
     event.target.classList.add('active');
     
+    // Update display
     if (viewType === 'list') {
         displayDiv.innerHTML = generateAssetsListView(assets);
     } else {
@@ -1622,11 +1695,13 @@ function formatFileSize(bytes) {
 }
 
 function navigateToAssets() {
+    // Close the modal
     const modal = bootstrap.Modal.getInstance(document.getElementById('assetsModal'));
     if (modal) {
         modal.hide();
     }
     
+    // Navigate to assets page
     showSection('assets');
     loadAssets();
 }
@@ -1657,6 +1732,7 @@ async function loadAssets() {
                 assetsData[source].push(asset);
             });
         } else {
+            // Assume the response itself is the assets data
             assetsData = response;
         }
         
@@ -1681,6 +1757,7 @@ async function loadAssets() {
         // Use new search-enabled display function
         displayFilteredAssets(window.allAssets);
         
+        // Populate filter options with the new assets
         populateFilterOptions();
         
         // Re-initialize search functionality with the new assets
@@ -1699,6 +1776,8 @@ async function loadAssets() {
         
         // NOTE: Disabled auto-refresh for lineage - lineage now only loads once when user selects an asset
         // if (document.getElementById('lineage-asset-select')) {
+        //     autoRefreshLineageAssets();
+        // }
         
     } catch (error) {
         console.error('Failed to load assets:', error);
@@ -1720,6 +1799,7 @@ function renderAssetsTable(assets) {
     let html = '';
     let allAssets = [];
     
+    // Flatten assets from all sources
     Object.entries(assets).forEach(([source, sourceAssets]) => {
         console.log(`Processing source ${source} with assets:`, sourceAssets);
         if (Array.isArray(sourceAssets)) {
@@ -1783,11 +1863,13 @@ function populateAssetFilters(assets) {
         }
     });
     
+    // Populate type filter
     typeFilter.innerHTML = '<option value="">All Asset Types</option>';
     Array.from(types).sort().forEach(type => {
         typeFilter.innerHTML += `<option value="${type}">${type}</option>`;
     });
     
+    // Populate source filter
     sourceFilter.innerHTML = '<option value="">All Sources</option>';
     Array.from(sources).sort().forEach(source => {
         sourceFilter.innerHTML += `<option value="${source}">${source}</option>`;
@@ -1842,6 +1924,7 @@ async function showAssetDetails(assetName) {
     console.log('showAssetDetails called with:', assetName);
     
     try {
+        // Show loading state first
         const modal = new bootstrap.Modal(document.getElementById('assetModal'));
         document.getElementById('asset-modal-title').textContent = 'Loading Asset Details...';
         document.getElementById('asset-overview-content').innerHTML = `
@@ -1860,8 +1943,10 @@ async function showAssetDetails(assetName) {
         if (response && response.asset) {
             const asset = response.asset;
             
+            // Set modal title
             document.getElementById('asset-modal-title').textContent = `Asset Details - ${asset.name}`;
             
+            // Populate Overview tab
             const overviewContent = `
                 <div class="row">
                     <div class="col-md-6">
@@ -1890,9 +1975,11 @@ async function showAssetDetails(assetName) {
                 </div>
             `;
             
+            // Populate Schema tab
             let schemaContent = '';
             if (asset.schema && Object.keys(asset.schema).length > 0) {
                 if (asset.schema.fields && Array.isArray(asset.schema.fields)) {
+                    // BigQuery style schema
                     schemaContent = `
                         <div class="row">
                             <div class="col-12">
@@ -1924,6 +2011,7 @@ async function showAssetDetails(assetName) {
                         </div>
                     `;
                 } else {
+                    // Generic schema
                     schemaContent = `
                         <div class="row">
                             <div class="col-12">
@@ -1937,9 +2025,11 @@ async function showAssetDetails(assetName) {
                 schemaContent = '<div class="text-center py-4"><p class="text-muted">No schema information available</p></div>';
             }
             
+            // Set content
             document.getElementById('asset-overview-content').innerHTML = overviewContent;
             document.getElementById('asset-schema-content').innerHTML = schemaContent;
             
+            // Reset profiling tab content
             document.getElementById('asset-profiling-content').innerHTML = `
                 <div class="text-center py-4">
                     <div class="spinner-border text-primary" role="status">
@@ -1996,6 +2086,7 @@ async function showAssetDetails(assetName) {
 async function loadAssetProfiling(assetName) {
     const profilingContent = document.getElementById('asset-profiling-content');
     
+    // Show loading state
     profilingContent.innerHTML = `
         <div class="text-center py-4">
             <div class="spinner-border text-primary" role="status">
@@ -2013,6 +2104,7 @@ async function loadAssetProfiling(assetName) {
             
             let content = '<div class="row">';
             
+            // Statistics Overview
             content += `
                 <div class="col-md-4 mb-4">
                     <div class="card">
@@ -2041,6 +2133,7 @@ async function loadAssetProfiling(assetName) {
                 </div>
             `;
             
+            // Data Type Distribution
             if (profiling.data_type_distribution && Object.keys(profiling.data_type_distribution).length > 0) {
                 content += `
                     <div class="col-md-4 mb-4">
@@ -2066,6 +2159,7 @@ async function loadAssetProfiling(assetName) {
                 `;
             }
             
+            // PII Analysis
             content += `
                 <div class="col-md-4 mb-4">
                     <div class="card">
@@ -2147,6 +2241,7 @@ async function loadAssetProfiling(assetName) {
 async function loadAssetAIAnalysis(assetName) {
     const aiAnalysisContent = document.getElementById('asset-ai-analysis-content');
     
+    // Show loading state
     aiAnalysisContent.innerHTML = `
         <div class="text-center py-4">
             <div class="spinner-border text-primary" role="status">
@@ -2247,6 +2342,7 @@ async function loadAssetAIAnalysis(assetName) {
 async function loadAssetPIIScan(assetName) {
     const piiScanContent = document.getElementById('asset-pii-scan-content');
     
+    // Show loading state
     piiScanContent.innerHTML = `
         <div class="text-center py-4">
             <div class="spinner-border text-primary" role="status">
@@ -2391,6 +2487,7 @@ async function startFullDiscovery() {
         await apiCall('/discovery/scan', { method: 'POST' });
         showNotification('Discovery started successfully', 'success');
         
+        // Refresh status after a delay
         setTimeout(() => {
             updateSystemStatus();
             loadAssets();
@@ -2405,6 +2502,7 @@ function showSourceSelection() {
     const selection = document.getElementById('source-selection');
     const select = document.getElementById('source-select');
     
+    // Populate source options
     if (currentConnectors) {
         select.innerHTML = '<option value="">Select a source...</option>';
         Object.entries(currentConnectors).forEach(([category, connectors]) => {
@@ -2456,6 +2554,7 @@ async function loadDiscoveryStatus() {
     }
 }
 
+// Automatic Background Monitoring
 let backgroundMonitoringInterval = null;
 let monitoringEnabled = true;
 
@@ -2464,6 +2563,7 @@ function startBackgroundMonitoring() {
         clearInterval(backgroundMonitoringInterval);
     }
     
+    // Monitor every 7 seconds (between 5-10 seconds as requested)
     backgroundMonitoringInterval = setInterval(async () => {
         if (monitoringEnabled) {
             await performBackgroundMonitoring();
@@ -2483,9 +2583,11 @@ function stopBackgroundMonitoring() {
 
 async function performBackgroundMonitoring() {
     try {
+        // Check system health and connector status
         const healthResponse = await apiCall('/system/health');
         const connectorsResponse = await apiCall('/connectors');
         
+        // Update dashboard metrics
         if (healthResponse.status === 'success') {
             updateSystemStatus();
         }
@@ -2503,13 +2605,16 @@ async function performBackgroundMonitoring() {
                 if (document.getElementById('assets-tab')?.classList.contains('active')) {
                     loadAssets();
                 }
+                // Update dashboard
                 updateSystemStatus();
             }
             
             window.lastAssetCount = currentAssetCount;
         }
         
+        // Update connector status
         if (connectorsResponse.status === 'success') {
+            // Update connector counts
             const enabledCount = connectorsResponse.enabled_connectors || 0;
             const totalCount = connectorsResponse.total_connectors || 0;
             
@@ -2543,6 +2648,7 @@ function showLoadingState(elementId, message = 'Loading...') {
 function hideLoadingState(elementId) {
     const element = document.getElementById(elementId);
     if (element && element.innerHTML.includes('spinner-border')) {
+        // Add fade out animation
         element.style.transition = 'opacity 0.3s ease';
         element.style.opacity = '0';
         setTimeout(() => {
@@ -2658,6 +2764,7 @@ function showNotification(message, type = 'info') {
     notification.style.border = 'none';
     notification.style.backdropFilter = 'blur(10px)';
     
+    // Add icon based on type
     const icons = {
         'success': 'fas fa-check-circle',
         'danger': 'fas fa-exclamation-circle',
@@ -2673,15 +2780,18 @@ function showNotification(message, type = 'info') {
         </div>
     `;
     
+    // Add entrance animation
     notification.style.transform = 'translateX(100%)';
     notification.style.transition = 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
     
     document.body.appendChild(notification);
     
+    // Trigger entrance animation
     setTimeout(() => {
         notification.style.transform = 'translateX(0)';
     }, 10);
     
+    // Auto-remove after 5 seconds with exit animation
     setTimeout(() => {
         if (notification.parentNode) {
             notification.style.transform = 'translateX(100%)';
@@ -2702,6 +2812,7 @@ function refreshDashboard() {
     loadAssets();
     
     // NOTE: Disabled auto-refresh for lineage - lineage now only loads once when user selects an asset
+    // autoRefreshLineageAssets();
 }
 
 function startAutoRefresh() {
@@ -2716,6 +2827,7 @@ function startAutoRefresh() {
     console.log('Auto-refresh started - updating every 5 seconds (lineage refresh disabled)');
 }
 
+// Start dynamic dashboard with real-time updates
 function startDynamicDashboard() {
     // Update dashboard metrics every 3 seconds for more dynamic updates
     setInterval(() => {
@@ -2723,6 +2835,7 @@ function startDynamicDashboard() {
         loadRecentActivity();
     }, 3000);
     
+    // Update charts every 30 seconds
     setInterval(() => {
         updateDiscoveryChart();
     }, 30000);
@@ -2776,6 +2889,7 @@ async function loadRecentActivity() {
     }
 }
 
+// Get activity icon based on type
 function getActivityIcon(type) {
     const icons = {
         'asset_discovered': 'database',
@@ -2787,6 +2901,7 @@ function getActivityIcon(type) {
     return icons[type] || 'info-circle';
 }
 
+// Get human-readable time ago
 function getTimeAgo(timestamp) {
     if (!timestamp) return 'Unknown time';
     
@@ -2812,6 +2927,7 @@ function getTimeAgo(timestamp) {
     }
 }
 
+// Update discovery chart with real data
 function updateDiscoveryChart(metrics) {
     if (!metrics || !discoveryChart) return;
     
@@ -2819,6 +2935,7 @@ function updateDiscoveryChart(metrics) {
         const ctx = document.getElementById('discoveryChart');
         if (!ctx) return;
         
+        // Update chart with assets by type data
         const assetsData = metrics.assets_by_type || {};
         const labels = Object.keys(assetsData);
         const data = Object.values(assetsData);
@@ -2840,6 +2957,7 @@ let connectionConfig = {};
 
 function nextWizardStep() {
     if (currentWizardStep < 4) {
+        // Validate current step
         if (validateWizardStep(currentWizardStep)) {
             currentWizardStep++;
             updateWizardStep();
@@ -2855,6 +2973,7 @@ function previousWizardStep() {
 }
 
 function updateWizardStep() {
+    // Update step indicators
     document.querySelectorAll('.wizard-step').forEach((step, index) => {
         const stepNumber = index + 1;
         step.classList.remove('active', 'completed');
@@ -2866,6 +2985,7 @@ function updateWizardStep() {
         }
     });
     
+    // Update step content
     document.querySelectorAll('.wizard-step-content').forEach((content, index) => {
         content.classList.remove('active');
         if (index + 1 === currentWizardStep) {
@@ -2873,6 +2993,7 @@ function updateWizardStep() {
         }
     });
     
+    // Update buttons
     const prevBtn = document.getElementById('wizard-prev-btn');
     const nextBtn = document.getElementById('wizard-next-btn');
     const saveBtn = document.getElementById('wizard-save-btn');
@@ -2881,6 +3002,7 @@ function updateWizardStep() {
     nextBtn.style.display = currentWizardStep < 4 ? 'inline-block' : 'none';
     saveBtn.style.display = currentWizardStep === 4 ? 'inline-block' : 'none';
     
+    // Load step content
     loadWizardStepContent();
 }
 
@@ -2917,8 +3039,10 @@ function loadWizardStepContent() {
 function selectConnectionType(type) {
     selectedConnectionType = type;
     
+    // Set connectionConfig.connectorId based on the selected type
     connectionConfig.connectorId = type;
     
+    // Update UI
     document.querySelectorAll('.connection-type-card').forEach(card => {
         card.classList.remove('selected');
     });
@@ -3105,6 +3229,7 @@ function loadConnectionForm() {
             `;
             break;
             
+        // Azure Connection Types
         case 'sql':
             formHTML = `
                 <div class="row">
@@ -3283,6 +3408,7 @@ function loadConnectionForm() {
             `;
             break;
             
+        // GCP Connection Types
         case 'sql':
             formHTML = `
                 <div class="row">
@@ -3606,6 +3732,7 @@ function loadConnectionForm() {
             `;
             break;
             
+        // Oracle Connection Types
         case 'autonomous':
             formHTML = `
                 <div class="row">
@@ -3816,6 +3943,7 @@ function loadConnectionForm() {
             `;
             break;
             
+        // NAS Connection Types
         case 'smb':
             formHTML = `
                 <div class="row">
@@ -3921,6 +4049,7 @@ function loadConnectionForm() {
             `;
             break;
             
+        // SFTP Connection Types
         case 'sftp':
             formHTML = `
                 <div class="row">
@@ -4081,6 +4210,7 @@ function validateConnectionForm() {
         }
     });
     
+    // Remove validation errors from optional fields
     optionalFields.forEach(field => {
         field.classList.remove('is-invalid');
     });
@@ -4096,6 +4226,7 @@ function testConnectionWizard() {
     const testButton = document.querySelector('#connection-test-status button');
     const resultsDiv = document.getElementById('connection-test-results');
     
+    // Show loading state
     testButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Testing Connection...';
     testButton.disabled = true;
     
@@ -4107,6 +4238,7 @@ function testConnectionWizard() {
     `;
     resultsDiv.style.display = 'block';
     
+    // Get the current connector ID from the modal or connection config
     const modal = document.getElementById('connectorModal');
     let connectorId = modal ? modal.getAttribute('data-connector-id') : null;
     
@@ -4159,6 +4291,7 @@ async function testActualConnection(connectorId, testButton, resultsDiv) {
                 return;
             }
             
+            // Prepare config
             const config = {
                 project_id: projectId,
                 services: ['bigquery', 'cloud_storage']
@@ -4186,6 +4319,7 @@ async function testActualConnection(connectorId, testButton, resultsDiv) {
                 config.credentials_path = credentialsPath;
             }
             
+            // Add connector first
             const addResponse = await fetch(`/api/connectors/gcp/add`, {
                 method: 'POST',
                 headers: {
@@ -4213,6 +4347,7 @@ async function testActualConnection(connectorId, testButton, resultsDiv) {
                 return;
             }
             
+            // Test connection
             const testResponse = await fetch(`/api/config/gcp/test`, {
                 method: 'POST'
             });
@@ -4220,6 +4355,7 @@ async function testActualConnection(connectorId, testButton, resultsDiv) {
             const testResult = await testResponse.json();
             
             if (testResult.status === 'success' && testResult.connection_status === 'connected') {
+                // Discover assets
                 const discoverResponse = await fetch(`/api/discovery/test/gcp`, {
                     method: 'POST'
                 });
@@ -4227,6 +4363,7 @@ async function testActualConnection(connectorId, testButton, resultsDiv) {
                 const discoverResult = await discoverResponse.json();
                 
                 if (discoverResult.status === 'success' && discoverResult.assets && discoverResult.assets.length > 0) {
+                    // Show real discovered assets
                     const assets = discoverResult.assets;
                     const assetNames = assets.map(asset => asset.name).slice(0, 4);
                     
@@ -4282,6 +4419,7 @@ async function testActualConnection(connectorId, testButton, resultsDiv) {
             return;
         }
         
+        // First test the connection
         const testResult = await apiCall(`/config/${connectorId}/test`, { method: 'POST' });
         
         if (testResult.status === 'success' || testResult.connection_status === 'connected') {
@@ -4292,6 +4430,7 @@ async function testActualConnection(connectorId, testButton, resultsDiv) {
                 if (discoveryResult.status === 'success') {
                     const assetsCount = discoveryResult.assets_discovered || 0;
                     
+                    // Refresh assets tab
                     await loadAssets();
                     
             resultsDiv.innerHTML = `
@@ -4353,6 +4492,7 @@ async function testActualConnection(connectorId, testButton, resultsDiv) {
             </div>
         `;
     } finally {
+        // Update button state
         testButton.innerHTML = '<i class="fas fa-link me-2"></i>Test Connection';
         testButton.disabled = false;
     }
@@ -4361,6 +4501,7 @@ async function testActualConnection(connectorId, testButton, resultsDiv) {
 function loadConnectionSummary() {
     const summaryDiv = document.getElementById('connection-summary');
     
+    // Collect configuration data
     const connectionName = document.getElementById('connection-name')?.value || 'Unnamed Connection';
     
     let summaryHTML = `
@@ -4462,6 +4603,7 @@ function loadConnectionSummary() {
                     </div>
                 `;
                 
+                // Load real discovered assets
                 console.log('Loading discovered assets for BigQuery connection...');
                 setTimeout(() => loadDiscoveredAssets(), 100);
             }
@@ -4520,6 +4662,7 @@ async function loadDiscoveredAssets() {
             console.log('GCP connector already exists and is configured');
         }
         
+        // Now fetch discovered assets
         const response = await fetch('/api/discovery/test/gcp', {
             method: 'POST'
         });
@@ -4599,6 +4742,7 @@ async function loadDiscoveredAssets() {
             
             assetsHTML += '</div>';
             
+            // Summary statistics
             assetsHTML += `
                 <div class="mt-3 p-3 bg-success bg-opacity-10 rounded">
                     <div class="d-flex align-items-center">
@@ -4645,12 +4789,14 @@ async function loadDiscoveredAssets() {
 
 async function saveWizardConnection() {
     try {
+        // Get the connector ID from the connection config
         let connectorId = connectionConfig.connectorId;
         if (!connectorId) {
             showNotification('No connector selected', 'danger');
             return;
         }
         
+        // Map frontend connector IDs to backend connector IDs
         const connectorIdMapping = {
             'bigquery': 'gcp',
             'storage': 'gcp',
@@ -4668,6 +4814,7 @@ async function saveWizardConnection() {
         // Use mapped connector ID if available, otherwise use original
         connectorId = connectorIdMapping[connectorId] || connectorId;
 
+        // Collect configuration based on connection type
         let config = { enabled: true };
         
         switch(selectedConnectionType) {
@@ -4690,6 +4837,7 @@ async function saveWizardConnection() {
                 break;
                 
             case 'storage':
+                // Handle GCP BigQuery through storage connection type
                 const gcpProjectId = document.getElementById('project-id')?.value;
                 const gcpServiceAccountJson = document.getElementById('service-account-json')?.value;
                 const gcpDatasetId = document.getElementById('dataset-id')?.value;
@@ -4739,6 +4887,7 @@ async function saveWizardConnection() {
                 };
                 break;
                 
+            // NAS Connection Types
             case 'smb':
                 const nasHost = document.getElementById('host')?.value;
                 const nasPort = document.getElementById('port')?.value;
@@ -4783,6 +4932,7 @@ async function saveWizardConnection() {
                 };
                 break;
                 
+            // SFTP Connection Types
             case 'sftp':
                 const sftpHost = document.getElementById('host')?.value;
                 const sftpPort = document.getElementById('port')?.value;
@@ -4838,6 +4988,7 @@ async function saveWizardConnection() {
                 return;
         }
 
+        // Save the configuration
         const result = await apiCall(`/config/${connectorId}`, {
             method: 'POST',
             body: JSON.stringify(config)
@@ -4846,6 +4997,7 @@ async function saveWizardConnection() {
         if (result.status === 'success') {
             showNotification('Connection configuration saved successfully', 'success');
             
+            // Add to My Connections
             const connectionData = {
                 name: config.name || getConnectorDisplayName(connectorId),
                 type: getConnectorDisplayName(connectorId),
@@ -4860,11 +5012,13 @@ async function saveWizardConnection() {
                 await discoverAssetsForConnection(connectorId, connectionData.name);
             }, 1000); // Small delay to ensure connection is fully saved
             
+            // Close the modal
             const modal = bootstrap.Modal.getInstance(document.getElementById('connectorModal'));
             if (modal) {
                 modal.hide();
             }
             
+            // Refresh the connectors list and user connections
             loadConnectors();
             refreshUserConnections();
         } else {
@@ -4879,6 +5033,7 @@ async function saveWizardConnection() {
 
 // New Connection Functions
 function openNewConnectionWizard() {
+    // Reset wizard state
     currentWizardStep = 1;
     selectedConnectionType = null;
     connectionConfig = {};
@@ -4887,11 +5042,14 @@ function openNewConnectionWizard() {
     const step1Content = document.getElementById('step-1');
     step1Content.innerHTML = '<div class="text-center"><div class="spinner-border text-primary" role="status"></div></div>';
     
+    // Open the modal
     const modal = new bootstrap.Modal(document.getElementById('connectorModal'));
     modal.show();
     
+    // Update modal title
     document.querySelector('#connectorModal .modal-title').textContent = 'Configure New Connection';
     
+    // Load generic connection types
     setTimeout(() => {
         const types = [
             { type: 'database', icon: 'fas fa-database', title: 'Database', description: 'Connect to SQL databases like PostgreSQL, MySQL, Oracle' },
@@ -4925,6 +5083,7 @@ function openNewConnectionWizard() {
         connectionTypesHTML += `</div>`;
         step1Content.innerHTML = connectionTypesHTML;
         
+        // Re-attach click handlers
         setTimeout(() => {
             document.querySelectorAll('.connection-type-card').forEach(card => {
                 card.addEventListener('click', function() {
@@ -4934,10 +5093,12 @@ function openNewConnectionWizard() {
         }, 100);
     }, 100);
     
+    // Reset wizard to first step
     updateWizardStep();
 }
 
 function openConnectionWizard(connectorId, connectorName) {
+    // Pre-populate wizard with existing connector info
     currentWizardStep = 1;
     selectedConnectionType = getConnectionTypeFromId(connectorId);
     connectionConfig = { connectorId, connectorName };
@@ -4946,11 +5107,13 @@ function openConnectionWizard(connectorId, connectorName) {
     const step1Content = document.getElementById('step-1');
     step1Content.innerHTML = '<div class="text-center"><div class="spinner-border text-primary" role="status"></div></div>';
     
+    // Open the modal
     const modalElement = document.getElementById('connectorModal');
     modalElement.setAttribute('data-connector-id', connectorId);
     const modal = new bootstrap.Modal(modalElement);
     modal.show();
     
+    // Update modal title
     document.querySelector('#connectorModal .modal-title').textContent = `Configure ${connectorName}`;
     
     // Load connector-specific connection types
@@ -4958,6 +5121,7 @@ function openConnectionWizard(connectorId, connectorName) {
         loadConnectorSpecificTypes(connectorId, connectorName);
     }, 100);
     
+    // Reset wizard to first step
     updateWizardStep();
     
     // If we know the connection type, auto-select it
@@ -4994,6 +5158,7 @@ function loadConnectorSpecificTypes(connectorId, connectorName) {
             { type: 'custom', icon: 'fas fa-cogs', title: 'Custom Objects', description: 'Connect to custom Salesforce objects' },
             { type: 'reports', icon: 'fas fa-chart-line', title: 'Reports & Dashboards', description: 'Connect to Salesforce reports and dashboards' }
         ],
+        // Database Connectors
         'postgresql': [
             { type: 'database', icon: 'fas fa-database', title: 'PostgreSQL Database', description: 'Connect to PostgreSQL database instances' },
             { type: 'schema', icon: 'fas fa-sitemap', title: 'Schema Discovery', description: 'Discover database schemas and tables' },
@@ -5038,6 +5203,7 @@ function loadConnectorSpecificTypes(connectorId, connectorName) {
             { type: 'cluster', icon: 'fas fa-server', title: 'Cluster', description: 'Connect to Elasticsearch cluster' },
             { type: 'kibana', icon: 'fas fa-chart-bar', title: 'Kibana Dashboards', description: 'Discover Kibana dashboards and visualizations' }
         ],
+        // Data Warehouse Connectors
         'snowflake': [
             { type: 'warehouse', icon: 'fas fa-snowflake', title: 'Data Warehouse', description: 'Connect to Snowflake data warehouse' },
             { type: 'databases', icon: 'fas fa-database', title: 'Databases & Schemas', description: 'Discover Snowflake databases and schemas' },
@@ -5140,6 +5306,7 @@ function loadConnectorSpecificTypes(connectorId, connectorName) {
     
     step1Content.innerHTML = connectionTypesHTML;
     
+    // Re-attach click handlers
     setTimeout(() => {
         document.querySelectorAll('.connection-type-card').forEach(card => {
             card.addEventListener('click', function() {
@@ -5150,7 +5317,9 @@ function loadConnectorSpecificTypes(connectorId, connectorName) {
 }
 
 function getConnectionTypeFromId(connectorId) {
+    // Map connector IDs to connection types
     const typeMapping = {
+        // Database Connectors
         'postgresql': 'database',
         'mysql': 'database',
         'oracle': 'database',
@@ -5162,9 +5331,11 @@ function getConnectionTypeFromId(connectorId) {
         'redis': 'cache',
         'elasticsearch': 'indices',
         
+        // Cloud Providers
         'azure': 'blob',
         'gcp': 'storage',
         
+        // Data Warehouses
         'snowflake': 'warehouse',
         'databricks': 'workspace',
         'bigquery': 'datasets',
@@ -5186,11 +5357,18 @@ function getConnectionTypeFromId(connectorId) {
 }
 
 function viewConnectionDetails(connectorId) {
+    // Show connection details in a modal or side panel
     showNotification(`Viewing details for ${connectorId}`, 'info');
     
+    // You can implement a detailed view here
     // For now, we'll show a simple notification
 }
 
+
+
+
+
+// Initialize connection type selection
 document.addEventListener('DOMContentLoaded', function() {
     // Add click handlers for connection type cards
     setTimeout(() => {
@@ -5200,13 +5378,16 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
         
+        // Initialize My Connections section
         refreshMyConnections();
         
+        // Initialize My Connections display
         console.log('Initializing My Connections with', userConnections.length, 'connections');
         
     }, 500);
 });
 
+// My Connections Management
 let userConnections = JSON.parse(localStorage.getItem('userConnections') || '[]');
 
 function saveUserConnections() {
@@ -5333,12 +5514,15 @@ async function testMyConnection(connectionId) {
     try {
         showNotification(`Testing connection: ${connection.name}`, 'info');
         
+        // Update UI to show testing state
         updateConnectionStatus(connectionId, 'testing');
         
+        // Map connection type to proper connector ID
         let connectorId = connection.type.toLowerCase().replace(/\s+/g, '_');
         if (connection.type.includes('Google Cloud')) connectorId = 'gcp';
         if (connection.type.includes('Azure')) connectorId = 'azure';
         
+        // Make API call to test the connection using the existing endpoint
         const response = await apiCall(`/config/${connectorId}/test`, {
             method: 'POST'
         });
@@ -5347,6 +5531,7 @@ async function testMyConnection(connectionId) {
             updateConnectionStatus(connectionId, 'connected', new Date().toISOString());
             showNotification(`Connection test successful: ${connection.name}`, 'success');
             
+            // Trigger asset discovery after successful connection
             await discoverAssetsForConnection(connectorId, connection.name);
         } else {
             updateConnectionStatus(connectionId, 'error', new Date().toISOString());
@@ -5367,6 +5552,7 @@ function viewMyConnection(connectionId) {
     }
     
     try {
+        // Create a detailed view modal or expand the card
         const modalContent = `
         <div class="modal fade" id="connectionDetailsModal" tabindex="-1">
             <div class="modal-dialog modal-lg">
@@ -5414,11 +5600,14 @@ function viewMyConnection(connectionId) {
         existingModal.remove();
     }
     
+    // Add modal to body
     document.body.insertAdjacentHTML('beforeend', modalContent);
     
+    // Show modal
     const modal = new bootstrap.Modal(document.getElementById('connectionDetailsModal'));
     modal.show();
     
+        // Clean up modal after it's hidden
         document.getElementById('connectionDetailsModal').addEventListener('hidden.bs.modal', function() {
             this.remove();
         });
@@ -5446,10 +5635,12 @@ function removeMyConnection(connectionId) {
     }
 }
 
+// Asset Discovery Integration
 async function discoverAssetsForConnection(connectorId, connectionName) {
     try {
         showNotification(`Discovering assets for ${connectionName}...`, 'info');
         
+        // Call discovery API
         const response = await apiCall(`/discovery/test/${connectorId}`, {
             method: 'POST'
         });
@@ -5460,8 +5651,10 @@ async function discoverAssetsForConnection(connectorId, connectionName) {
             console.log('Discovered assets:', response.assets);
             showNotification(`Discovery completed! Found ${assetsCount} assets from ${connectionName}`, 'success');
             
+            // Refresh the assets table to show new assets
             await loadAssets();
             
+            // Update dashboard stats
             refreshDashboard();
             
             // Switch to Assets tab to show the results
@@ -5492,6 +5685,7 @@ function switchToAssetsTab() {
             pane.classList.remove('show', 'active');
         });
         
+        // Activate assets tab
         assetsTab.classList.add('active');
         assetsTabPane.classList.add('show', 'active');
     }
@@ -5556,11 +5750,14 @@ function showDiscoveryResultsModal(connectionName, assets) {
         existingModal.remove();
     }
     
+    // Add modal to body
     document.body.insertAdjacentHTML('beforeend', modalContent);
     
+    // Show modal
     const modal = new bootstrap.Modal(document.getElementById('discoveryResultsModal'));
     modal.show();
     
+    // Clean up modal after it's hidden
     document.getElementById('discoveryResultsModal').addEventListener('hidden.bs.modal', function() {
         this.remove();
     });
@@ -5632,12 +5829,14 @@ function ensureLineageVariablesInitialized() {
     if (typeof window.lineageInitialized === 'undefined') window.lineageInitialized = false;
 }
 
+// Initialize immediately
 window.currentLineageData = null;
 window.selectedAssetId = null;
 window.lineageAssetsCache = [];
 window.lastAssetCount = 0;
 window.lineageInitialized = false;
 
+// Auto-refresh lineage assets when main assets are updated
 function autoRefreshLineageAssets() {
     // Ensure lineage variables are initialized
     ensureLineageVariablesInitialized();
@@ -5673,8 +5872,10 @@ function autoRefreshLineageAssets() {
     }
 }
 
+// Load lineage assets from current asset data (more efficient)
 function loadLineageAssetsFromCache() {
     try {
+        // Show sync status
         const syncStatus = document.getElementById('lineage-sync-status');
         if (syncStatus) {
             syncStatus.style.display = 'inline-block';
@@ -5701,16 +5902,20 @@ function loadLineageAssetsFromCache() {
         
         window.lineageAssetsCache = assets;
         
+        // Update the UI
         updateLineageAssetsDropdown(assets);
         
+        // Update count badge
         const countBadge = document.getElementById('lineage-assets-count');
         if (countBadge) {
             countBadge.textContent = assets.length;
             
+            // Simple update without scaling animation
         }
         
         console.log(`Lineage assets updated: ${assets.length} assets available`);
         
+        // Hide sync status after successful update
         setTimeout(() => {
             const syncStatus = document.getElementById('lineage-sync-status');
             if (syncStatus) {
@@ -5721,6 +5926,7 @@ function loadLineageAssetsFromCache() {
     } catch (error) {
         console.error('Error loading lineage assets from cache:', error);
         
+        // Hide sync status on error too
         const syncStatus = document.getElementById('lineage-sync-status');
         if (syncStatus) {
             syncStatus.style.display = 'none';
@@ -5734,6 +5940,7 @@ function generateAssetId(asset) {
     return btoa(data).replace(/[^a-zA-Z0-9]/g, '').substring(0, 16);
 }
 
+// Update the assets dropdown in lineage tab
 function updateLineageAssetsDropdown(assets) {
     // Ensure lineage variables are initialized
     ensureLineageVariablesInitialized();
@@ -5766,6 +5973,7 @@ function updateLineageAssetsDropdown(assets) {
     }
     
     assets.forEach((asset, index) => {
+        // Skip null or invalid assets
         if (!asset || !asset.id || !asset.name) {
             console.warn('⚠️ Skipping invalid asset at index', index, asset);
             return;
@@ -5796,8 +6004,10 @@ function updateLineageAssetsDropdown(assets) {
         const newAssets = assets.length - previousCount;
         showNotification(`🔄 ${newAssets} new asset${newAssets > 1 ? 's' : ''} added to lineage explorer`, 'success');
         
+        // Add visual indicator on the lineage tab
         const lineageTabButton = document.getElementById('lineage-tab');
         if (lineageTabButton) {
+            // Add a subtle pulse effect to show there's new content
             lineageTabButton.style.animation = 'pulse 2s infinite';
             setTimeout(() => {
                 lineageTabButton.style.animation = '';
@@ -5805,6 +6015,7 @@ function updateLineageAssetsDropdown(assets) {
         }
     }
     
+    // Update the cache after UI update
     window.lineageAssetsCache = assets;
 }
 
@@ -5822,6 +6033,7 @@ async function loadLineageAssets() {
         if (response && response.status === 'success') {
             const assets = response.assets || [];
             
+            // Additional validation to ensure assets is an array
             if (!Array.isArray(assets)) {
                 console.warn('⚠️ Assets is not an array:', assets);
                 const safeAssets = [];
@@ -5834,6 +6046,7 @@ async function loadLineageAssets() {
                 console.log('📋 Sample assets:', assets.slice(0, 3).map(a => a && a.name ? a.name : 'Invalid asset'));
             }
             
+            // Initialize lineage system
             if (!window.lineageInitialized) {
                 window.lineageInitialized = true;
                 window.lastAssetCount = assets.length;
@@ -5843,6 +6056,7 @@ async function loadLineageAssets() {
             // Update the UI using the new dropdown function
             updateLineageAssetsDropdown(assets);
             
+            // Update count badge
             const countBadge = document.getElementById('lineage-assets-count');
             if (countBadge) {
                 countBadge.textContent = assets.length;
@@ -5856,6 +6070,7 @@ async function loadLineageAssets() {
             const message = response?.message || 'Unknown error';
             showNotification('Failed to load lineage assets: ' + message, 'danger');
             
+            // Initialize empty state
             if (!window.lineageInitialized) {
                 window.lineageInitialized = true;
                 window.lastAssetCount = 0;
@@ -5886,6 +6101,7 @@ async function selectAssetForLineage() {
         
         window.selectedAssetId = selectedOption.value;
         
+        // Safely parse asset data
         let asset = null;
         try {
             if (selectedOption.dataset && selectedOption.dataset.asset) {
@@ -5897,10 +6113,12 @@ async function selectAssetForLineage() {
             return;
         }
         
+        // Update lineage summary
         if (asset) {
             updateLineageSummary(asset);
         }
         
+        // Load and display lineage
         await loadAssetLineage(window.selectedAssetId);
         
     } catch (error) {
@@ -5951,6 +6169,7 @@ async function loadAssetLineage(assetId) {
             window.currentLineageData = response.lineage;
             displayLineageVisualization(response.lineage);
             
+            // Update analysis panel
             if (window.currentLineageData && window.currentLineageData.nodes) {
                 const selectedAsset = window.currentLineageData.nodes.find(node => node && node.is_target);
                 if (selectedAsset) {
@@ -5958,6 +6177,7 @@ async function loadAssetLineage(assetId) {
                 }
             }
             
+            // Load column-level lineage
             await loadColumnLineage(assetId);
             
         } else {
@@ -5980,6 +6200,7 @@ function displayLineageVisualization(lineageData) {
         return;
     }
     
+    // Get current view with null checking and fallback to graph view
     const currentViewElement = document.querySelector('input[name="lineage-view"]:checked');
     const currentView = currentViewElement ? currentViewElement.id : 'graph-view';
     
@@ -5999,8 +6220,10 @@ function displayLineageGraph(lineageData) {
         return;
     }
     
+    // Clear existing content
     graphContainer.innerHTML = '';
     
+    // Validate lineageData
     if (!lineageData || typeof lineageData !== 'object') {
         console.error('Invalid lineage data provided:', lineageData);
         graphContainer.innerHTML = `
@@ -6062,6 +6285,7 @@ function displayLineageGraph(lineageData) {
     // Group nodes by level for layout
     const levelGroups = {};
     nodes.forEach(node => {
+        // Skip null or invalid nodes
         if (!node || !node.id) {
             console.warn('Skipping invalid node:', node);
             return;
@@ -6079,6 +6303,7 @@ function displayLineageGraph(lineageData) {
     const centerY = svgHeight / 2;
     const levelSpacing = Math.min(120, svgHeight / (levels.length + 1));
     
+    // Position nodes
     const nodePositions = {};
     levels.forEach((level, levelIndex) => {
         const levelNodes = levelGroups[level];
@@ -6086,6 +6311,7 @@ function displayLineageGraph(lineageData) {
         const nodeSpacing = Math.min(100, svgWidth / Math.max(levelNodes.length + 1, 1));
         
         levelNodes.forEach((node, nodeIndex) => {
+            // Additional safety check
             if (!node || !node.id) {
                 console.warn('Skipping invalid node in positioning:', node);
                 return;
@@ -6097,8 +6323,10 @@ function displayLineageGraph(lineageData) {
         });
     });
     
+    // Draw edges
     
     edges.forEach((edge, index) => {
+        // Skip null or invalid edges
         if (!edge || !edge.source || !edge.target) {
             console.warn('Skipping invalid edge:', edge);
             return;
@@ -6139,6 +6367,7 @@ function displayLineageGraph(lineageData) {
         }
     });
     
+    // Add arrow marker definition
     const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
     const marker = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
     marker.setAttribute('id', 'arrowhead');
@@ -6155,12 +6384,15 @@ function displayLineageGraph(lineageData) {
     defs.appendChild(marker);
     svg.appendChild(defs);
     
+    // Draw nodes
     Object.values(nodePositions).forEach(({ x, y, node }) => {
+        // Skip null or invalid nodes
         if (!node || !node.id || !node.name) {
             console.warn('Skipping invalid node in rendering:', node);
             return;
         }
         
+        // Node circle
         const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
         circle.setAttribute('cx', x);
         circle.setAttribute('cy', y);
@@ -6172,6 +6404,7 @@ function displayLineageGraph(lineageData) {
         circle.setAttribute('data-node-id', node.id);
         circle.style.cursor = 'grab';
         
+        // Node label
         const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
         text.setAttribute('x', x);
         text.setAttribute('y', y - 35);
@@ -6182,6 +6415,7 @@ function displayLineageGraph(lineageData) {
         text.textContent = node.name.length > 15 ? node.name.substring(0, 15) + '...' : node.name;
         text.setAttribute('pointer-events', 'none'); // Prevent text from interfering with drag
         
+        // Node type label
         const typeText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
         typeText.setAttribute('x', x);
         typeText.setAttribute('y', y + 45);
@@ -6191,6 +6425,7 @@ function displayLineageGraph(lineageData) {
         typeText.textContent = node.type;
         typeText.setAttribute('pointer-events', 'none'); // Prevent text from interfering with drag
         
+        // Make nodes draggable
         let isDragging = false;
         let dragStart = { x: 0, y: 0 };
         let initialPos = { x: x, y: y };
@@ -6215,12 +6450,15 @@ function displayLineageGraph(lineageData) {
             const currentX = e.clientX - rect.left;
             const currentY = e.clientY - rect.top;
             
+            // Calculate new position
             const newX = initialPos.x + (currentX - dragStart.x);
             const newY = initialPos.y + (currentY - dragStart.y);
             
+            // Keep nodes within SVG bounds
             const boundedX = Math.max(30, Math.min(svgWidth - 30, newX));
             const boundedY = Math.max(40, Math.min(svgHeight - 50, newY));
             
+            // Update node position
             circle.setAttribute('cx', boundedX);
             circle.setAttribute('cy', boundedY);
             text.setAttribute('x', boundedX);
@@ -6232,6 +6470,7 @@ function displayLineageGraph(lineageData) {
             nodePositions[node.id].x = boundedX;
             nodePositions[node.id].y = boundedY;
             
+            // Update connected edges
             updateConnectedEdges(node.id, nodePositions, edgeElements);
         });
         
@@ -6248,8 +6487,10 @@ function displayLineageGraph(lineageData) {
             if (!isDragging) {
                 // Check if we're in edit mode first
                 if (handleEditModeNodeClick(node.id, circle)) {
+                    // Edit mode handled the click
                     return;
                 }
+                // Normal mode - toggle column view
                 toggleNodeColumnView(node.id, circle, text, typeText);
             }
         });
@@ -6261,11 +6502,13 @@ function displayLineageGraph(lineageData) {
     
     graphContainer.appendChild(svg);
     
+    // Graph is now rendered without auto-fitting
     // Users can manually click "Fit to Screen" button if needed
 }
 
 // Helper function to update connected edges when nodes are dragged
 function updateConnectedEdges(nodeId, nodePositions, edgeElements) {
+    // Update all edges connected to the dragged node
     edgeElements.forEach(edgeInfo => {
         if (edgeInfo.source === nodeId || edgeInfo.target === nodeId) {
             const sourcePos = nodePositions[edgeInfo.source];
@@ -6282,14 +6525,17 @@ function updateConnectedEdges(nodeId, nodePositions, edgeElements) {
     });
 }
 
+// Toggle between normal node view and expanded column view
 async function toggleNodeColumnView(nodeId, circleElement, textElement, typeTextElement) {
     console.log('🎯 toggleNodeColumnView called for nodeId:', nodeId);
     const isExpanded = circleElement.getAttribute('data-expanded') === 'true';
     
     if (isExpanded) {
+        // Collapse to normal view
         console.log('🔽 Collapsing node columns for:', nodeId);
         collapseNodeColumns(nodeId, circleElement, textElement, typeTextElement);
     } else {
+        // Expand to show columns and load column lineage
         console.log('🔼 Expanding node columns for:', nodeId);
         await expandNodeColumns(nodeId, circleElement, textElement, typeTextElement);
         
@@ -6299,6 +6545,7 @@ async function toggleNodeColumnView(nodeId, circleElement, textElement, typeText
     }
 }
 
+// Expand node to show its columns
 async function expandNodeColumns(nodeId, circleElement, textElement, typeTextElement) {
     try {
         console.log('🔍 Expanding columns for node:', nodeId);
@@ -6315,13 +6562,16 @@ async function expandNodeColumns(nodeId, circleElement, textElement, typeTextEle
         const svg = circleElement.closest('svg');
         const graphGroup = svg.querySelector('#graph-group');
         
+        // Get current node position
         const nodeX = parseFloat(circleElement.getAttribute('cx'));
         const nodeY = parseFloat(circleElement.getAttribute('cy'));
         
+        // Hide original node elements temporarily
         circleElement.style.display = 'none';
         textElement.style.display = 'none';
         typeTextElement.style.display = 'none';
         
+        // Create expanded node group
         const expandedGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
         expandedGroup.setAttribute('id', `expanded-${nodeId}`);
         expandedGroup.setAttribute('data-node-id', nodeId);
@@ -6331,6 +6581,7 @@ async function expandNodeColumns(nodeId, circleElement, textElement, typeTextEle
         const nodeWidth = 200;
         const totalHeight = Math.max(60, columns.length * columnHeight + 40);
         
+        // Create main node rectangle
         const nodeRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
         nodeRect.setAttribute('x', nodeX - nodeWidth/2);
         nodeRect.setAttribute('y', nodeY - totalHeight/2);
@@ -6342,6 +6593,7 @@ async function expandNodeColumns(nodeId, circleElement, textElement, typeTextEle
         nodeRect.setAttribute('rx', '8');
         expandedGroup.appendChild(nodeRect);
         
+        // Add node title
         const titleText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
         titleText.setAttribute('x', nodeX);
         titleText.setAttribute('y', nodeY - totalHeight/2 + 20);
@@ -6353,6 +6605,7 @@ async function expandNodeColumns(nodeId, circleElement, textElement, typeTextEle
         titleText.textContent = nodeName.length > 20 ? nodeName.substring(0, 20) + '...' : nodeName;
         expandedGroup.appendChild(titleText);
         
+        // Add separator line
         const separatorLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
         separatorLine.setAttribute('x1', nodeX - nodeWidth/2 + 10);
         separatorLine.setAttribute('y1', nodeY - totalHeight/2 + 30);
@@ -6362,9 +6615,11 @@ async function expandNodeColumns(nodeId, circleElement, textElement, typeTextEle
         separatorLine.setAttribute('stroke-width', '1');
         expandedGroup.appendChild(separatorLine);
         
+        // Add columns
         columns.forEach((column, index) => {
             const columnY = nodeY - totalHeight/2 + 45 + (index * columnHeight);
             
+            // Column name
             const columnText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
             columnText.setAttribute('x', nodeX - nodeWidth/2 + 15);
             columnText.setAttribute('y', columnY);
@@ -6375,6 +6630,7 @@ async function expandNodeColumns(nodeId, circleElement, textElement, typeTextEle
             columnText.textContent = columnName;
             expandedGroup.appendChild(columnText);
             
+            // Column type
             const typeText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
             typeText.setAttribute('x', nodeX + nodeWidth/2 - 15);
             typeText.setAttribute('y', columnY);
@@ -6411,6 +6667,7 @@ async function expandNodeColumns(nodeId, circleElement, textElement, typeTextEle
             expandedGroup.appendChild(connectionPoint);
         });
         
+        // Add collapse button
         const collapseButton = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
         collapseButton.setAttribute('cx', nodeX + nodeWidth/2 - 15);
         collapseButton.setAttribute('cy', nodeY - totalHeight/2 + 15);
@@ -6437,10 +6694,13 @@ async function expandNodeColumns(nodeId, circleElement, textElement, typeTextEle
         expandedGroup.appendChild(collapseButton);
         expandedGroup.appendChild(collapseIcon);
         
+        // Add to graph
         graphGroup.appendChild(expandedGroup);
         
+        // Mark as expanded
         circleElement.setAttribute('data-expanded', 'true');
         
+        // Draw column-to-column connections after expansion
         setTimeout(() => {
             drawColumnConnections(nodeId, columns);
         }, 100);
@@ -6453,6 +6713,7 @@ async function expandNodeColumns(nodeId, circleElement, textElement, typeTextEle
     }
 }
 
+// Collapse node back to normal view
 function collapseNodeColumns(nodeId, circleElement, textElement, typeTextElement) {
     const svg = circleElement.closest('svg');
     const expandedGroup = svg.querySelector(`#expanded-${nodeId}`);
@@ -6461,18 +6722,22 @@ function collapseNodeColumns(nodeId, circleElement, textElement, typeTextElement
         expandedGroup.remove();
     }
     
+    // Show original node elements
     circleElement.style.display = 'block';
     textElement.style.display = 'block';
     typeTextElement.style.display = 'block';
     
+    // Mark as collapsed
     circleElement.setAttribute('data-expanded', 'false');
     
+    // Clear any column mapping highlights and connections
     clearColumnMappingHighlights();
     clearColumnConnections(nodeId);
     
     console.log('✅ Node collapsed to normal view');
 }
 
+// Highlight column mappings between nodes
 function highlightColumnMappings(nodeId, columnName) {
     if (!window.currentColumnLineage || !window.currentColumnLineage.columns) return;
     
@@ -6491,6 +6756,7 @@ function highlightColumnMappings(nodeId, columnName) {
     });
 }
 
+// Clear column mapping highlights
 function clearColumnMappingHighlights() {
     const svg = document.querySelector('#lineage-graph svg');
     if (!svg) return;
@@ -6506,6 +6772,7 @@ function clearColumnMappingHighlights() {
     });
 }
 
+// Draw column-to-column connection lines
 async function drawColumnConnections(sourceNodeId, sourceColumns) {
     try {
         console.log('🔗 Drawing column connections for node:', sourceNodeId);
@@ -6513,6 +6780,7 @@ async function drawColumnConnections(sourceNodeId, sourceColumns) {
         const svg = document.querySelector('#lineage-graph svg');
         const graphGroup = svg.querySelector('#graph-group');
         
+        // Get all expanded nodes in the graph
         const expandedNodes = svg.querySelectorAll('[id^="expanded-"]');
         
         for (const sourceColumn of sourceColumns) {
@@ -6520,6 +6788,7 @@ async function drawColumnConnections(sourceNodeId, sourceColumns) {
             const upstreamColumns = sourceColumn.upstream_columns || [];
             const downstreamColumns = sourceColumn.downstream_columns || [];
             
+            // Draw connections to upstream columns
             for (const upstream of upstreamColumns) {
                 await drawColumnConnection(
                     sourceNodeId, sourceColumn.name,
@@ -6529,6 +6798,7 @@ async function drawColumnConnections(sourceNodeId, sourceColumns) {
                 );
             }
             
+            // Draw connections to downstream columns
             for (const downstream of downstreamColumns) {
                 await drawColumnConnection(
                     sourceNodeId, sourceColumn.name,
@@ -6546,8 +6816,10 @@ async function drawColumnConnections(sourceNodeId, sourceColumns) {
     }
 }
 
+// Draw a single column-to-column connection line
 async function drawColumnConnection(sourceNodeId, sourceColumnName, targetAssetName, targetColumnName, direction, confidence, graphGroup) {
     try {
+        // Find the target node by asset name
         const targetNodeId = await findNodeIdByAssetName(targetAssetName);
         if (!targetNodeId) {
             console.log(`⚠️ Target node not found for asset: ${targetAssetName}`);
@@ -6561,23 +6833,27 @@ async function drawColumnConnection(sourceNodeId, sourceColumnName, targetAssetN
             return;
         }
         
+        // Find source column connection point
         const sourceConnectionPoint = document.querySelector(`[data-node="${sourceNodeId}"][data-column="${sourceColumnName}"]`);
         if (!sourceConnectionPoint) {
             console.log(`⚠️ Source connection point not found: ${sourceColumnName}`);
             return;
         }
         
+        // Find target column connection point
         const targetConnectionPoint = document.querySelector(`[data-node="${targetNodeId}"][data-column="${targetColumnName}"]`);
         if (!targetConnectionPoint) {
             console.log(`⚠️ Target connection point not found: ${targetColumnName}`);
             return;
         }
         
+        // Get coordinates
         const sourceX = parseFloat(sourceConnectionPoint.getAttribute('cx'));
         const sourceY = parseFloat(sourceConnectionPoint.getAttribute('cy'));
         const targetX = parseFloat(targetConnectionPoint.getAttribute('cx'));
         const targetY = parseFloat(targetConnectionPoint.getAttribute('cy'));
         
+        // Create curved connection line
         const connectionLine = document.createElementNS('http://www.w3.org/2000/svg', 'path');
         
         // Calculate control points for smooth curve
@@ -6586,9 +6862,11 @@ async function drawColumnConnection(sourceNodeId, sourceColumnName, targetAssetN
         const controlX1 = sourceX + (direction === 'downstream' ? controlOffset : -controlOffset);
         const controlX2 = targetX + (direction === 'downstream' ? -controlOffset : controlOffset);
         
+        // Create curved path
         const pathData = `M ${sourceX} ${sourceY} C ${controlX1} ${sourceY}, ${controlX2} ${targetY}, ${targetX} ${targetY}`;
         connectionLine.setAttribute('d', pathData);
         
+        // Style the connection line
         const lineColor = direction === 'upstream' ? '#28a745' : '#007bff';
         const lineOpacity = Math.max(0.4, confidence || 0.7);
         
@@ -6604,10 +6882,12 @@ async function drawColumnConnection(sourceNodeId, sourceColumnName, targetAssetN
         connectionLine.setAttribute('data-target-column', targetColumnName);
         connectionLine.setAttribute('data-direction', direction);
         
+        // Add hover effects
         connectionLine.addEventListener('mouseenter', () => {
             connectionLine.setAttribute('stroke-width', '3');
             connectionLine.setAttribute('opacity', '1');
             
+            // Highlight connected columns
             sourceConnectionPoint.setAttribute('r', '6');
             targetConnectionPoint.setAttribute('r', '6');
             sourceConnectionPoint.setAttribute('fill', lineColor);
@@ -6618,6 +6898,7 @@ async function drawColumnConnection(sourceNodeId, sourceColumnName, targetAssetN
             connectionLine.setAttribute('stroke-width', '2');
             connectionLine.setAttribute('opacity', lineOpacity);
             
+            // Reset column highlights
             sourceConnectionPoint.setAttribute('r', '3');
             targetConnectionPoint.setAttribute('r', '3');
             sourceConnectionPoint.setAttribute('fill', '#fff');
@@ -6629,6 +6910,7 @@ async function drawColumnConnection(sourceNodeId, sourceColumnName, targetAssetN
             showColumnConnectionDetails(sourceColumnName, targetColumnName, direction, confidence);
         });
         
+        // Add to graph (behind nodes)
         graphGroup.insertBefore(connectionLine, graphGroup.firstChild);
         
         console.log(`✅ Column connection drawn: ${sourceColumnName} → ${targetColumnName} (${direction})`);
@@ -6638,12 +6920,15 @@ async function drawColumnConnection(sourceNodeId, sourceColumnName, targetAssetN
     }
 }
 
+// Find node ID by asset name
 async function findNodeIdByAssetName(assetName) {
     try {
+        // Get current lineage data
         if (!window.currentLineageData || !window.currentLineageData.nodes) {
             return null;
         }
         
+        // Find node with matching name
         const matchingNode = window.currentLineageData.nodes.find(node => 
             node.name === assetName || 
             node.name.includes(assetName) ||
@@ -6663,12 +6948,14 @@ function clearColumnConnections(nodeId) {
     const svg = document.querySelector('#lineage-graph svg');
     if (!svg) return;
     
+    // Remove all connection lines involving this node
     const connectionLines = svg.querySelectorAll(`.column-connection-line[data-source-node="${nodeId}"], .column-connection-line[data-target-node="${nodeId}"]`);
     connectionLines.forEach(line => line.remove());
     
     console.log(`🧹 Cleared column connections for node: ${nodeId}`);
 }
 
+// Show details about a column connection
 function showColumnConnectionDetails(sourceColumn, targetColumn, direction, confidence) {
     const details = `
         <strong>Column Mapping Details</strong><br>
@@ -6699,6 +6986,7 @@ function displayLineageTable(lineageData) {
     tableBody.innerHTML = '';
     
     nodes.forEach(node => {
+        // Skip null or invalid nodes
         if (!node || !node.id) {
             console.warn('Skipping invalid node in table display:', node);
             return;
@@ -6784,6 +7072,7 @@ function showColumnLineage(assetId) {
     console.log('🎯 window.currentColumnLineage:', window.currentColumnLineage);
     console.log('🎯 columns available:', window.currentColumnLineage?.columns?.length || 0);
     
+    // Show the column lineage card
     columnCard.style.display = 'block';
     
     if (window.currentColumnLineage && window.currentColumnLineage.columns) {
@@ -6795,16 +7084,20 @@ function showColumnLineage(assetId) {
         // Show detailed view by default
         switchColumnView('detailed');
         
+        // Populate all views
         populateDetailedView(columns);
         populateMatrixView(columns);
         populateFlowView(columns);
         
     } else {
+        // Show empty state
         showColumnLineageEmpty();
     }
     
+    // Note: Removed automatic scrolling to prevent page jumping to bottom
 }
 
+// Update column lineage header with asset info
 function updateColumnLineageHeader(assetId, columns) {
     // Safety check for columns parameter
     if (!columns || !Array.isArray(columns)) {
@@ -6814,6 +7107,7 @@ function updateColumnLineageHeader(assetId, columns) {
     
     console.log('📊 updateColumnLineageHeader called with:', assetId, 'columns:', columns.length);
     
+    // Get asset name from current lineage data
     let assetName = 'Unknown Asset';
     if (window.currentLineageData && window.currentLineageData.nodes) {
         const asset = window.currentLineageData.nodes.find(node => node && node.id === assetId);
@@ -6823,6 +7117,7 @@ function updateColumnLineageHeader(assetId, columns) {
         }
     }
     
+    // Calculate relationship counts
     let totalRelationships = 0;
     columns.forEach(column => {
         const upstreamCount = (column.upstream_columns || []).length;
@@ -6833,6 +7128,7 @@ function updateColumnLineageHeader(assetId, columns) {
     
     console.log('📊 Total relationships calculated:', totalRelationships);
     
+    // Update badges
     document.getElementById('column-lineage-asset-name').textContent = assetName;
     document.getElementById('column-lineage-column-count').textContent = columns.length;
     document.getElementById('column-lineage-relationship-count').textContent = totalRelationships;
@@ -6842,6 +7138,7 @@ function updateColumnLineageHeader(assetId, columns) {
 
 // Switch between different column lineage views
 function switchColumnView(viewType) {
+    // Hide all views
     document.getElementById('column-lineage-empty').style.display = 'none';
     document.getElementById('column-lineage-detailed').style.display = 'none';
     document.getElementById('column-lineage-matrix').style.display = 'none';
@@ -6852,10 +7149,12 @@ function switchColumnView(viewType) {
         btn.classList.remove('active');
     });
     
+    // Show selected view and activate button
     document.getElementById(`column-lineage-${viewType}`).style.display = 'block';
     document.getElementById(`column-view-${viewType}`).classList.add('active');
 }
 
+// Populate detailed card view
 function populateDetailedView(columns) {
     const container = document.getElementById('column-lineage-cards');
     
@@ -6965,6 +7264,7 @@ function populateDetailedView(columns) {
     container.innerHTML = html;
 }
 
+// Populate matrix table view
 function populateMatrixView(columns) {
     const tbody = document.getElementById('column-lineage-matrix-body');
     
@@ -7008,11 +7308,13 @@ function populateMatrixView(columns) {
     tbody.innerHTML = html;
 }
 
+// Populate flow diagram view
 function populateFlowView(columns) {
     const upstreamContainer = document.getElementById('column-flow-upstream');
     const currentContainer = document.getElementById('column-flow-current');
     const downstreamContainer = document.getElementById('column-flow-downstream');
     
+    // Collect all unique upstream and downstream assets
     const upstreamAssets = new Set();
     const downstreamAssets = new Set();
     
@@ -7021,6 +7323,7 @@ function populateFlowView(columns) {
         (column.downstream_columns || []).forEach(d => downstreamAssets.add(d.asset));
     });
     
+    // Populate upstream
     let upstreamHtml = '';
     upstreamAssets.forEach(asset => {
         upstreamHtml += `
@@ -7032,6 +7335,7 @@ function populateFlowView(columns) {
     });
     upstreamContainer.innerHTML = upstreamHtml || '<div class="text-muted text-center py-3">No upstream sources</div>';
     
+    // Populate current asset columns
     let currentHtml = '';
     columns.forEach(column => {
         const relationshipCount = (column.upstream_columns || []).length + (column.downstream_columns || []).length;
@@ -7049,6 +7353,7 @@ function populateFlowView(columns) {
     });
     currentContainer.innerHTML = currentHtml;
     
+    // Populate downstream
     let downstreamHtml = '';
     downstreamAssets.forEach(asset => {
         downstreamHtml += `
@@ -7061,6 +7366,7 @@ function populateFlowView(columns) {
     downstreamContainer.innerHTML = downstreamHtml || '<div class="text-muted text-center py-3">No downstream targets</div>';
 }
 
+// Show empty state
 function showColumnLineageEmpty() {
     console.log('⚠️ showColumnLineageEmpty() called - displaying empty state');
     
@@ -7069,10 +7375,12 @@ function showColumnLineageEmpty() {
     document.getElementById('column-lineage-matrix').style.display = 'none';
     document.getElementById('column-lineage-flow').style.display = 'none';
     
+    // Reset header
     document.getElementById('column-lineage-asset-name').textContent = 'None';
     document.getElementById('column-lineage-column-count').textContent = '0';
     document.getElementById('column-lineage-relationship-count').textContent = '0';
     
+    // Show the column lineage card
     const columnCard = document.getElementById('column-lineage-card');
     columnCard.style.display = 'block';
 }
@@ -7086,6 +7394,7 @@ function calculateAverageConfidence(column) {
     return Math.round((totalConfidence / allRelationships.length) * 100);
 }
 
+// Refresh column lineage data
 function refreshColumnLineage() {
     if (!window.selectedAssetId) {
         showNotification('No asset selected for column lineage refresh', 'warning');
@@ -7099,8 +7408,10 @@ function refreshColumnLineage() {
     const columnCard = document.getElementById('column-lineage-card');
     columnCard.style.display = 'block';
     
+    // Clear any existing data
     window.currentColumnLineage = null;
     
+    // Load fresh data
     loadColumnLineage(window.selectedAssetId);
 }
 
@@ -7108,16 +7419,19 @@ function refreshColumnLineage() {
 window.testColumnLineage = async function() {
     console.log('🧪 Testing column lineage with known working asset...');
     
+    // Use the customer_table asset we know works
     const testAssetId = 'a56f8489aed6aae91a2750768f01453f';
     
     console.log('🧪 Testing with asset ID:', testAssetId);
     
+    // Set as selected asset
     window.selectedAssetId = testAssetId;
     
     // Force show column card
     const columnCard = document.getElementById('column-lineage-card');
     columnCard.style.display = 'block';
     
+    // Load column data
     await loadColumnLineage(testAssetId);
     
     console.log('🧪 Test complete. Check column lineage section.');
@@ -7220,10 +7534,12 @@ function searchLineageAssets() {
 }
 
 function refreshLineage() {
+    // Always refresh assets first, then lineage
     if (window.selectedAssetId) {
         loadAssetLineage(window.selectedAssetId);
     }
     
+    // Refresh the lineage assets list
     if (currentAssets && Object.keys(currentAssets).length > 0) {
         loadLineageAssetsFromCache();
     } else {
@@ -7247,12 +7563,14 @@ function fitLineageToScreen() {
             return;
         }
         
+        // Get all nodes (circles) in the SVG
         const nodes = svg.querySelectorAll('circle');
         if (nodes.length === 0) {
             showNotification('No nodes found in lineage graph', 'warning');
             return;
         }
         
+        // Calculate bounding box of all nodes
         let minX = Infinity, minY = Infinity;
         let maxX = -Infinity, maxY = -Infinity;
         
@@ -7267,6 +7585,7 @@ function fitLineageToScreen() {
             maxY = Math.max(maxY, cy + r);
         });
         
+        // Add padding (20% of the range)
         const padding = Math.max(50, Math.max(maxX - minX, maxY - minY) * 0.2);
         minX -= padding;
         minY -= padding;
@@ -7276,8 +7595,10 @@ function fitLineageToScreen() {
         const width = maxX - minX;
         const height = maxY - minY;
         
+        // Update the SVG viewBox to fit all nodes
         svg.setAttribute('viewBox', `${minX} ${minY} ${width} ${height}`);
         
+        // Ensure SVG maintains aspect ratio and fits container
         svg.style.width = '100%';
         svg.style.height = 'auto';
         svg.style.maxHeight = '600px';
@@ -7322,6 +7643,11 @@ function exportLineage() {
     URL.revokeObjectURL(url);
     showNotification('Lineage data exported successfully', 'success');
 }
+
+// ========================================
+// LINEAGE RELATIONSHIP MANAGEMENT
+// ========================================
+
 // Global variables for relationship editing
 window.lineageEditMode = false;
 window.selectedSourceNode = null;
@@ -7340,6 +7666,7 @@ function toggleLineageEditMode() {
         instructions.style.display = 'block';
         document.getElementById('relationship-default-state').style.display = 'none';
         
+        // Update graph to show edit mode
         updateGraphForEditMode(true);
         showNotification('Edit mode enabled - Click nodes to create relationships', 'info');
     } else {
@@ -7349,9 +7676,11 @@ function toggleLineageEditMode() {
         document.getElementById('relationship-default-state').style.display = 'block';
         document.getElementById('relationship-form').style.display = 'none';
         
+        // Reset selection
         window.selectedSourceNode = null;
         window.pendingRelationship = null;
         
+        // Update graph to show normal mode
         updateGraphForEditMode(false);
         showNotification('Edit mode disabled', 'info');
     }
@@ -7384,13 +7713,16 @@ function updateGraphForEditMode(isEditMode) {
     });
 }
 
+// Handle node clicks in edit mode
 function handleEditModeNodeClick(nodeId, nodeElement) {
     if (!window.lineageEditMode) return false;
     
     if (!window.selectedSourceNode) {
+        // Select source node
         window.selectedSourceNode = { id: nodeId, element: nodeElement };
         nodeElement.classList.add('selected-source');
         
+        // Highlight potential targets
         const allNodes = document.querySelectorAll('.lineage-node');
         allNodes.forEach(node => {
             if (node !== nodeElement) {
@@ -7401,6 +7733,7 @@ function handleEditModeNodeClick(nodeId, nodeElement) {
         showNotification('Source selected. Click another node to create relationship.', 'info');
         return true;
     } else if (window.selectedSourceNode.id !== nodeId) {
+        // Create relationship
         window.pendingRelationship = {
             source: window.selectedSourceNode.id,
             target: nodeId
@@ -7416,12 +7749,14 @@ function handleEditModeNodeClick(nodeId, nodeElement) {
     }
 }
 
+// Deselect source node
 function deselectSourceNode() {
     if (window.selectedSourceNode) {
         window.selectedSourceNode.element.classList.remove('selected-source');
         window.selectedSourceNode = null;
     }
     
+    // Remove potential target highlighting
     const allNodes = document.querySelectorAll('.lineage-node');
     allNodes.forEach(node => {
         node.classList.remove('potential-target');
@@ -7434,6 +7769,7 @@ function addNewRelationship() {
     document.getElementById('edit-mode-instructions').style.display = 'none';
     document.getElementById('relationship-form').style.display = 'block';
     
+    // Populate asset dropdowns
     populateAssetDropdowns();
     
     // Reset form
@@ -7451,6 +7787,7 @@ function showRelationshipForm() {
     document.getElementById('edit-mode-instructions').style.display = 'none';
     document.getElementById('relationship-form').style.display = 'block';
     
+    // Populate asset dropdowns
     populateAssetDropdowns();
     
     // Pre-fill if we have pending relationship
@@ -7460,15 +7797,19 @@ function showRelationshipForm() {
     }
 }
 
+// Populate asset dropdown options
 function populateAssetDropdowns() {
     const sourceSelect = document.getElementById('source-asset-select');
     const targetSelect = document.getElementById('target-asset-select');
     
+    // Clear existing options
     sourceSelect.innerHTML = '<option value="">Select source asset...</option>';
     targetSelect.innerHTML = '<option value="">Select target asset...</option>';
     
+    // Get current assets from lineage data
     if (window.currentLineageData && window.currentLineageData.nodes) {
         window.currentLineageData.nodes.forEach(node => {
+            // Skip null or invalid nodes
             if (!node || !node.id) {
                 return;
             }
@@ -7486,6 +7827,7 @@ function populateAssetDropdowns() {
     }
 }
 
+// Update confidence display
 document.addEventListener('DOMContentLoaded', function() {
     const confidenceSlider = document.getElementById('confidence-level');
     if (confidenceSlider) {
@@ -7495,6 +7837,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
+// Save relationship
 async function saveRelationship() {
     const sourceId = document.getElementById('source-asset-select').value;
     const targetId = document.getElementById('target-asset-select').value;
@@ -7523,14 +7866,17 @@ async function saveRelationship() {
     };
     
     try {
+        // Save to backend
         const response = await apiCall('/api/lineage/relationships', {
             method: 'POST',
             body: JSON.stringify(relationship)
         });
         
         if (response.status === 'success') {
+            // Add to local storage
             window.customRelationships.push(relationship);
             
+            // Refresh lineage view
             if (window.selectedAssetId) {
                 await loadLineage(window.selectedAssetId);
             }
@@ -7546,6 +7892,7 @@ async function saveRelationship() {
     }
 }
 
+// Cancel relationship creation
 function cancelRelationship() {
     document.getElementById('relationship-form').style.display = 'none';
     
@@ -7555,10 +7902,12 @@ function cancelRelationship() {
         document.getElementById('relationship-default-state').style.display = 'block';
     }
     
+    // Reset selections
     deselectSourceNode();
     window.pendingRelationship = null;
 }
 
+// Show list of all relationships
 async function showRelationshipList() {
     try {
         const response = await apiCall('/api/lineage/relationships');
@@ -7574,6 +7923,7 @@ async function showRelationshipList() {
     }
 }
 
+// Display relationship list in modal or panel
 function displayRelationshipList(relationships) {
     // Create modal for relationship list
     const modalHtml = `
@@ -7621,13 +7971,16 @@ function displayRelationshipList(relationships) {
         </div>
     `;
     
+    // Remove existing modal
     const existingModal = document.getElementById('relationshipListModal');
     if (existingModal) {
         existingModal.remove();
     }
     
+    // Add modal to body
     document.body.insertAdjacentHTML('beforeend', modalHtml);
     
+    // Show modal
     const modal = new bootstrap.Modal(document.getElementById('relationshipListModal'));
     modal.show();
 }
@@ -7646,6 +7999,7 @@ async function deleteRelationship(relationshipId) {
         if (response.status === 'success') {
             showNotification('Relationship deleted successfully', 'success');
             
+            // Refresh lineage view
             if (window.selectedAssetId) {
                 await loadLineage(window.selectedAssetId);
             }
@@ -7664,25 +8018,32 @@ async function deleteRelationship(relationshipId) {
     }
 }
 
+// ========================================
 // LINEAGE ANALYSIS FUNCTIONS
+// ========================================
 
+// Update analysis panel when asset is selected
 function updateAnalysisPanel(assetData, lineageData) {
     if (!assetData || !lineageData) return;
     
     console.log('🔍 Updating analysis panel for asset:', assetData.name);
     
+    // Update Overview tab
     updateOverviewTab(assetData, lineageData);
     
     // Update Transformations tab
     updateTransformationsTab(assetData, lineageData);
     
+    // Update Architecture tab
     updateArchitectureTab(assetData, lineageData);
     
     // Update Code Analysis tab (if needed)
     updateCodeAnalysisTab(assetData, lineageData);
 }
 
+// Update Overview tab content
 function updateOverviewTab(assetData, lineageData) {
+    // Update statistics
     const upstreamCount = lineageData.nodes.filter(node => node.level < 0).length;
     const downstreamCount = lineageData.nodes.filter(node => node.level > 0).length;
     const currentCount = 1; // The selected asset itself
@@ -7691,6 +8052,7 @@ function updateOverviewTab(assetData, lineageData) {
     document.getElementById('stat-current').textContent = currentCount;
     document.getElementById('stat-downstream').textContent = downstreamCount;
     
+    // Update summary
     const summaryHtml = `
         <div class="asset-overview">
             <h6 class="text-primary">${assetData.name}</h6>
@@ -7712,9 +8074,11 @@ function updateOverviewTab(assetData, lineageData) {
     
     document.getElementById('overview-summary').innerHTML = summaryHtml;
     
+    // Update timeline
     updateDataFlowTimeline(lineageData);
 }
 
+// Update data flow timeline
 function updateDataFlowTimeline(lineageData) {
     const timelineHtml = `
         <div class="timeline">
@@ -7783,7 +8147,9 @@ function updateTransformationsTab(assetData, lineageData) {
 function extractTransformationsFromLineage(lineageData) {
     const transformations = [];
     
+    // Extract from edges with actual relationship data
     lineageData.edges.forEach(edge => {
+        // Skip null or invalid edges
         if (!edge || !edge.source || !edge.target) {
             return;
         }
@@ -7858,6 +8224,7 @@ function detectSchemaTransformations(targetNode, upstreamNodes) {
         const upstreamSchema = upstreamNode.schema || [];
         
         if (targetSchema.length > 0 && upstreamSchema.length > 0) {
+            // Column count comparison
             if (targetSchema.length < upstreamSchema.length * 0.7) {
                 transformations.push({
                     type: 'column_projection',
@@ -7880,6 +8247,7 @@ function detectSchemaTransformations(targetNode, upstreamNodes) {
                 });
             }
             
+            // Column name analysis
             const commonColumns = findCommonColumns(upstreamSchema, targetSchema);
             if (commonColumns.length > 0) {
                 transformations.push({
@@ -7948,6 +8316,7 @@ function detectPatternTransformations(targetNode, upstreamNodes) {
     const transformations = [];
     const targetName = targetNode.name.toLowerCase();
     
+    // Name pattern analysis
     if (targetName.includes('agg') || targetName.includes('summary') || targetName.includes('total')) {
         transformations.push({
             type: 'aggregation',
@@ -7984,6 +8353,7 @@ function detectPatternTransformations(targetNode, upstreamNodes) {
     return transformations;
 }
 
+// Find common columns between schemas
 function findCommonColumns(schema1, schema2) {
     const cols1 = schema1.map(col => typeof col === 'string' ? col.toLowerCase() : col.name.toLowerCase());
     const cols2 = schema2.map(col => typeof col === 'string' ? col.toLowerCase() : col.name.toLowerCase());
@@ -8020,6 +8390,7 @@ function updateTransformationChart(transformations) {
         typeCounts[t.type] = (typeCounts[t.type] || 0) + 1;
     });
     
+    // Create simple bar chart
     const types = Object.keys(typeCounts);
     const counts = Object.values(typeCounts);
     
@@ -8031,8 +8402,10 @@ function updateTransformationChart(transformations) {
         return;
     }
     
+    // Clear canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
+    // Draw bars
     const barWidth = canvas.width / types.length * 0.8;
     const maxCount = Math.max(...counts);
     
@@ -8041,20 +8414,24 @@ function updateTransformationChart(transformations) {
         const x = index * (canvas.width / types.length) + (canvas.width / types.length - barWidth) / 2;
         const y = canvas.height - barHeight - 20;
         
+        // Draw bar
         ctx.fillStyle = '#007bff';
         ctx.fillRect(x, y, barWidth, barHeight);
         
+        // Draw label
         ctx.fillStyle = '#495057';
         ctx.font = '10px Inter';
         ctx.textAlign = 'center';
         ctx.fillText(type.substring(0, 8) + '...', x + barWidth / 2, canvas.height - 5);
         
+        // Draw count
         ctx.fillStyle = '#fff';
         ctx.font = '12px Inter';
         ctx.fillText(counts[index], x + barWidth / 2, y + barHeight / 2 + 4);
     });
 }
 
+// Update Architecture tab
 function updateArchitectureTab(assetData, lineageData) {
     const architectureDiagram = generateArchitectureDiagram(lineageData);
     document.getElementById('architecture-diagram').innerHTML = architectureDiagram;
@@ -8063,10 +8440,13 @@ function updateArchitectureTab(assetData, lineageData) {
     document.getElementById('data-layers').innerHTML = dataLayers;
 }
 
+// Generate architecture diagram
 function generateArchitectureDiagram(lineageData) {
     const layers = {};
     
+    // Group nodes by level
     lineageData.nodes.forEach(node => {
+        // Skip null or invalid nodes
         if (!node || typeof node.level === 'undefined') {
             return;
         }
@@ -8104,6 +8484,7 @@ function getLevelName(level) {
     return `Output Layer ${level}`;
 }
 
+// Get node icon based on type
 function getNodeIcon(type) {
     const iconMap = {
         'table': 'table',
@@ -8116,6 +8497,7 @@ function getNodeIcon(type) {
     return iconMap[type.toLowerCase()] || 'circle';
 }
 
+// Analyze data layers
 function analyzeDataLayers(lineageData) {
     const layers = {
         source: lineageData.nodes.filter(n => n.level < 0),
@@ -8150,10 +8532,13 @@ function analyzeDataLayers(lineageData) {
     `;
 }
 
+// Update Code Analysis tab
 function updateCodeAnalysisTab(assetData, lineageData) {
+    // This will be populated when generateCodeAnalysis() is called
     updateQualityMetrics(assetData, lineageData);
 }
 
+// Generate code analysis
 function generateCodeAnalysis() {
     if (!window.currentLineageData || !window.selectedAssetId) {
         showNotification('Please select an asset first', 'warning');
@@ -8166,9 +8551,11 @@ function generateCodeAnalysis() {
     button.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Analyzing...';
     button.disabled = true;
     
+    // Get current asset data
     const selectedAsset = window.currentLineageData.nodes.find(node => node && node.is_target);
     const lineageData = window.currentLineageData;
     
+    // Simulate analysis with actual data
     setTimeout(() => {
         const analysis = generateDynamicCodeAnalysis(selectedAsset, lineageData);
         
@@ -8181,12 +8568,16 @@ function generateCodeAnalysis() {
     }, 2000);
 }
 
+// Generate dynamic code analysis based on actual data
 function generateDynamicCodeAnalysis(assetData, lineageData) {
+    // Calculate complexity metrics dynamically
     const cyclomaticComplexity = calculateCyclomaticComplexity(lineageData);
     const dataFlowComplexity = calculateDataFlowComplexity(lineageData);
     
+    // Generate SQL pattern based on actual asset structure
     const sqlPattern = generateSQLPattern(assetData, lineageData);
     
+    // Generate dynamic recommendations
     const recommendations = generateDynamicRecommendations(assetData, lineageData);
     
     const html = `
@@ -8242,6 +8633,7 @@ function generateDynamicCodeAnalysis(assetData, lineageData) {
     return { html };
 }
 
+// Calculate cyclomatic complexity dynamically
 function calculateCyclomaticComplexity(lineageData) {
     const nodeCount = lineageData.nodes.length;
     const edgeCount = lineageData.edges.length;
@@ -8252,6 +8644,7 @@ function calculateCyclomaticComplexity(lineageData) {
     return { label: 'High', color: 'danger', percentage: Math.min(complexity, 90) };
 }
 
+// Calculate data flow complexity dynamically
 function calculateDataFlowComplexity(lineageData) {
     const maxDepth = Math.max(...lineageData.nodes.map(n => Math.abs(n.level)));
     const complexity = maxDepth * 15;
@@ -8261,12 +8654,14 @@ function calculateDataFlowComplexity(lineageData) {
     return { label: 'High', color: 'danger', percentage: Math.min(complexity, 85) };
 }
 
+// Generate SQL pattern based on actual asset data
 function generateSQLPattern(assetData, lineageData) {
     const assetType = assetData.type.toLowerCase();
     const assetName = assetData.name;
     const schema = assetData.schema || [];
     const upstreamNodes = lineageData.nodes.filter(n => n.level < 0);
     
+    // Generate columns list from actual schema
     const columnsList = schema.length > 0 
         ? schema.slice(0, 5).map(col => {
             const colName = typeof col === 'string' ? col : col.name;
@@ -8274,6 +8669,7 @@ function generateSQLPattern(assetData, lineageData) {
         }).join(',\n')
         : '    column1,\n    column2,\n    column3';
     
+    // Generate FROM clause from upstream assets
     const fromClause = upstreamNodes.length > 0 
         ? upstreamNodes[0].name 
         : 'source_table';
@@ -8316,6 +8712,7 @@ ORDER BY ${generateDynamicOrderClause(assetData)};`;
     }
 }
 
+// Generate dynamic WHERE clause based on asset data
 function generateDynamicWhereClause(assetData, patternType) {
     const conditions = [];
     const schema = assetData.schema || [];
@@ -8336,6 +8733,7 @@ function generateDynamicWhereClause(assetData, patternType) {
         return colName.includes('date') || colName.includes('time') || colName.includes('created') || colName.includes('updated');
     });
     
+    // Generate conditions based on detected columns
     if (hasStatusColumn) {
         conditions.push('status = \'active\'');
     } else if (hasIdColumn) {
@@ -8365,6 +8763,7 @@ function generateDynamicWhereClause(assetData, patternType) {
     return conditions.join('\n  AND ');
 }
 
+// Generate dynamic ORDER BY clause based on asset data
 function generateDynamicOrderClause(assetData) {
     const schema = assetData.schema || [];
     
@@ -8396,6 +8795,7 @@ function generateDynamicOrderClause(assetData) {
     return orderColumns.length > 0 ? orderColumns.join(', ') : '1';
 }
 
+// Get appropriate language based on asset type
 function getAssetLanguage(assetData) {
     const type = assetData.type.toLowerCase();
     const source = assetData.source.toLowerCase();
@@ -8409,9 +8809,11 @@ function getAssetLanguage(assetData) {
     return 'SQL';
 }
 
+// Generate dynamic recommendations based on actual data
 function generateDynamicRecommendations(assetData, lineageData) {
     const recommendations = [];
     
+    // Schema-based recommendations
     if (!assetData.schema || assetData.schema.length === 0) {
         recommendations.push({
             icon: 'exclamation-triangle',
@@ -8426,6 +8828,7 @@ function generateDynamicRecommendations(assetData, lineageData) {
         });
     }
     
+    // Lineage complexity recommendations
     const upstreamCount = lineageData.nodes.filter(n => n.level < 0).length;
     const downstreamCount = lineageData.nodes.filter(n => n.level > 0).length;
     
@@ -8469,6 +8872,7 @@ function generateDynamicRecommendations(assetData, lineageData) {
         });
     }
     
+    // Metadata recommendations
     if (!assetData.metadata || Object.keys(assetData.metadata).length < 3) {
         recommendations.push({
             icon: 'file-alt',
@@ -8493,6 +8897,11 @@ function generateDynamicRecommendations(assetData, lineageData) {
     
     return recommendations;
 }
+
+// ========================================
+// ENHANCED ASSET SEARCH & FILTERING
+// ========================================
+
 // Global variables for search and filtering
 window.allAssets = [];
 window.filteredAssets = [];
@@ -8514,6 +8923,7 @@ function initializeAssetSearch() {
         return;
     }
     
+    // Real-time search with recommendations
     searchInput.addEventListener('input', debounce(handleSearchInput, 300));
     
     // Also add immediate search on keyup for better responsiveness
@@ -8545,12 +8955,14 @@ function initializeAssetSearch() {
         }
     });
     
+    // Handle focus events
     searchInput.addEventListener('focus', () => {
         if (window.currentSearchTerm && window.currentSearchTerm.length >= 1) {
             showRecommendations();
         }
     });
     
+    // Hide recommendations when clicking outside
     document.addEventListener('click', (e) => {
         if (!e.target.closest('.search-container')) {
             hideRecommendations();
@@ -8572,9 +8984,11 @@ function initializeAssetSearch() {
         clearSearch();
     };
     
+    // Initialize filters
     initializeAssetFilters();
 }
 
+// Handle search input with real-time recommendations
 function handleSearchInput(e) {
     const searchTerm = e.target.value.trim();
     console.log('handleSearchInput called with:', searchTerm);
@@ -8587,10 +9001,12 @@ function handleSearchInput(e) {
         performSearch(searchTerm);
     } else {
         hideRecommendations();
+        // Show all assets when search is empty
         displayFilteredAssets(window.allAssets);
     }
 }
 
+// Generate intelligent search recommendations
 function generateSearchRecommendations(searchTerm) {
     const recommendations = [];
     const term = searchTerm.toLowerCase();
@@ -8600,6 +9016,7 @@ function generateSearchRecommendations(searchTerm) {
     const assetTypes = [...new Set(window.allAssets.map(asset => asset.type))];
     const assetSources = [...new Set(window.allAssets.map(asset => asset.source))];
     
+    // Name-based recommendations
     assetNames.forEach(name => {
         if (name.toLowerCase().includes(term)) {
             const matchingAssets = window.allAssets.filter(asset => 
@@ -8617,6 +9034,7 @@ function generateSearchRecommendations(searchTerm) {
         }
     });
     
+    // Type-based recommendations
     assetTypes.forEach(type => {
         if (type.toLowerCase().includes(term)) {
             const matchingAssets = window.allAssets.filter(asset => 
@@ -8634,6 +9052,7 @@ function generateSearchRecommendations(searchTerm) {
         }
     });
     
+    // Source-based recommendations
     assetSources.forEach(source => {
         if (source.toLowerCase().includes(term)) {
             const matchingAssets = window.allAssets.filter(asset => 
@@ -8651,6 +9070,7 @@ function generateSearchRecommendations(searchTerm) {
         }
     });
     
+    // Smart suggestions based on partial matches
     if (recommendations.length === 0) {
         // Fuzzy matching for typos
         const fuzzyMatches = findFuzzyMatches(term, assetNames.concat(assetTypes, assetSources));
@@ -8675,6 +9095,7 @@ function generateSearchRecommendations(searchTerm) {
         });
     }
     
+    // Sort and limit recommendations
     window.searchRecommendations = recommendations
         .sort((a, b) => b.assets.length - a.assets.length) // Sort by relevance
         .slice(0, 8); // Limit to 8 recommendations
@@ -8726,6 +9147,7 @@ function levenshteinDistance(str1, str2) {
     return matrix[str2.length][str1.length];
 }
 
+// Display recommendations dropdown
 function displayRecommendations() {
     const recommendationsList = document.getElementById('recommendations-list');
     
@@ -8739,6 +9161,7 @@ function displayRecommendations() {
         return;
     }
     
+    // Group recommendations by category
     const groupedRecs = groupBy(window.searchRecommendations, 'category');
     
     let html = '';
@@ -8772,6 +9195,7 @@ function displayRecommendations() {
     recommendationsList.innerHTML = html;
 }
 
+// Highlight matching text in recommendations
 function highlightMatch(text, term) {
     if (!term) return text;
     
@@ -8779,6 +9203,7 @@ function highlightMatch(text, term) {
     return text.replace(regex, '<mark>$1</mark>');
 }
 
+// Group array by property
 function groupBy(array, property) {
     return array.reduce((groups, item) => {
         const group = item[property] || 'Other';
@@ -8788,6 +9213,7 @@ function groupBy(array, property) {
     }, {});
 }
 
+// Handle keyboard navigation in recommendations
 function handleSearchKeydown(e) {
     const recommendationsVisible = document.getElementById('search-recommendations').style.display !== 'none';
     
@@ -8827,6 +9253,7 @@ function handleSearchKeydown(e) {
     }
 }
 
+// Update visual selection of recommendations
 function updateRecommendationSelection() {
     const items = document.querySelectorAll('.recommendation-item');
     items.forEach((item, index) => {
@@ -8834,17 +9261,21 @@ function updateRecommendationSelection() {
     });
 }
 
+// Select a recommendation
 function selectRecommendation(index) {
     const recommendation = window.searchRecommendations[index];
     if (!recommendation) return;
     
+    // Update search input
     document.getElementById('asset-search').value = recommendation.value;
     
     // Perform search with the selected recommendation
     performSearch(recommendation.value);
     
+    // Hide recommendations
     hideRecommendations();
     
+    // Reset selection
     window.selectedRecommendationIndex = -1;
 }
 
@@ -8883,6 +9314,7 @@ function performSearch(searchTerm) {
     console.log('Filtered results:', filtered.length, 'assets');
     displayFilteredAssets(filtered);
     
+    // Update URL with search parameter
     const url = new URL(window.location);
     if (searchTerm.trim()) {
         url.searchParams.set('search', searchTerm);
@@ -8892,17 +9324,20 @@ function performSearch(searchTerm) {
     window.history.replaceState({}, '', url);
 }
 
+// Show recommendations dropdown
 function showRecommendations() {
     if (window.searchRecommendations.length > 0 || window.currentSearchTerm.length >= 1) {
         document.getElementById('search-recommendations').style.display = 'block';
     }
 }
 
+// Hide recommendations dropdown
 function hideRecommendations() {
     document.getElementById('search-recommendations').style.display = 'none';
     window.selectedRecommendationIndex = -1;
 }
 
+// Clear search
 function clearSearch() {
     console.log('Clearing search...');
     document.getElementById('asset-search').value = '';
@@ -8910,6 +9345,7 @@ function clearSearch() {
     hideRecommendations();
     displayFilteredAssets(window.allAssets);
     
+    // Clear URL parameter
     const url = new URL(window.location);
     url.searchParams.delete('search');
     window.history.replaceState({}, '', url);
@@ -8923,10 +9359,12 @@ function searchAssets() {
     hideRecommendations();
 }
 
+// Initialize asset filters
 function initializeAssetFilters() {
     const typeFilter = document.getElementById('asset-type-filter');
     const sourceFilter = document.getElementById('asset-source-filter');
     
+    // Populate filter options when assets are loaded
     if (window.allAssets.length > 0) {
         populateFilterOptions();
     }
@@ -8940,6 +9378,7 @@ function initializeAssetFilters() {
     }
 }
 
+// Populate filter dropdown options
 function populateFilterOptions() {
     const typeFilter = document.getElementById('asset-type-filter');
     const sourceFilter = document.getElementById('asset-source-filter');
@@ -8963,6 +9402,7 @@ function populateFilterOptions() {
     }
 }
 
+// Apply asset filters
 function applyAssetFilters() {
     const typeFilter = document.getElementById('asset-type-filter').value;
     const sourceFilter = document.getElementById('asset-source-filter').value;
@@ -8970,6 +9410,7 @@ function applyAssetFilters() {
     
     let filtered = window.allAssets;
     
+    // Apply search filter
     if (searchTerm) {
         filtered = filtered.filter(asset => {
             return asset.name.toLowerCase().includes(searchTerm) ||
@@ -8982,16 +9423,19 @@ function applyAssetFilters() {
         });
     }
     
+    // Apply type filter
     if (typeFilter) {
         filtered = filtered.filter(asset => asset.type === typeFilter);
     }
     
+    // Apply source filter
     if (sourceFilter) {
         filtered = filtered.filter(asset => asset.source === sourceFilter);
     }
     
     displayFilteredAssets(filtered);
     
+    // Update filter button appearance
     const filterButton = document.querySelector('[onclick="applyAssetFilters()"]');
     if (typeFilter || sourceFilter) {
         filterButton.classList.add('filter-active');
@@ -9002,6 +9446,7 @@ function applyAssetFilters() {
     }
 }
 
+// Display filtered assets in the table
 function displayFilteredAssets(assets) {
     window.filteredAssets = assets;
     const tableBody = document.getElementById('assets-table-body');
@@ -9048,9 +9493,11 @@ function displayFilteredAssets(assets) {
         </tr>
     `).join('');
     
+    // Update assets count
     updateAssetsCount(assets.length, window.allAssets.length);
 }
 
+// Clear all filters and search
 function clearFiltersAndSearch() {
     document.getElementById('asset-search').value = '';
     document.getElementById('asset-type-filter').value = '';
@@ -9061,11 +9508,13 @@ function clearFiltersAndSearch() {
     
     displayFilteredAssets(window.allAssets);
     
+    // Reset filter button
     const filterButton = document.querySelector('[onclick="applyAssetFilters()"]');
     filterButton.classList.remove('filter-active');
     filterButton.innerHTML = `<i class="fas fa-filter me-1"></i> Apply Filters`;
 }
 
+// Update assets count display
 function updateAssetsCount(filtered, total) {
     const countDisplay = document.getElementById('assets-count');
     if (countDisplay) {
@@ -9088,6 +9537,7 @@ function debounce(func, wait) {
     };
 }
 
+// Initialize search when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
     initializeAssetSearch();
     
@@ -9103,7 +9553,9 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
+// ========================================
 // UTILITY FUNCTIONS FOR ASSET DISPLAY
+// ========================================
 
 // Get icon for asset type
 function getAssetTypeIcon(assetType) {
@@ -9162,6 +9614,7 @@ function formatDate(dateString) {
 function viewAssetDetails(assetId) {
     console.log('viewAssetDetails called with ID:', assetId);
     
+    // Find asset by ID in current assets data
     if (window.currentAssetsData && window.currentAssetsData.assets_list) {
         const asset = window.currentAssetsData.assets_list.find(a => a.id == assetId);
         if (asset) {
@@ -9180,6 +9633,7 @@ function viewAssetDetails(assetId) {
 function viewAssetLineage(assetId) {
     console.log('Viewing lineage for asset:', assetId);
     
+    // Find the asset in our data
     const asset = window.allAssets.find(a => a.id === assetId || a.name === assetId);
     
     if (asset) {
@@ -9212,7 +9666,9 @@ function viewAssetLineage(assetId) {
     }
 }
 
+// Update quality metrics
 function updateQualityMetrics(assetData, lineageData) {
+    // Calculate metrics based on lineage data
     const complexity = calculateComplexityScore(lineageData);
     const quality = calculateDataQuality(assetData);
     const performance = calculatePerformanceScore(lineageData);
@@ -9231,6 +9687,7 @@ function updateQualityMetrics(assetData, lineageData) {
     document.getElementById('maintainability').className = `badge bg-${maintainability.color}`;
 }
 
+// Calculate complexity score
 function calculateComplexityScore(lineageData) {
     const nodeCount = lineageData.nodes.length;
     const edgeCount = lineageData.edges.length;
@@ -9241,6 +9698,7 @@ function calculateComplexityScore(lineageData) {
     return { score: 'High', color: 'danger' };
 }
 
+// Calculate data quality score
 function calculateDataQuality(assetData) {
     const hasSchema = assetData.schema && assetData.schema.length > 0;
     const hasMetadata = assetData.metadata && Object.keys(assetData.metadata).length > 0;
@@ -9264,6 +9722,7 @@ function calculatePerformanceScore(lineageData) {
     return { score: 'Low', color: 'danger' };
 }
 
+// Calculate maintainability score
 function calculateMaintainabilityScore(assetData, lineageData) {
     const hasDocumentation = assetData.metadata && assetData.metadata.description;
     const isSimpleFlow = lineageData.edges.length <= 5;
@@ -9277,3 +9736,4 @@ function calculateMaintainabilityScore(assetData, lineageData) {
     if (score >= 60) return { score: 'Medium', color: 'warning' };
     return { score: 'Low', color: 'danger' };
 }
+

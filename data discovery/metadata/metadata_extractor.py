@@ -7,8 +7,6 @@ import hashlib
 from datetime import datetime
 from typing import Dict, Any, List, Optional
 import logging
-
-
 class MetadataExtractor:
     """
     Extracts and enriches metadata for data assets
@@ -18,13 +16,11 @@ class MetadataExtractor:
         self.config = config
         self.logger = logging.getLogger(self.__class__.__name__)
         
-        # Configuration options
         self.extract_schema = config.get('extract_schema', True)
         self.extract_samples = config.get('extract_samples', True)
         self.sample_size = config.get('sample_size', 100)
         self.detect_pii = config.get('detect_pii', True)
         
-        # PII detection patterns
         self.pii_patterns = {
             'email': r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b',
             'phone': r'(\+\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}',
@@ -33,7 +29,6 @@ class MetadataExtractor:
             'ip_address': r'\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b'
         }
         
-        # Sensitive column name patterns
         self.sensitive_column_patterns = [
             r'.*password.*', r'.*pwd.*', r'.*pass.*',
             r'.*ssn.*', r'.*social.*security.*',
@@ -56,23 +51,17 @@ class MetadataExtractor:
         metadata = {}
         
         try:
-            # Basic metadata
             metadata.update(self._extract_basic_metadata(asset))
             
-            # Data quality metrics
             metadata.update(self._extract_quality_metrics(asset))
             
-            # PII detection
             if self.detect_pii:
                 metadata.update(self._detect_pii_data(asset))
             
-            # Business context
             metadata.update(self._extract_business_context(asset))
             
-            # Technical metadata
             metadata.update(self._extract_technical_metadata(asset))
             
-            # Data lineage hints
             metadata.update(self._extract_lineage_hints(asset))
             
         except Exception as e:
@@ -109,7 +98,6 @@ class MetadataExtractor:
         }
         
         try:
-            # Completeness - based on schema and data availability
             if asset.get('schema', {}).get('columns'):
                 quality_metrics['completeness_score'] = 0.8  # Default high score if schema exists
             
@@ -127,14 +115,12 @@ class MetadataExtractor:
                 else:
                     quality_metrics['freshness_score'] = 0.3
             
-            # Consistency - based on naming conventions and structure
             name = asset.get('name', '')
             if re.match(r'^[a-zA-Z][a-zA-Z0-9_]*$', name):
                 quality_metrics['consistency_score'] = 0.8
             else:
                 quality_metrics['consistency_score'] = 0.6
             
-            # Overall quality score
             quality_metrics['overall_quality_score'] = sum(quality_metrics.values()) / len(quality_metrics)
             
         except Exception as e:
@@ -170,7 +156,6 @@ class MetadataExtractor:
                     pii_detection['pii_types'].append(pii_type)
                     pii_detection['contains_pii'] = True
             
-            # Determine risk level
             if pii_detection['contains_pii']:
                 if len(pii_detection['pii_types']) > 2 or len(pii_detection['sensitive_columns']) > 3:
                     pii_detection['privacy_risk_level'] = 'high'
@@ -320,7 +305,6 @@ class MetadataExtractor:
         size = asset.get('size', 0)
         asset_type = asset.get('type', '').lower()
         
-        # High value indicators
         high_value_indicators = ['customer', 'transaction', 'financial', 'revenue', 'sales']
         medium_value_indicators = ['user', 'product', 'inventory', 'log', 'event']
         

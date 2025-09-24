@@ -38,14 +38,12 @@ class SFTPConnector(BaseConnector):
         self.file_extensions = set(config.get('file_extensions', []))
         self.max_file_size = config.get('max_file_size_mb', 1000) * 1024 * 1024
         
-        # SSH and SFTP clients
         self.ssh_client = None
         self.sftp_client = None
         
     def _initialize_connection(self) -> bool:
         """Initialize SSH and SFTP connections"""
         try:
-            # Create SSH client
             self.ssh_client = paramiko.SSHClient()
             self.ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
             
@@ -68,7 +66,6 @@ class SFTPConnector(BaseConnector):
                     timeout=30
                 )
             
-            # Create SFTP client
             self.sftp_client = self.ssh_client.open_sftp()
             return True
             
@@ -96,7 +93,6 @@ class SFTPConnector(BaseConnector):
             
             self.logger.info(f"Connected to SFTP server: {self.host}")
             
-            # Scan each configured path
             for scan_path in self.scan_paths:
                 try:
                     path_assets = self._scan_sftp_directory(scan_path, 0)
@@ -121,7 +117,6 @@ class SFTPConnector(BaseConnector):
             if depth > self.max_depth:
                 return assets
             
-            # List directory contents
             items = self.sftp_client.listdir_attr(directory)
             
             for item in items:
@@ -130,11 +125,9 @@ class SFTPConnector(BaseConnector):
                 try:
                     # Check if it's a file
                     if stat.S_ISREG(item.st_mode):
-                        # Check file size limit
                         if item.st_size > self.max_file_size:
                             continue
                         
-                        # Check file extension filter
                         if self.file_extensions and not any(item.filename.lower().endswith(ext) for ext in self.file_extensions):
                             continue
                         
@@ -142,7 +135,6 @@ class SFTPConnector(BaseConnector):
                         if asset:
                             assets.append(asset)
                     
-                    # Recursively scan subdirectories
                     elif stat.S_ISDIR(item.st_mode) and depth < self.max_depth:
                         sub_assets = self._scan_sftp_directory(item_path, depth + 1)
                         assets.extend(sub_assets)
@@ -273,7 +265,6 @@ class SFTPConnector(BaseConnector):
             stdin, stdout, stderr = self.ssh_client.exec_command('uname -a')
             server_info = stdout.read().decode().strip()
             
-            # Get disk usage
             stdin, stdout, stderr = self.ssh_client.exec_command('df -h')
             disk_info = stdout.read().decode().strip()
             

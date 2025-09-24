@@ -14,8 +14,6 @@ import ftplib
 import socket
 
 from .base_connector import BaseConnector
-
-
 class NetworkConnector(BaseConnector):
     """
     Connector for discovering data assets in network locations (NAS, SFTP, SMB, FTP)
@@ -69,7 +67,6 @@ class NetworkConnector(BaseConnector):
         assets = []
         
         try:
-            # SFTP connection parameters
             hostname = config.get('host')
             port = config.get('port', 22)
             username = config.get('username')
@@ -77,7 +74,6 @@ class NetworkConnector(BaseConnector):
             private_key_path = config.get('private_key_path')
             scan_paths = config.get('scan_paths', ['/'])
             
-            # Create SSH client
             ssh_client = paramiko.SSHClient()
             ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
             
@@ -88,12 +84,10 @@ class NetworkConnector(BaseConnector):
             else:
                 ssh_client.connect(hostname, port=port, username=username, password=password, timeout=self.connection_timeout)
             
-            # Create SFTP client
             sftp_client = ssh_client.open_sftp()
             
             self.logger.info(f"Connected to SFTP server: {hostname}")
             
-            # Scan each configured path
             for scan_path in scan_paths:
                 try:
                     path_assets = self._scan_sftp_directory(sftp_client, scan_path, hostname, config)
@@ -101,7 +95,6 @@ class NetworkConnector(BaseConnector):
                 except Exception as e:
                     self.logger.error(f"Error scanning SFTP path {scan_path}: {e}")
             
-            # Clean up connections
             sftp_client.close()
             ssh_client.close()
             
@@ -115,7 +108,6 @@ class NetworkConnector(BaseConnector):
         assets = []
         
         try:
-            # List directory contents
             items = sftp_client.listdir_attr(directory)
             
             for item in items:
@@ -124,11 +116,9 @@ class NetworkConnector(BaseConnector):
                 try:
                     # Check if it's a file
                     if stat.S_ISREG(item.st_mode):
-                        # Check file size limit
                         if item.st_size > self.max_file_size:
                             continue
                         
-                        # Check file extension
                         if self.file_extensions and not any(item.filename.lower().endswith(ext) for ext in self.file_extensions):
                             continue
                         
@@ -187,7 +177,6 @@ class NetworkConnector(BaseConnector):
         assets = []
         
         try:
-            # SMB connection parameters
             hostname = config.get('host')
             share_name = config.get('share')
             username = config.get('username')
@@ -197,10 +186,8 @@ class NetworkConnector(BaseConnector):
             
             self.logger.info(f"Connecting to SMB share: //{hostname}/{share_name}")
             
-            # Register session
             smbclient.register_session(hostname, username=username, password=password, domain=domain)
             
-            # Scan each configured path
             for scan_path in scan_paths:
                 try:
                     smb_path = f"//{hostname}/{share_name}{scan_path}"
@@ -219,23 +206,19 @@ class NetworkConnector(BaseConnector):
         assets = []
         
         try:
-            # List directory contents
             items = smbclient.listdir(directory)
             
             for item_name in items:
                 item_path = f"{directory.rstrip('/')}/{item_name}"
                 
                 try:
-                    # Get item stats
                     item_stat = smbclient.stat(item_path)
                     
                     # Check if it's a file
                     if smbclient.path.isfile(item_path):
-                        # Check file size limit
                         if item_stat.st_size > self.max_file_size:
                             continue
                         
-                        # Check file extension
                         if self.file_extensions and not any(item_name.lower().endswith(ext) for ext in self.file_extensions):
                             continue
                         
@@ -292,21 +275,18 @@ class NetworkConnector(BaseConnector):
         assets = []
         
         try:
-            # FTP connection parameters
             hostname = config.get('host')
             port = config.get('port', 21)
             username = config.get('username', 'anonymous')
             password = config.get('password', '')
             scan_paths = config.get('scan_paths', ['/'])
             
-            # Create FTP connection
             ftp = ftplib.FTP()
             ftp.connect(hostname, port, timeout=self.connection_timeout)
             ftp.login(username, password)
             
             self.logger.info(f"Connected to FTP server: {hostname}")
             
-            # Scan each configured path
             for scan_path in scan_paths:
                 try:
                     path_assets = self._scan_ftp_directory(ftp, scan_path, hostname, config)
@@ -326,17 +306,14 @@ class NetworkConnector(BaseConnector):
         assets = []
         
         try:
-            # Change to directory
             original_dir = ftp.pwd()
             ftp.cwd(directory)
             
-            # List directory contents
             items = []
             ftp.retrlines('LIST', items.append)
             
             for item_line in items:
                 try:
-                    # Parse FTP LIST output (Unix-style)
                     parts = item_line.split()
                     if len(parts) < 9:
                         continue
@@ -345,17 +322,14 @@ class NetworkConnector(BaseConnector):
                     size = int(parts[4]) if parts[4].isdigit() else 0
                     filename = ' '.join(parts[8:])  # Handle filenames with spaces
                     
-                    # Skip current and parent directory entries
                     if filename in ['.', '..']:
                         continue
                     
                     # Check if it's a file (not directory)
                     if permissions.startswith('-'):
-                        # Check file size limit
                         if size > self.max_file_size:
                             continue
                         
-                        # Check file extension
                         if self.file_extensions and not any(filename.lower().endswith(ext) for ext in self.file_extensions):
                             continue
                         
@@ -416,7 +390,6 @@ class NetworkConnector(BaseConnector):
         assets = []
         
         try:
-            # NFS is typically mounted locally, so we treat it like a local file system
             # but with network metadata
             mount_point = config.get('mount_point')
             nfs_server = config.get('server')
@@ -450,14 +423,11 @@ class NetworkConnector(BaseConnector):
                     try:
                         file_path = os.path.join(root, filename)
                         
-                        # Get file stats
                         stat_info = os.stat(file_path)
                         
-                        # Check file size limit
                         if stat_info.st_size > self.max_file_size:
                             continue
                         
-                        # Check file extension
                         if self.file_extensions and not any(filename.lower().endswith(ext) for ext in self.file_extensions):
                             continue
                         
@@ -479,7 +449,6 @@ class NetworkConnector(BaseConnector):
         try:
             file_type = self._determine_network_file_type(filename, 'nfs')
             
-            # Convert local path to NFS path
             relative_path = os.path.relpath(file_path, mount_point)
             nfs_path = f"nfs://{server}{export}/{relative_path}"
             
@@ -539,20 +508,16 @@ class NetworkConnector(BaseConnector):
         """Generate tags for network file"""
         tags = [network_type, 'network', 'remote']
         
-        # Add extension-based tag
         if '.' in filename:
             ext = filename.split('.')[-1].lower()
             tags.append(f"ext_{ext}")
         
-        # Add path-based tags
         path_parts = file_path.lower().split('/')
         for part in path_parts:
             if part in ['data', 'backup', 'archive', 'reports', 'logs', 'export']:
                 tags.append(f"category_{part}")
         
-        # Add size-based tags
         try:
-            # This would need the actual file size, but we'll add generic network tags
             tags.extend(['remote_file', 'network_storage'])
         except:
             pass
@@ -569,7 +534,6 @@ class NetworkConnector(BaseConnector):
             
             try:
                 if source_type == 'sftp':
-                    # Test SFTP connection
                     port = source_config.get('port', 22)
                     username = source_config.get('username')
                     password = source_config.get('password')
@@ -580,7 +544,6 @@ class NetworkConnector(BaseConnector):
                     ssh_client.close()
                     
                 elif source_type == 'smb' or source_type == 'nas':
-                    # Test SMB connection
                     share_name = source_config.get('share')
                     username = source_config.get('username')
                     password = source_config.get('password')
@@ -591,7 +554,6 @@ class NetworkConnector(BaseConnector):
                     smbclient.listdir(f"//{hostname}/{share_name}")
                     
                 elif source_type == 'ftp':
-                    # Test FTP connection
                     port = source_config.get('port', 21)
                     username = source_config.get('username', 'anonymous')
                     password = source_config.get('password', '')
@@ -602,7 +564,6 @@ class NetworkConnector(BaseConnector):
                     ftp.quit()
                     
                 elif source_type == 'nfs':
-                    # Test NFS mount
                     mount_point = source_config.get('mount_point')
                     if not os.path.exists(mount_point):
                         raise Exception(f"NFS mount point {mount_point} does not exist")

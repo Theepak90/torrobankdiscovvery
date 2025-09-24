@@ -8,8 +8,6 @@ from datetime import datetime
 from typing import Dict, Any, List, Optional
 from pathlib import Path
 import logging
-
-
 class AssetCatalog:
     """
     Manages the catalog of discovered data assets
@@ -26,7 +24,6 @@ class AssetCatalog:
             conn = sqlite3.connect(self.catalog_db_path)
             cursor = conn.cursor()
             
-            # Create assets table
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS assets (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -94,7 +91,6 @@ class AssetCatalog:
                 fingerprint_data = f"{asset.get('source', '')}-{asset.get('location', '')}-{asset.get('name', '')}"
                 fingerprint = hashlib.md5(fingerprint_data.encode()).hexdigest()
                 
-                # Add fingerprint to metadata
                 if 'metadata' not in asset:
                     asset['metadata'] = {}
                 asset['metadata']['asset_fingerprint'] = fingerprint
@@ -109,10 +105,8 @@ class AssetCatalog:
             current_time = datetime.now().isoformat()
             
             if existing_asset:
-                # Update existing asset
                 self._update_existing_asset(cursor, asset, fingerprint, current_time)
             else:
-                # Insert new asset
                 self._insert_new_asset(cursor, asset, fingerprint, current_time)
             
             conn.commit()
@@ -142,7 +136,6 @@ class AssetCatalog:
                 fingerprint_data = f"{asset.get('source', '')}-{asset.get('location', '')}-{asset.get('name', '')}"
                 fingerprint = hashlib.md5(fingerprint_data.encode()).hexdigest()
                 
-                # Add fingerprint to metadata
                 if 'metadata' not in asset:
                     asset['metadata'] = {}
                 asset['metadata']['asset_fingerprint'] = fingerprint
@@ -157,10 +150,8 @@ class AssetCatalog:
             current_time = datetime.now().isoformat()
             
             if existing_asset:
-                # Update existing asset
                 self._update_existing_asset(cursor, asset, fingerprint, current_time)
             else:
-                # Insert new asset
                 self._insert_new_asset(cursor, asset, fingerprint, current_time)
             
             conn.commit()
@@ -194,7 +185,6 @@ class AssetCatalog:
             fingerprint
         ))
         
-        # Record the addition in history
         cursor.execute('''
             INSERT INTO asset_history (asset_fingerprint, change_type, change_date, new_values_json)
             VALUES (?, ?, ?, ?)
@@ -228,7 +218,6 @@ class AssetCatalog:
             fingerprint
         ))
         
-        # Record the update in history
         cursor.execute('''
             INSERT INTO asset_history (asset_fingerprint, change_type, change_date, old_values_json, new_values_json)
             VALUES (?, ?, ?, ?, ?)
@@ -275,7 +264,6 @@ class AssetCatalog:
             conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
             
-            # Build search query
             where_conditions = ['is_active = 1']
             params = []
             
@@ -324,11 +312,9 @@ class AssetCatalog:
             conn = sqlite3.connect(self.catalog_db_path)
             cursor = conn.cursor()
             
-            # Total assets
             cursor.execute('SELECT COUNT(*) FROM assets WHERE is_active = 1')
             total_assets = cursor.fetchone()[0]
             
-            # Assets by type
             cursor.execute('''
                 SELECT type, COUNT(*) as count 
                 FROM assets 
@@ -338,7 +324,6 @@ class AssetCatalog:
             ''')
             assets_by_type = dict(cursor.fetchall())
             
-            # Assets by source
             cursor.execute('''
                 SELECT source, COUNT(*) as count 
                 FROM assets 
@@ -348,7 +333,6 @@ class AssetCatalog:
             ''')
             assets_by_source = dict(cursor.fetchall())
             
-            # Recent discoveries
             cursor.execute('''
                 SELECT COUNT(*) 
                 FROM assets 
@@ -357,7 +341,6 @@ class AssetCatalog:
             ''')
             recent_discoveries = cursor.fetchone()[0]
             
-            # Total size
             cursor.execute('SELECT SUM(size) FROM assets WHERE is_active = 1')
             total_size = cursor.fetchone()[0] or 0
             
@@ -389,7 +372,6 @@ class AssetCatalog:
                     UPDATE assets SET is_active = 0 WHERE fingerprint = ?
                 ''', (fingerprint,))
                 
-                # Record in history
                 cursor.execute('''
                     INSERT INTO asset_history (asset_fingerprint, change_type, change_date)
                     VALUES (?, ?, ?)
@@ -524,7 +506,6 @@ class AssetCatalog:
             self.logger.error(f"Error cleaning up old history: {e}")
             return False
     
-    # Custom Lineage Relationship Management
     async def add_custom_relationship(self, relationship_data: dict) -> bool:
         """Add a custom lineage relationship"""
         try:
@@ -627,7 +608,6 @@ class AssetCatalog:
             conn = sqlite3.connect(self.catalog_db_path)
             cursor = conn.cursor()
             
-            # Get relationships where asset is either source or target
             cursor.execute('''
                 SELECT id, source_asset, target_asset, relationship_type, confidence, 
                        description, created_by, created_at

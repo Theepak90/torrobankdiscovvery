@@ -12,8 +12,6 @@ except ImportError:
     cx_Oracle = None
 
 from .base_connector import BaseConnector
-
-
 class OracleConnector(BaseConnector):
     """
     Connector for discovering data assets in Oracle databases
@@ -60,7 +58,6 @@ class OracleConnector(BaseConnector):
             ) as connection:
                 cursor = connection.cursor()
                 
-                # Get all tables
                 cursor.execute("""
                     SELECT 
                         table_name, 
@@ -132,7 +129,6 @@ class OracleConnector(BaseConnector):
                     }
                     assets.append(asset)
                 
-                # Get all views
                 cursor.execute("""
                     SELECT view_name, text
                     FROM user_views

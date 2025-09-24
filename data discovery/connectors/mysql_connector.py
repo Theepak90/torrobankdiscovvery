@@ -9,8 +9,6 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.exc import SQLAlchemyError
 
 from .base_connector import BaseConnector
-
-
 class MySQLConnector(BaseConnector):
     """
     Connector for discovering data assets in MySQL databases
@@ -44,7 +42,6 @@ class MySQLConnector(BaseConnector):
             engine = create_engine(connection_string, connect_args={'connect_timeout': self.connection_timeout})
             
             with engine.connect() as conn:
-                # Get all tables and views
                 query = text("""
                     SELECT 
                         TABLE_NAME, 

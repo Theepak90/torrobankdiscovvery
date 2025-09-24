@@ -16,8 +16,6 @@ from google.auth import default
 from google.auth.exceptions import DefaultCredentialsError
 
 from .base_connector import BaseConnector
-
-
 class GCPConnector(BaseConnector):
     """
     Connector for discovering data assets in Google Cloud Platform services
@@ -41,7 +39,6 @@ class GCPConnector(BaseConnector):
         self.credentials_path = config.get('credentials_path')
         self.region = config.get('region', 'us-central1')
         
-        # Initialize credentials and clients
         self.credentials = None
         self.storage_client = None
         self.bigquery_client = None
@@ -65,7 +62,6 @@ class GCPConnector(BaseConnector):
                 self.logger.info("GCP credentials initialized from service account JSON")
                 
             elif self.credentials_path and os.path.exists(self.credentials_path):
-                # Use service account file
                 self.credentials = service_account.Credentials.from_service_account_file(
                     self.credentials_path
                 )
@@ -88,7 +84,6 @@ class GCPConnector(BaseConnector):
         """Initialize GCP service clients"""
         try:
             if self.credentials and self.project_id:
-                # Initialize BigQuery client
                 if 'bigquery' in self.services:
                     self.bigquery_client = bigquery.Client(
                         project=self.project_id,
@@ -96,7 +91,6 @@ class GCPConnector(BaseConnector):
                     )
                     self.logger.info("BigQuery client initialized")
                 
-                # Initialize Cloud Storage client
                 if 'cloud_storage' in self.services:
                     self.storage_client = storage.Client(
                         project=self.project_id,
@@ -117,11 +111,9 @@ class GCPConnector(BaseConnector):
         assets = []
         
         try:
-            # Discover BigQuery assets
             if 'bigquery' in self.services and self.bigquery_client:
                 assets.extend(self._discover_bigquery_assets())
             
-            # Discover Cloud Storage assets
             if 'cloud_storage' in self.services and self.storage_client:
                 assets.extend(self._discover_cloud_storage_assets())
             
@@ -137,18 +129,15 @@ class GCPConnector(BaseConnector):
         assets = []
         
         try:
-            # List all datasets in the project
             datasets = list(self.bigquery_client.list_datasets())
             
             for dataset in datasets:
                 dataset_id = dataset.dataset_id
                 dataset_ref = self.bigquery_client.dataset(dataset_id)
                 
-                # Get dataset metadata
                 try:
                     dataset_obj = self.bigquery_client.get_dataset(dataset_ref)
                     
-                    # Add dataset as an asset
                     assets.append({
                         'name': f"{self.project_id}.{dataset_id}",
                         'type': 'bigquery_dataset',
@@ -170,7 +159,6 @@ class GCPConnector(BaseConnector):
                         }
                     })
                     
-                    # List tables and views in the dataset
                     tables = list(self.bigquery_client.list_tables(dataset_ref))
                     
                     for table in tables:
@@ -180,7 +168,6 @@ class GCPConnector(BaseConnector):
                         try:
                             table_obj = self.bigquery_client.get_table(table_ref)
                             
-                            # Determine table type
                             table_type = 'bigquery_view' if table_obj.table_type == 'VIEW' else 'bigquery_table'
                             
                             # Get schema information
@@ -241,13 +228,11 @@ class GCPConnector(BaseConnector):
         assets = []
         
         try:
-            # List all buckets in the project
             buckets = list(self.storage_client.list_buckets())
             
             for bucket in buckets:
                 bucket_name = bucket.name
                 
-                # Add bucket as an asset
                 assets.append({
                     'name': bucket_name,
                     'type': 'gcs_bucket',
@@ -322,7 +307,6 @@ class GCPConnector(BaseConnector):
             
             connection_successful = False
             
-            # Test BigQuery connection
             if 'bigquery' in self.services and self.bigquery_client:
                 try:
                     # Try to list datasets (this will fail if credentials are invalid)
@@ -332,7 +316,6 @@ class GCPConnector(BaseConnector):
                 except Exception as e:
                     self.logger.error(f"BigQuery connection test failed: {e}")
             
-            # Test Cloud Storage connection
             if 'cloud_storage' in self.services and self.storage_client:
                 try:
                     # Try to list buckets (this will fail if credentials are invalid)
@@ -371,7 +354,6 @@ class GCPConnector(BaseConnector):
                 if isinstance(self.service_account_json, str):
                     json.loads(self.service_account_json)
                 else:
-                    # Already a dict, validate required fields
                     required_fields = ['type', 'project_id', 'private_key', 'client_email']
                     for field in required_fields:
                         if field not in self.service_account_json:

@@ -5,8 +5,6 @@ Base connector class for all data source connectors
 from abc import ABC, abstractmethod
 from typing import List, Dict, Any
 import logging
-
-
 class BaseConnector(ABC):
     """
     Abstract base class for all data source connectors

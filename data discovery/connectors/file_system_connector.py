@@ -12,8 +12,6 @@ import mimetypes
 import sqlite3
 
 from .base_connector import BaseConnector
-
-
 class FileSystemConnector(BaseConnector):
     """
     Connector for discovering data assets in file systems
@@ -65,7 +63,6 @@ class FileSystemConnector(BaseConnector):
             for item in directory.rglob('*'):
                 if item.is_file():
                     try:
-                        # Check file size limit
                         if item.stat().st_size > self.max_file_size:
                             continue
                         
@@ -147,17 +144,14 @@ class FileSystemConnector(BaseConnector):
         """Generate tags for the file based on location and type"""
         tags = []
         
-        # Add extension-based tag
         if file_path.suffix:
             tags.append(f"ext_{file_path.suffix[1:]}")
         
-        # Add directory-based tags
         path_parts = file_path.parts
         for part in path_parts:
             if part.lower() in ['data', 'database', 'export', 'backup', 'archive', 'reports']:
                 tags.append(f"category_{part.lower()}")
         
-        # Add size-based tags
         try:
             size_mb = file_path.stat().st_size / (1024 * 1024)
             if size_mb < 1:
@@ -193,7 +187,6 @@ class FileSystemConnector(BaseConnector):
     def _enrich_csv_metadata(self, asset: Dict[str, Any], file_path: Path):
         """Enrich CSV file metadata"""
         try:
-            # Read first few rows to get schema info
             df = pd.read_csv(file_path, nrows=5)
             
             asset['metadata'].update({
@@ -230,7 +223,6 @@ class FileSystemConnector(BaseConnector):
     def _enrich_excel_metadata(self, asset: Dict[str, Any], file_path: Path):
         """Enrich Excel file metadata"""
         try:
-            # Get sheet names
             excel_file = pd.ExcelFile(file_path)
             sheet_names = excel_file.sheet_names
             
@@ -239,7 +231,6 @@ class FileSystemConnector(BaseConnector):
                 'sheet_names': sheet_names
             })
             
-            # Get info about first sheet
             if sheet_names:
                 df = pd.read_excel(file_path, sheet_name=sheet_names[0], nrows=5)
                 asset['metadata'].update({
@@ -256,7 +247,6 @@ class FileSystemConnector(BaseConnector):
             conn = sqlite3.connect(file_path)
             cursor = conn.cursor()
             
-            # Get table names
             cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
             tables = [row[0] for row in cursor.fetchall()]
             

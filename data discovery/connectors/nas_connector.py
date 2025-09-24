@@ -37,13 +37,11 @@ class NASConnector(BaseConnector):
         self.timeout = config.get('timeout', 30)
         self.max_depth = config.get('max_depth', 5)
         
-        # Initialize SMB client
         self.smb_client = None
         
     def _initialize_smb_client(self) -> bool:
         """Initialize SMB client connection"""
         try:
-            # Configure SMB client
             smbclient.ClientConfig(
                 username=self.username,
                 password=self.password,
@@ -65,10 +63,8 @@ class NASConnector(BaseConnector):
             if not self._initialize_smb_client():
                 return assets
             
-            # Build SMB path
             smb_path_str = f"\\\\{self.host}\\{self.share_name}"
             
-            # Discover files and directories
             assets.extend(self._discover_smb_assets(smb_path_str, 0))
             
             self.logger.info(f"Discovered {len(assets)} assets from NAS drive")
@@ -86,15 +82,12 @@ class NASConnector(BaseConnector):
             if depth > self.max_depth:
                 return assets
             
-            # List directory contents
             for item in smb_path.listdir(path):
                 item_path = f"{path}\\{item}"
                 
                 try:
-                    # Get file stats
                     stat_info = smb_path.stat(item_path)
                     
-                    # Determine asset type
                     if stat.S_ISDIR(stat_info.st_mode):
                         asset_type = "Directory"
                         size = 0
@@ -102,7 +95,6 @@ class NASConnector(BaseConnector):
                         asset_type = "File"
                         size = stat_info.st_size
                     
-                    # Create asset metadata
                     asset = {
                         "id": f"nas_{hash(item_path)}",
                         "name": item,
@@ -125,7 +117,6 @@ class NASConnector(BaseConnector):
                     
                     assets.append(asset)
                     
-                    # Recursively discover subdirectories
                     if stat.S_ISDIR(stat_info.st_mode) and depth < self.max_depth:
                         assets.extend(self._discover_smb_assets(item_path, depth + 1))
                         
@@ -183,7 +174,6 @@ class NASConnector(BaseConnector):
             
             smb_path_str = f"\\\\{self.host}\\{self.share_name}"
             
-            # Calculate storage usage
             total_files = 0
             total_dirs = 0
             total_size = 0

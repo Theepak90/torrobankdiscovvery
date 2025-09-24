@@ -7,8 +7,6 @@ from datetime import datetime
 from typing import List, Dict, Any, Optional
 
 from .base_connector import BaseConnector
-
-
 class TrinoConnector(BaseConnector):
     """
     Connector for discovering data assets in Trino clusters
@@ -40,15 +38,12 @@ class TrinoConnector(BaseConnector):
         assets = []
         
         try:
-            # Discover catalogs
             catalogs = self._discover_catalogs()
             assets.extend(catalogs)
             
-            # Discover schemas
             schemas = self._discover_schemas()
             assets.extend(schemas)
             
-            # Discover tables
             tables = self._discover_tables()
             assets.extend(tables)
             
@@ -70,7 +65,6 @@ class TrinoConnector(BaseConnector):
             for row in result:
                 catalog_name = row[0]
                 
-                # Skip system catalogs
                 if catalog_name in ['system', 'information_schema']:
                     continue
                 
@@ -109,7 +103,6 @@ class TrinoConnector(BaseConnector):
             for row in result:
                 catalog_name, schema_name = row
                 
-                # Skip system schemas
                 if catalog_name in ['system', 'information_schema']:
                     continue
                 
@@ -226,7 +219,6 @@ class TrinoConnector(BaseConnector):
         """Execute a query against Trino"""
         try:
             # For Trino, we'll use a simple HTTP-based approach
-            # In a real implementation, you'd use a proper Trino client
             url = f"{self.base_url}/v1/statement"
             
             payload = {
@@ -255,7 +247,6 @@ class TrinoConnector(BaseConnector):
             result_data = response.json()
             
             # This is a simplified implementation
-            # In reality, you'd need to handle the async nature of Trino queries
             return []
             
         except Exception as e:

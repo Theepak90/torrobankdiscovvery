@@ -37,8 +37,6 @@ try:
 except ImportError:
     EventHubConsumerClient = None
     ServiceBusClient = None
-
-
 class StreamingConnector(BaseConnector):
     """
     Connector for discovering data assets in streaming platforms
@@ -109,7 +107,6 @@ class StreamingConnector(BaseConnector):
                 sasl_plain_password=config.get('password')
             )
             
-            # Get topic metadata
             metadata = admin_client.describe_topics()
             
             for topic_name, topic_metadata in metadata.items():
@@ -157,11 +154,9 @@ class StreamingConnector(BaseConnector):
                     authentication=AuthenticationToken(config.get('token')) if config.get('token') else None
                 )
                 
-                # Get all topics
                 topics = admin_client.topics()
                 for topic in topics:
                     try:
-                        # Get topic stats
                         stats = admin_client.topics().get_stats(topic)
                         
                         asset = {
@@ -203,7 +198,6 @@ class StreamingConnector(BaseConnector):
                 admin_client.close()
                 
             except ImportError:
-                # Fallback to config-based discovery
                 topics = config.get('topics', [])
                 for topic in topics:
                     asset = {
@@ -258,7 +252,6 @@ class StreamingConnector(BaseConnector):
                 management_port = config.get('management_port', 15672)
                 management_url = f"http://{config['host']}:{management_port}/api"
                 
-                # Get queues using management API
                 response = requests.get(
                     f"{management_url}/queues",
                     auth=HTTPBasicAuth(config.get('username', 'guest'), config.get('password', 'guest')),
@@ -291,7 +284,6 @@ class StreamingConnector(BaseConnector):
                         }
                         assets.append(asset)
                 
-                # Get exchanges
                 response = requests.get(
                     f"{management_url}/exchanges",
                     auth=HTTPBasicAuth(config.get('username', 'guest'), config.get('password', 'guest')),
@@ -327,7 +319,6 @@ class StreamingConnector(BaseConnector):
                 self.logger.warning("requests library not available for RabbitMQ management API")
             except Exception as e:
                 self.logger.warning(f"RabbitMQ management API not available: {e}")
-                # Fallback to config-based discovery
                 queues = config.get('queues', [])
                 for queue in queues:
                     asset = {
@@ -367,7 +358,6 @@ class StreamingConnector(BaseConnector):
                 aws_secret_access_key=config.get('secret_access_key')
             )
             
-            # List streams
             response = kinesis_client.list_streams()
             
             for stream_name in response['StreamNames']:
@@ -410,10 +400,8 @@ class StreamingConnector(BaseConnector):
             from azure.eventhub import EventHubConsumerClient
             from azure.identity import DefaultAzureCredential
             
-            # Use Azure Event Hub management API
             try:
                 credential = DefaultAzureCredential()
-                # Get event hubs using management API
                 from azure.mgmt.eventhub import EventHubManagementClient
                 
                 subscription_id = config.get('subscription_id')
@@ -423,7 +411,6 @@ class StreamingConnector(BaseConnector):
                 if all([subscription_id, resource_group, namespace_name]):
                     eventhub_client = EventHubManagementClient(credential, subscription_id)
                     
-                    # List event hubs
                     event_hubs = eventhub_client.event_hubs.list_by_namespace(
                         resource_group, namespace_name
                     )
@@ -445,7 +432,6 @@ class StreamingConnector(BaseConnector):
                         }
                         assets.append(asset)
                 else:
-                    # Fallback to config-based discovery
                     event_hubs = config.get('event_hubs', [])
                     for hub_name in event_hubs:
                         asset = {
@@ -464,7 +450,6 @@ class StreamingConnector(BaseConnector):
                         assets.append(asset)
                         
             except ImportError:
-                # Fallback to config-based discovery
                 event_hubs = config.get('event_hubs', [])
                 for hub_name in event_hubs:
                     asset = {
@@ -498,7 +483,6 @@ class StreamingConnector(BaseConnector):
             from azure.servicebus import ServiceBusClient
             from azure.identity import DefaultAzureCredential
             
-            # Use Azure Service Bus management API
             try:
                 credential = DefaultAzureCredential()
                 from azure.mgmt.servicebus import ServiceBusManagementClient
@@ -510,7 +494,6 @@ class StreamingConnector(BaseConnector):
                 if all([subscription_id, resource_group, namespace_name]):
                     servicebus_client = ServiceBusManagementClient(credential, subscription_id)
                     
-                    # List queues
                     queues = servicebus_client.queues.list_by_namespace(
                         resource_group, namespace_name
                     )
@@ -533,7 +516,6 @@ class StreamingConnector(BaseConnector):
                         }
                         assets.append(asset)
                     
-                    # List topics
                     topics = servicebus_client.topics.list_by_namespace(
                         resource_group, namespace_name
                     )
@@ -556,7 +538,6 @@ class StreamingConnector(BaseConnector):
                         }
                         assets.append(asset)
                 else:
-                    # Fallback to config-based discovery
                     queues = config.get('queues', [])
                     topics = config.get('topics', [])
                     
@@ -593,7 +574,6 @@ class StreamingConnector(BaseConnector):
                         assets.append(asset)
                         
             except ImportError:
-                # Fallback to config-based discovery
                 queues = config.get('queues', [])
                 topics = config.get('topics', [])
                 
@@ -644,7 +624,6 @@ class StreamingConnector(BaseConnector):
             publisher = pubsub_v1.PublisherClient()
             project_path = publisher.common_project_path(config['project_id'])
             
-            # List topics
             topics = publisher.list_topics(request={"project": project_path})
             
             for topic in topics:
@@ -678,14 +657,12 @@ class StreamingConnector(BaseConnector):
             import nats
             import asyncio
             
-            # Connect to NATS server
             server = config.get('server', 'nats://localhost:4222')
             
             async def discover_nats_assets():
                 try:
                     nc = await nats.connect(server)
                     
-                    # Get server info
                     server_info = nc.server_info
                     
                     # Get subject information (this requires NATS monitoring)
@@ -713,7 +690,6 @@ class StreamingConnector(BaseConnector):
                     
                     except Exception as e:
                         self.logger.warning(f"Could not get NATS subject info: {e}")
-                        # Fallback to basic discovery
                         subjects = config.get('subjects', [])
                         for subject in subjects:
                             asset = {
@@ -734,7 +710,6 @@ class StreamingConnector(BaseConnector):
                     
                 except Exception as e:
                     self.logger.error(f"Error connecting to NATS: {e}")
-                    # Fallback to config-based discovery
                     subjects = config.get('subjects', [])
                     for subject in subjects:
                         asset = {
@@ -751,12 +726,10 @@ class StreamingConnector(BaseConnector):
                         }
                         assets.append(asset)
             
-            # Run the async function
             asyncio.run(discover_nats_assets())
             
         except ImportError:
             self.logger.warning("nats-py library not installed. Install with: pip install nats-py")
-            # Fallback to config-based discovery
             subjects = config.get('subjects', [])
             for subject in subjects:
                 asset = {
@@ -791,7 +764,6 @@ class StreamingConnector(BaseConnector):
                 db=config.get('db', 0)
             )
             
-            # Get all keys that might be streams
             keys = r.keys('*')
             
             for key in keys:
@@ -800,7 +772,6 @@ class StreamingConnector(BaseConnector):
                     if key_type == 'stream':
                         key_str = key.decode('utf-8') if isinstance(key, bytes) else str(key)
                         
-                        # Get stream info
                         info = r.xinfo_stream(key)
                         
                         asset = {
@@ -847,7 +818,6 @@ class StreamingConnector(BaseConnector):
                                 bootstrap_servers=stream_config.get('bootstrap_servers', ['localhost:9092']),
                                 client_id='data_discovery_test'
                             )
-                            # Test by listing topics
                             metadata = admin_client.list_topics()
                             self.logger.info("Kafka connection test successful")
                             connection_tested = True
@@ -857,7 +827,6 @@ class StreamingConnector(BaseConnector):
                     elif platform_type == 'pulsar':
                         if pulsar:
                             client = pulsar.Client(stream_config.get('service_url', 'pulsar://localhost:6650'))
-                            # Test connection
                             client.close()
                             self.logger.info("Pulsar connection test successful")
                             connection_tested = True
@@ -891,7 +860,6 @@ class StreamingConnector(BaseConnector):
                                 aws_secret_access_key=stream_config.get('secret_key'),
                                 region_name=stream_config.get('region', 'us-east-1')
                             )
-                            # Test by listing streams
                             kinesis_client.list_streams(Limit=1)
                             self.logger.info("Kinesis connection test successful")
                             connection_tested = True
@@ -924,4 +892,3 @@ class StreamingConnector(BaseConnector):
                 return False
         
         return True
-

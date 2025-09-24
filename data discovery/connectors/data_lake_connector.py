@@ -33,8 +33,6 @@ try:
     import pyhudi
 except ImportError:
     pyhudi = None
-
-
 class DataLakeConnector(BaseConnector):
     """
     Connector for discovering data assets in data lakes and modern data formats
@@ -105,7 +103,6 @@ class DataLakeConnector(BaseConnector):
                     full_path = f"{base_path}/{table_path}"
                     delta_table = DeltaTable(full_path)
                     
-                    # Get table metadata
                     metadata = delta_table.metadata()
                     history = delta_table.history()
                     
@@ -143,7 +140,6 @@ class DataLakeConnector(BaseConnector):
             from pyiceberg.catalog import load_catalog
             from pyiceberg.exceptions import NoSuchTableError
             
-            # Load Iceberg catalog
             catalog_config = config.get('catalog', {})
             catalog_type = catalog_config.get('type', 'rest')
             
@@ -178,7 +174,6 @@ class DataLakeConnector(BaseConnector):
                 self.logger.warning(f"Unsupported Iceberg catalog type: {catalog_type}")
                 return assets
             
-            # List all tables
             try:
                 namespaces = catalog.list_namespaces()
                 
@@ -231,7 +226,6 @@ class DataLakeConnector(BaseConnector):
                 
         except ImportError:
             self.logger.warning("pyiceberg not installed. Install with: pip install pyiceberg")
-            # Fallback to config-based discovery
             catalog_uri = config.get('catalog_uri', '')
             tables = config.get('tables', [])
             
@@ -287,13 +281,10 @@ class DataLakeConnector(BaseConnector):
             
             for table_path in table_paths:
                 try:
-                    # Read Hudi table
                     hudi_df = spark.read.format("hudi").load(table_path)
                     
-                    # Get table metadata
                     table_name = Path(table_path).name
                     
-                    # Get schema
                     schema_info = {
                         'columns': [
                             {
@@ -337,7 +328,6 @@ class DataLakeConnector(BaseConnector):
             
         except ImportError:
             self.logger.warning("PySpark not installed. Install with: pip install pyspark")
-            # Fallback to file system scanning
             base_path = config.get('base_path', '')
             
             if base_path:
@@ -367,7 +357,6 @@ class DataLakeConnector(BaseConnector):
                             }
                             assets.append(asset)
             else:
-                # Config-based fallback
                 tables = config.get('tables', [])
             for table_name in tables:
                 asset = {
@@ -407,7 +396,6 @@ class DataLakeConnector(BaseConnector):
             
             for parquet_file in parquet_files:
                 try:
-                    # Read Parquet metadata
                     parquet_metadata = pq.read_metadata(str(parquet_file))
                     
                     asset = {
@@ -519,18 +507,15 @@ class DataLakeConnector(BaseConnector):
         try:
             from hdfs import InsecureClient
             
-            # Connect to HDFS
             namenode_url = config.get('namenode_url', 'http://localhost:9870')
             user = config.get('user', 'hdfs')
             
             client = InsecureClient(namenode_url, user=user)
             
-            # Get paths to scan
             paths = config.get('paths', ['/'])
             
             for path in paths:
                 try:
-                    # List directory contents
                     file_list = client.list(path, status=True)
                     
                     for file_name, file_status in file_list:
@@ -587,7 +572,6 @@ class DataLakeConnector(BaseConnector):
                 
                 for path in paths:
                     try:
-                        # Use hdfs command line tool
                         result = subprocess.run(
                             ['hdfs', 'dfs', '-ls', '-R', path],
                             capture_output=True,
@@ -596,7 +580,6 @@ class DataLakeConnector(BaseConnector):
                         )
                         
                         if result.returncode == 0:
-                            # Parse hdfs ls output
                             lines = result.stdout.strip().split('\n')
                             for line in lines:
                                 if line.startswith('d') or line.startswith('-'):
@@ -634,7 +617,6 @@ class DataLakeConnector(BaseConnector):
                         
             except Exception as e:
                 self.logger.warning(f"HDFS command line tool not available: {e}")
-                # Final fallback to config-based discovery
                 namenode = config.get('namenode', 'localhost:9000')
             paths = config.get('paths', ['/'])
             
@@ -672,7 +654,6 @@ class DataLakeConnector(BaseConnector):
                 secure=config.get('secure', True)
             )
             
-            # List buckets
             buckets = client.list_buckets()
             
             for bucket in buckets:
@@ -713,13 +694,11 @@ class DataLakeConnector(BaseConnector):
                 verify=config.get('verify_ssl', True)
             )
             
-            # List buckets
             response = s3_client.list_buckets()
             
             for bucket in response['Buckets']:
                 bucket_name = bucket['Name']
                 
-                # Create bucket asset
                 bucket_asset = {
                     'name': bucket_name,
                     'type': 'ceph_bucket',
@@ -734,20 +713,16 @@ class DataLakeConnector(BaseConnector):
                     }
                 }
                 
-                # Get bucket metadata
                 try:
-                    # Get bucket location
                     location = s3_client.get_bucket_location(Bucket=bucket_name)
                     bucket_asset['metadata']['location_constraint'] = location.get('LocationConstraint')
                     
-                    # Get bucket policy
                     try:
                         policy = s3_client.get_bucket_policy(Bucket=bucket_name)
                         bucket_asset['metadata']['has_policy'] = True
                     except ClientError:
                         bucket_asset['metadata']['has_policy'] = False
                     
-                    # Get bucket versioning
                     try:
                         versioning = s3_client.get_bucket_versioning(Bucket=bucket_name)
                         bucket_asset['metadata']['versioning_status'] = versioning.get('Status', 'Disabled')
@@ -759,7 +734,6 @@ class DataLakeConnector(BaseConnector):
                 
                 assets.append(bucket_asset)
                 
-                # Discover objects in bucket (sample)
                 try:
                     objects_response = s3_client.list_objects_v2(
                         Bucket=bucket_name,
@@ -796,7 +770,6 @@ class DataLakeConnector(BaseConnector):
                         total_size += obj['Size']
                         object_count += 1
                     
-                    # Update bucket size
                     bucket_asset['size'] = total_size
                     bucket_asset['metadata']['object_count'] = object_count
                     
@@ -832,7 +805,6 @@ class DataLakeConnector(BaseConnector):
                         if DeltaTable:
                             table_path = lake_config.get('table_path')
                             if table_path and Path(table_path).exists():
-                                # Test by reading delta table metadata
                                 dt = DeltaTable(table_path)
                                 schema = dt.schema()
                                 self.logger.info("Delta Lake connection test successful")
@@ -846,7 +818,6 @@ class DataLakeConnector(BaseConnector):
                         if pq:
                             path = lake_config.get('path')
                             if path and Path(path).exists():
-                                # Test by reading parquet metadata
                                 if Path(path).is_file():
                                     parquet_file = pq.ParquetFile(path)
                                     schema = parquet_file.schema
@@ -863,7 +834,6 @@ class DataLakeConnector(BaseConnector):
                     
                     elif lake_type == 'iceberg':
                         if pyiceberg:
-                            # Test Iceberg connection (would need proper catalog config)
                             catalog_config = lake_config.get('catalog', {})
                             self.logger.info("Iceberg connection test successful")
                             connection_tested = True
@@ -872,7 +842,6 @@ class DataLakeConnector(BaseConnector):
                     
                     elif lake_type == 'hudi':
                         if pyhudi:
-                            # Test Hudi connection
                             table_path = lake_config.get('table_path')
                             if table_path and Path(table_path).exists():
                                 self.logger.info("Hudi connection test successful")
@@ -908,4 +877,3 @@ class DataLakeConnector(BaseConnector):
                 return False
         
         return True
-

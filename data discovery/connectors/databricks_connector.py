@@ -7,8 +7,6 @@ from datetime import datetime
 from typing import List, Dict, Any, Optional
 
 from .base_connector import BaseConnector
-
-
 class DatabricksConnector(BaseConnector):
     """
     Connector for discovering data assets in Databricks workspaces
@@ -41,23 +39,18 @@ class DatabricksConnector(BaseConnector):
         assets = []
         
         try:
-            # Discover catalogs
             catalogs = self._discover_catalogs()
             assets.extend(catalogs)
             
-            # Discover schemas
             schemas = self._discover_schemas()
             assets.extend(schemas)
             
-            # Discover tables
             tables = self._discover_tables()
             assets.extend(tables)
             
-            # Discover notebooks
             notebooks = self._discover_notebooks()
             assets.extend(notebooks)
             
-            # Discover jobs
             jobs = self._discover_jobs()
             assets.extend(jobs)
             
@@ -161,7 +154,6 @@ class DatabricksConnector(BaseConnector):
             tables_data = response.json()
             
             for table in tables_data.get('tables', []):
-                # Get table details
                 table_details = self._get_table_details(table['full_name'])
                 
                 asset = {

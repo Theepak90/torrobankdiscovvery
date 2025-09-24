@@ -29,8 +29,6 @@ try:
     from jira import JIRA
 except ImportError:
     JIRA = None
-
-
 class SaaSConnector(BaseConnector):
     """
     Connector for discovering data assets in various SaaS platforms
@@ -112,7 +110,6 @@ class SaaSConnector(BaseConnector):
                 domain=config.get('domain', 'login')
             )
             
-            # Get all objects
             objects = sf.describe()["sobjects"]
             
             for obj in objects:
@@ -153,7 +150,6 @@ class SaaSConnector(BaseConnector):
                 password=config['password']
             )
             
-            # Get system tables
             tables = client.resource(api_path='/table/sys_db_object')
             response = tables.get(query={'sys_scope': 'global'})
             
@@ -190,7 +186,6 @@ class SaaSConnector(BaseConnector):
         try:
             client = WebClient(token=config['bot_token'])
             
-            # Get channels
             response = client.conversations_list()
             
             for channel in response['channels']:
@@ -229,7 +224,6 @@ class SaaSConnector(BaseConnector):
                 basic_auth=(config['username'], config['api_token'])
             )
             
-            # Get projects
             projects = jira.projects()
             
             for project in projects:
@@ -261,7 +255,6 @@ class SaaSConnector(BaseConnector):
         try:
             headers = {'Authorization': f"Bearer {config['api_key']}"}
             
-            # Get CRM objects
             objects = ['contacts', 'companies', 'deals', 'tickets', 'products', 'line_items']
             
             for obj_type in objects:
@@ -304,7 +297,6 @@ class SaaSConnector(BaseConnector):
             base_url = f"https://{config['subdomain']}.zendesk.com/api/v2"
             auth = (f"{config['email']}/token", config['api_token'])
             
-            # Get ticket fields
             response = requests.get(f"{base_url}/ticket_fields.json", auth=auth)
             
             if response.status_code == 200:
@@ -341,10 +333,8 @@ class SaaSConnector(BaseConnector):
             from google.analytics.admin_v1beta import AnalyticsAdminServiceClient
             from google.analytics.admin_v1beta.types import ListAccountsRequest
             
-            # Initialize GA Admin client
             admin_client = AnalyticsAdminServiceClient(credentials=config.get('credentials'))
             
-            # List accounts
             request = ListAccountsRequest()
             accounts = admin_client.list_accounts(request=request)
             
@@ -373,7 +363,6 @@ class SaaSConnector(BaseConnector):
             
         except ImportError:
             self.logger.warning("Google Analytics libraries not installed. Install with: pip install google-analytics-data google-analytics-admin")
-            # Fallback to config-based discovery
             ga_properties = config.get('properties', [])
             for prop in ga_properties:
                 asset = {
@@ -403,7 +392,6 @@ class SaaSConnector(BaseConnector):
             headers = {'Authorization': f"Bearer {config['api_key']}"}
             dc = config['api_key'].split('-')[-1]  # Data center from API key
             
-            # Get lists
             response = requests.get(
                 f"https://{dc}.api.mailchimp.com/3.0/lists",
                 headers=headers
@@ -470,11 +458,9 @@ class SaaSConnector(BaseConnector):
                     assets.append(asset)
                 return assets
             
-            # Use Workday REST API
             base_url = f"https://{tenant}.workday.com/ccx/api/v1"
             auth = HTTPBasicAuth(username, password)
             
-            # Common Workday objects to discover
             workday_objects = [
                 'workers', 'organizations', 'positions', 'jobs',
                 'compensation', 'benefits', 'time_tracking', 'payroll'
@@ -528,7 +514,6 @@ class SaaSConnector(BaseConnector):
         assets = []
         
         try:
-            # This would require ADP API
             # Placeholder for ADP discovery logic
             adp_objects = [
                 'workers', 'payroll', 'time_cards', 'benefits',
@@ -560,7 +545,6 @@ class SaaSConnector(BaseConnector):
         assets = []
         
         try:
-            # This would require QuickBooks API
             # Placeholder for QuickBooks discovery logic
             qb_objects = [
                 'customers', 'vendors', 'items', 'accounts',
@@ -593,10 +577,8 @@ class SaaSConnector(BaseConnector):
         assets = []
         
         try:
-            # This would require Microsoft Graph API
             headers = {'Authorization': f"Bearer {config['access_token']}"}
             
-            # Get teams
             response = requests.get(
                 "https://graph.microsoft.com/v1.0/groups?$filter=resourceProvisioningOptions/Any(x:x eq 'Team')",
                 headers=headers
@@ -634,7 +616,6 @@ class SaaSConnector(BaseConnector):
         try:
             headers = {'Authorization': f"Bearer {config['jwt_token']}"}
             
-            # Get users
             response = requests.get(
                 "https://api.zoom.us/v2/users",
                 headers=headers
@@ -699,11 +680,9 @@ class SaaSConnector(BaseConnector):
                     assets.append(asset)
                 return assets
             
-            # Use Tableau Server REST API
             base_url = f"https://{server}/api/3.18"
             auth = HTTPBasicAuth(username, password)
             
-            # First, sign in to get authentication token
             signin_data = {
                 'credentials': {
                     'name': username,
@@ -723,7 +702,6 @@ class SaaSConnector(BaseConnector):
                 self.logger.error(f"Tableau authentication failed: {signin_response.status_code}")
                 return assets
             
-            # Extract authentication token
             signin_json = signin_response.json()
             token = signin_json['credentials']['token']
             site_id = signin_json['credentials']['site']['id']
@@ -781,7 +759,6 @@ class SaaSConnector(BaseConnector):
                 except Exception as e:
                     self.logger.warning(f"Error accessing Tableau {obj_type}: {e}")
             
-            # Sign out
             try:
                 requests.post(f"{base_url}/auth/signout", headers=headers, timeout=5)
             except:
@@ -801,7 +778,6 @@ class SaaSConnector(BaseConnector):
         try:
             headers = {'Authorization': f"Bearer {config['access_token']}"}
             
-            # Get workspaces
             response = requests.get(
                 "https://api.powerbi.com/v1.0/myorg/groups",
                 headers=headers
@@ -867,7 +843,6 @@ class SaaSConnector(BaseConnector):
                                 user=saas_config.get('username'),
                                 password=saas_config.get('password')
                             )
-                            # Test by getting table info
                             table = s.resource(api_path='/table/sys_user')
                             list(table.get(limit=1))
                             self.logger.info("ServiceNow connection test successful")
@@ -892,7 +867,6 @@ class SaaSConnector(BaseConnector):
                                 server=saas_config.get('server'),
                                 basic_auth=(saas_config.get('username'), saas_config.get('api_token'))
                             )
-                            # Test by getting server info
                             jira.server_info()
                             self.logger.info("Jira connection test successful")
                             connection_tested = True
@@ -943,4 +917,3 @@ class SaaSConnector(BaseConnector):
                 return False
         
         return True
-

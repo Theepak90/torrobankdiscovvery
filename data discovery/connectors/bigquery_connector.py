@@ -11,8 +11,6 @@ from google.cloud.exceptions import GoogleCloudError
 from google.oauth2 import service_account
 
 from .base_connector import BaseConnector
-
-
 class BigQueryConnector(BaseConnector):
     """
     Dedicated connector for Google BigQuery data warehouse
@@ -34,7 +32,6 @@ class BigQueryConnector(BaseConnector):
         self.credentials_path = config.get('credentials_path')
         self.dataset_id = config.get('dataset_id')  # Optional specific dataset
         
-        # Initialize credentials and client
         self.credentials = None
         self.client = None
         
@@ -45,7 +42,6 @@ class BigQueryConnector(BaseConnector):
         """Initialize BigQuery credentials from service account JSON"""
         try:
             if self.service_account_json:
-                # Parse JSON string into dict
                 if isinstance(self.service_account_json, str):
                     service_account_info = json.loads(self.service_account_json)
                 else:
@@ -55,7 +51,6 @@ class BigQueryConnector(BaseConnector):
                 self.logger.info("BigQuery credentials initialized from service account JSON")
                 
             elif self.credentials_path and os.path.exists(self.credentials_path):
-                # Use credentials file path
                 self.credentials = service_account.Credentials.from_service_account_file(self.credentials_path)
                 self.logger.info(f"BigQuery credentials initialized from file: {self.credentials_path}")
                 
@@ -89,7 +84,6 @@ class BigQueryConnector(BaseConnector):
             return assets
         
         try:
-            # Get datasets to scan
             if self.dataset_id:
                 # Scan specific dataset
                 try:
@@ -101,12 +95,10 @@ class BigQueryConnector(BaseConnector):
                     self.logger.error(f"Failed to get dataset {self.dataset_id}: {e}")
                     return assets
             else:
-                # Scan all datasets
                 datasets = list(self.client.list_datasets())
                 self.logger.info(f"Scanning all datasets in project {self.project_id}")
             
             for dataset in datasets:
-                # Add dataset as an asset
                 dataset_asset = {
                     'name': dataset.dataset_id,
                     'type': 'bigquery_dataset',
@@ -128,15 +120,12 @@ class BigQueryConnector(BaseConnector):
                 }
                 assets.append(dataset_asset)
                 
-                # Discover tables in this dataset
                 try:
                     tables = list(self.client.list_tables(dataset))
                     
                     for table in tables:
-                        # Get detailed table info
                         table_ref = self.client.get_table(table)
                         
-                        # Determine table type
                         if table_ref.table_type == 'VIEW':
                             table_type = 'bigquery_view'
                         elif table_ref.table_type == 'EXTERNAL':
@@ -205,7 +194,6 @@ class BigQueryConnector(BaseConnector):
                 self.logger.error("No project ID configured")
                 return False
             
-            # Test by listing datasets
             try:
                 datasets = list(self.client.list_datasets(max_results=1))
                 self.logger.info("BigQuery connection test successful")

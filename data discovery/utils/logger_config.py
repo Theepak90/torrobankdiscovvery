@@ -6,8 +6,6 @@ import logging
 import logging.handlers
 from typing import Dict, Any
 from pathlib import Path
-
-
 def setup_logger(config: Dict[str, Any]) -> logging.Logger:
     """
     Setup centralized logging for data discovery
@@ -18,17 +16,14 @@ def setup_logger(config: Dict[str, Any]) -> logging.Logger:
     Returns:
         Configured logger instance
     """
-    # Get configuration values
     log_level = config.get('level', 'INFO').upper()
     log_file = config.get('file', 'data_discovery.log')
     max_size_mb = config.get('max_size_mb', 100)
     backup_count = config.get('backup_count', 5)
     
-    # Create logger
     logger = logging.getLogger('DataDiscovery')
     logger.setLevel(getattr(logging, log_level, logging.INFO))
     
-    # Clear existing handlers to avoid duplicates
     logger.handlers.clear()
     
     # Create formatter
@@ -37,7 +32,6 @@ def setup_logger(config: Dict[str, Any]) -> logging.Logger:
         datefmt='%Y-%m-%d %H:%M:%S'
     )
     
-    # Console handler
     console_handler = logging.StreamHandler()
     console_handler.setLevel(getattr(logging, log_level, logging.INFO))
     console_handler.setFormatter(formatter)
@@ -46,7 +40,6 @@ def setup_logger(config: Dict[str, Any]) -> logging.Logger:
     # File handler with rotation
     if log_file:
         try:
-            # Ensure log directory exists
             log_path = Path(log_file)
             log_path.parent.mkdir(parents=True, exist_ok=True)
             
@@ -64,8 +57,6 @@ def setup_logger(config: Dict[str, Any]) -> logging.Logger:
     
     logger.info("Data Discovery logging initialized")
     return logger
-
-
 def get_logger(name: str = None) -> logging.Logger:
     """
     Get a logger instance

@@ -9,8 +9,6 @@ from azure.identity import DefaultAzureCredential
 from azure.core.exceptions import AzureError
 
 from .base_connector import BaseConnector
-
-
 class AzureConnector(BaseConnector):
     """
     Connector for discovering data assets in Azure services
@@ -29,7 +27,6 @@ class AzureConnector(BaseConnector):
         super().__init__(config)
         self.services = config.get('services', ['blob_storage'])
         
-        # Initialize Azure credential
         try:
             self.credential = DefaultAzureCredential()
             self.logger.info("Azure credentials initialized successfully")
@@ -72,7 +69,6 @@ class AzureConnector(BaseConnector):
                     credential=self.credential
                 )
                 
-                # List containers
                 containers = blob_service_client.list_containers()
                 
                 for container in containers:
@@ -96,7 +92,6 @@ class AzureConnector(BaseConnector):
                     
                     assets.append(container_asset)
                     
-                    # Discover blobs in container
                     blob_assets = self._discover_blobs_in_container(
                         blob_service_client, container.name, storage_account
                     )
@@ -256,12 +251,10 @@ class AzureConnector(BaseConnector):
         """Generate tags for Azure blob"""
         tags = []
         
-        # Add extension-based tag
         if '.' in blob_name:
             ext = blob_name.split('.')[-1].lower()
             tags.append(f"ext_{ext}")
         
-        # Add path-based tags
         if '/' in blob_name:
             path_parts = blob_name.split('/')
             for part in path_parts[:-1]:  # Exclude filename

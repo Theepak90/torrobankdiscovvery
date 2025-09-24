@@ -9,8 +9,6 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.exc import SQLAlchemyError
 
 from .base_connector import BaseConnector
-
-
 class PostgreSQLConnector(BaseConnector):
     """
     Connector for discovering data assets in PostgreSQL databases
@@ -44,7 +42,6 @@ class PostgreSQLConnector(BaseConnector):
             engine = create_engine(connection_string, connect_args={'connect_timeout': self.connection_timeout})
             
             with engine.connect() as conn:
-                # Get all tables and views
                 query = text("""
                     SELECT 
                         schemaname, 
@@ -66,7 +63,6 @@ class PostgreSQLConnector(BaseConnector):
                 for row in result:
                     schema_name, table_name, object_type = row
                     
-                    # Get table/view details
                     table_asset = self._create_table_asset(
                         conn, schema_name, table_name, object_type
                     )
@@ -120,7 +116,6 @@ class PostgreSQLConnector(BaseConnector):
                 except:
                     row_count = 0
             
-            # Get table size
             size_query = text("""
                 SELECT pg_size_pretty(pg_total_relation_size(:schema_table)) as size
             """)
