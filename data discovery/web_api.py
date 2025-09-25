@@ -1436,12 +1436,12 @@ def detect_pii_in_field(field_name: str, field_type: str) -> List[str]:
     return pii_indicators
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent"
+GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
 
 async def call_gemini_api(prompt: str) -> Dict[str, Any]:
     """Call Gemini API with the given prompt"""
     if not GEMINI_API_KEY:
-        return {"success": False, "error": "GEMINI_API_KEY environment variable not set"}
+        return {"success": False, "error": "GEMINI_API_KEY environment variable not set. Please configure your Google Gemini API key to enable AI analysis features."}
     
     headers = {
         "Content-Type": "application/json",
@@ -1554,7 +1554,9 @@ async def analyze_asset_with_gemini(asset: Dict[str, Any]) -> Dict[str, Any]:
         else:
             # Parse the error to provide more helpful feedback
             error_msg = gemini_response['error']
-            if "404" in error_msg and "model" in error_msg.lower():
+            if "GEMINI_API_KEY environment variable not set" in error_msg:
+                user_friendly_error = "AI analysis requires Google Gemini API key. Please configure GEMINI_API_KEY environment variable."
+            elif "404" in error_msg and "model" in error_msg.lower():
                 user_friendly_error = "AI model temporarily unavailable. Please try again in a few minutes."
             elif "API error" in error_msg:
                 user_friendly_error = "AI service temporarily unavailable. Please try again later."
@@ -1682,7 +1684,9 @@ async def scan_asset_for_pii_with_gemini(asset: Dict[str, Any]) -> Dict[str, Any
         else:
             # Parse the error to provide more helpful feedback
             error_msg = gemini_response['error']
-            if "404" in error_msg and "model" in error_msg.lower():
+            if "GEMINI_API_KEY environment variable not set" in error_msg:
+                user_friendly_error = "PII scan requires Google Gemini API key. Please configure GEMINI_API_KEY environment variable."
+            elif "404" in error_msg and "model" in error_msg.lower():
                 user_friendly_error = "AI model temporarily unavailable. Please try again in a few minutes."
             elif "API error" in error_msg:
                 user_friendly_error = "AI service temporarily unavailable. Please try again later."
