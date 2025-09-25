@@ -1,3 +1,5 @@
+/* Data Discovery System - Enhanced Modern Styles */
+
 :root {
     --primary-color: #6366f1;
     --primary-light: #818cf8;
@@ -32,6 +34,8 @@
     --border-radius-sm: 8px;
     --border-radius-lg: 16px;
 }
+
+/* Global Styles */
 body {
     background: white;
     font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -39,9 +43,13 @@ body {
     line-height: 1.6;
     min-height: 100vh;
 }
+
+/* Apply Roboto to all elements except Font Awesome icons */
 * {
     font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
 }
+
+/* Ensure Font Awesome icons render properly */
 .fas, .far, .fab, .fa, .fal, .fad {
     font-family: "Font Awesome 6 Free" !important;
     font-weight: 900 !important;
@@ -62,6 +70,10 @@ body {
     font-family: "Font Awesome 6 Brands" !important;
     font-weight: 400 !important;
 }
+
+/* Background pattern overlay - removed for clean white background */
+
+/* Navigation */
 .navbar {
     background: #4a5aa3 !important;
     backdrop-filter: blur(10px);
@@ -95,6 +107,8 @@ body {
 .navbar span {
     font-size: 0.9rem;
 }
+
+/* Cards */
 .card {
     border: none;
     border-radius: var(--border-radius);
@@ -106,6 +120,8 @@ body {
     overflow: hidden;
 }
 
+/* Removed top border and hover effects for all cards */
+
 .card-header {
     background: rgba(241, 245, 249, 0.9);
     border-bottom: 1px solid var(--gray-200);
@@ -113,6 +129,8 @@ body {
     color: var(--gray-700);
     padding: 1.25rem 1.5rem;
 }
+
+/* Overview Cards */
 .card.bg-primary,
 .card.bg-success,
 .card.bg-info,
@@ -122,10 +140,12 @@ body {
     color: #6b7280 !important;
     font-family: 'Roboto', sans-serif;
     font-size: 16px;
-    
+    /* Removed transition to prevent any movement */
     position: relative;
     overflow: hidden;
 }
+
+/* Removed hover effects completely to prevent any movement */
 
 .card.bg-primary *,
 .card.bg-success *,
@@ -148,6 +168,8 @@ body {
     text-rendering: auto;
 }
 
+/* Removed hover effects for overview cards */
+
 .card.bg-primary .card-body,
 .card.bg-success .card-body,
 .card.bg-info .card-body,
@@ -160,6 +182,12 @@ body {
     justify-content: center;
     align-items: center;
 }
+
+/* Removed ::before pseudo-element overlay */
+
+/* Removed hover effects for overview cards */
+
+/* Connector Cards */
 .connector-card {
     border: 1px solid var(--gray-200);
     border-radius: var(--border-radius-sm);
@@ -252,6 +280,8 @@ body {
     z-index: 1;
     position: relative;
 }
+
+/* Status Badges */
 .status-badge {
     font-size: 0.75rem;
     padding: 0.25rem 0.5rem;
@@ -262,6 +292,8 @@ body {
 .status-offline { background-color: #6c757d; }
 .status-warning { background-color: var(--warning-color); }
 .status-error { background-color: var(--danger-color); }
+
+/* Tables */
 .table {
     background: white;
 }
@@ -280,6 +312,8 @@ body {
 .table-hover tbody tr:hover {
     background-color: rgba(13, 110, 253, 0.05);
 }
+
+/* Asset Cards */
 .asset-card {
     border: 1px solid #dee2e6;
     border-radius: 8px;
@@ -302,6 +336,8 @@ body {
     text-transform: uppercase;
     font-weight: 600;
 }
+
+/* Progress Bars */
 .progress {
     height: 8px;
     border-radius: 4px;
@@ -310,6 +346,8 @@ body {
 .progress-bar {
     border-radius: 4px;
 }
+
+/* Buttons */
 .btn {
     border-radius: var(--border-radius-sm);
     font-weight: 600;
@@ -375,6 +413,8 @@ body {
     background: var(--primary-color);
     color: white;
 }
+
+/* Modals */
 .modal-content {
     border: none;
     border-radius: 12px;
@@ -391,6 +431,8 @@ body {
     font-weight: 600;
     color: var(--dark-color);
 }
+
+/* Forms */
 .form-control,
 .form-select {
     border-radius: 6px;
@@ -403,6 +445,8 @@ body {
     border-color: var(--primary-color);
     box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
 }
+
+/* Tabs */
 .nav-tabs {
     border-bottom: 2px solid var(--gray-200);
     background: rgba(255, 255, 255, 0.9);
@@ -451,6 +495,8 @@ body {
 .nav-tabs .nav-link.active::before {
     transform: scaleX(1);
 }
+
+/* Accordion */
 .accordion-button {
     font-weight: 600;
     color: var(--dark-color);
@@ -464,8 +510,13 @@ body {
 .accordion-button:focus {
     box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
 }
+
+/* Charts */
+#discoveryChart {
     max-height: 300px;
 }
+
+/* Loading States */
 .loading-overlay {
     position: absolute;
     top: 0;
@@ -478,6 +529,8 @@ body {
     justify-content: center;
     z-index: 10;
 }
+
+/* Animations */
 @keyframes fadeIn {
     from { opacity: 0; transform: translateY(20px); }
     to { opacity: 1; transform: translateY(0); }
@@ -546,6 +599,8 @@ body {
     background-size: 200px 100%;
     animation: shimmer 1.5s infinite;
 }
+
+/* Staggered animations */
 .animate-stagger > * {
     opacity: 0;
     animation: fadeIn 0.6s ease-out forwards;
@@ -557,6 +612,8 @@ body {
 .animate-stagger > *:nth-child(4) { animation-delay: 0.4s; }
 .animate-stagger > *:nth-child(5) { animation-delay: 0.5s; }
 .animate-stagger > *:nth-child(6) { animation-delay: 0.6s; }
+
+/* Responsive Design */
 @media (max-width: 768px) {
     .container-fluid {
         padding: 0.75rem;
@@ -608,12 +665,12 @@ body {
         font-size: 0.875rem;
     }
     
-    
+    /* Stack overview cards on mobile */
     .row .col-md-3 {
         margin-bottom: 1rem;
     }
     
-    
+    /* Improve modal sizing on mobile */
     .modal-dialog {
         margin: 0.5rem;
     }
@@ -622,12 +679,12 @@ body {
         max-width: calc(100vw - 1rem);
     }
     
-    
+    /* Better spacing for forms */
     .form-control, .form-select {
         font-size: 0.875rem;
     }
     
-    
+    /* Improve notification positioning on mobile */
     .alert.position-fixed {
         top: 10px !important;
         left: 10px !important;
@@ -668,18 +725,18 @@ body {
         display: none;
     }
     
-    
+    /* Hide some less critical text on very small screens */
     .opacity-75 {
         display: none;
     }
     
-    
+    /* Make table more compact */
     .table td, .table th {
         padding: 0.5rem 0.25rem;
         font-size: 0.75rem;
     }
     
-    
+    /* Improve connector cards layout */
     .connector-card .d-flex {
         flex-direction: column;
         text-align: center;
@@ -690,6 +747,62 @@ body {
     }
 }
 
+/* Dark Mode Support - Disabled for white background */
+/*
+@media (prefers-color-scheme: dark) {
+    body {
+        background-color: #1a1a1a;
+        color: #ffffff;
+    }
+    
+    .card {
+        background-color: #2d2d2d;
+        border-color: #404040;
+    }
+    
+    .card-header {
+        background-color: #2d2d2d;
+        border-color: #404040;
+        color: #ffffff;
+    }
+    
+    .table {
+        background-color: #2d2d2d;
+        color: #ffffff;
+    }
+    
+    .table th {
+        background-color: #404040;
+        color: #ffffff;
+    }
+    
+    .modal-content {
+        background-color: #2d2d2d;
+        color: #ffffff;
+    }
+    
+    .modal-header {
+        background-color: #404040;
+        border-color: #555555;
+    }
+    
+    .form-control,
+    .form-select {
+        background-color: #404040;
+        border-color: #555555;
+        color: #ffffff;
+    }
+    
+    .form-control:focus,
+    .form-select:focus {
+        background-color: #404040;
+        border-color: var(--primary-color);
+        color: #ffffff;
+    }
+}
+*/
+
+/* Connection Wizard Styles */
 .connection-wizard {
     min-height: 500px;
 }
@@ -779,6 +892,8 @@ body {
     display: block;
     animation: fadeIn 0.5s ease-in-out;
 }
+
+/* Connection Type Cards */
 .connection-type-card {
     cursor: pointer;
     transition: all 0.3s ease;
@@ -819,6 +934,8 @@ body {
 .connection-type-card:hover .connection-type-icon {
     transform: scale(1.1);
 }
+
+/* Connection Form Styles */
 .connection-form-group {
     margin-bottom: 1.5rem;
 }
@@ -840,6 +957,8 @@ body {
     border-color: var(--primary-color);
     box-shadow: 0 0 0 0.2rem rgba(99, 102, 241, 0.25);
 }
+
+/* Connection Test Results */
 .connection-test-success {
     background: linear-gradient(135deg, var(--success-color), #059669);
     color: white;
@@ -865,6 +984,8 @@ body {
     width: 3rem;
     height: 3rem;
 }
+
+/* Connection Management Cards */
 .connection-management-card {
     border: 1px solid var(--gray-200);
     border-radius: var(--border-radius);
@@ -909,6 +1030,9 @@ body {
     padding: 0.375rem 0.5rem;
     border-radius: var(--border-radius-sm);
 }
+
+/* User Connections Section */
+#user-connections-section {
     background: rgba(255, 255, 255, 0.5);
     border-radius: var(--border-radius);
     padding: 1.5rem;
@@ -916,9 +1040,12 @@ body {
     border: 1px solid var(--gray-100);
 }
 
+#user-connections-section h5 {
     color: var(--gray-800);
     font-weight: 600;
 }
+
+/* Connection Summary */
 .connection-summary-item {
     background: var(--gray-50);
     border-radius: var(--border-radius-sm);
@@ -938,6 +1065,8 @@ body {
     color: var(--gray-900);
     font-size: 1rem;
 }
+
+/* Utility Classes */
 .text-truncate-2 {
     display: -webkit-box;
     -webkit-line-clamp: 2;
@@ -968,6 +1097,8 @@ body {
 .fs-8 {
     font-size: 0.75rem;
 }
+
+/* My Connections Styles */
 .border-left-success {
     border-left: 4px solid #28a745 !important;
 }
@@ -988,6 +1119,8 @@ body {
     transform: translateY(-2px);
     box-shadow: 0 4px 8px rgba(0,0,0,0.1);
 }
+
+/* Data Lineage Styles */
 .lineage-graph-container {
     background: #ffffff;
     border-radius: var(--border-radius);
@@ -1012,7 +1145,7 @@ body {
     height: 100%;
     display: block;
     cursor: grab;
-    
+    /* Prevent any layout shifts */
     position: relative;
     overflow: visible;
 }
@@ -1024,14 +1157,14 @@ body {
 .lineage-node {
     cursor: pointer;
     transition: filter 0.3s ease, stroke-width 0.3s ease;
-    
+    /* Ensure position stability */
     transform-origin: center center;
 }
 
 .lineage-node:hover {
     filter: brightness(1.1) drop-shadow(0 2px 4px rgba(0,0,0,0.2));
     stroke-width: 3;
-    
+    /* Ensure no position changes */
     transform: none !important;
 }
 
@@ -1039,6 +1172,8 @@ body {
     cursor: grabbing;
     filter: brightness(1.2);
 }
+
+/* Expanded Column View Styles */
 .lineage-node-expanded {
     transition: all 0.3s ease;
 }
@@ -1059,6 +1194,8 @@ body {
     from { opacity: 0.7; }
     to { opacity: 1; }
 }
+
+/* Column Connection Lines */
 .column-connection-line {
     cursor: pointer;
     transition: all 0.3s ease;
@@ -1067,6 +1204,8 @@ body {
 .column-connection-line:hover {
     filter: drop-shadow(0 0 4px rgba(0,123,255,0.6));
 }
+
+/* Column connection animations */
 @keyframes columnConnectionFlow {
     0% { stroke-dashoffset: 0; }
     100% { stroke-dashoffset: 20; }
@@ -1080,14 +1219,14 @@ body {
 .lineage-node {
     cursor: pointer;
     transition: filter 0.3s ease, stroke-width 0.3s ease;
-    
+    /* Ensure position stability */
     transform-origin: center center;
 }
 
 .lineage-node:hover {
     filter: brightness(1.1) drop-shadow(0 2px 4px rgba(0,0,0,0.2));
     stroke-width: 3;
-    
+    /* Ensure no position changes */
     transform: none !important;
 }
 
@@ -1204,6 +1343,8 @@ body {
     background: linear-gradient(135deg, var(--primary-color), var(--primary-light));
     color: white;
 }
+
+/* Lineage Graph Animations */
 @keyframes lineagePulse {
     0% { opacity: 0.7; }
     50% { opacity: 1; }
@@ -1219,6 +1360,8 @@ body {
 .lineage-node-active {
     filter: drop-shadow(0 0 8px rgba(13, 110, 253, 0.5));
 }
+
+/* Column Lineage Flow */
 .column-flow-arrow {
     display: inline-block;
     margin: 0 0.5rem;
@@ -1232,6 +1375,8 @@ body {
     padding: 0.5rem;
     margin: 0.5rem 0;
 }
+
+/* Lineage Loading States */
 .lineage-loading {
     background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
     background-size: 200px 100%;
@@ -1264,6 +1409,8 @@ body {
     0% { left: -200px; }
     100% { left: calc(100% + 200px); }
 }
+
+/* Responsive Lineage Styles */
 @media (max-width: 768px) {
     .lineage-graph {
         height: 350px !important;
@@ -1307,6 +1454,8 @@ body {
         font-size: 0.85rem;
     }
 }
+
+/* Dark theme support for lineage (if needed later) */
 @media (prefers-color-scheme: dark) {
     .lineage-graph svg {
         background: linear-gradient(135deg, #2d2d2d 0%, #1a1a1a 100%);
@@ -1326,16 +1475,22 @@ body {
         border-left-color: var(--info-color);
     }
 }
+
+/* Fix for node hover movement - ensure nodes stay in place */
 .lineage-node, .lineage-node:hover, .lineage-node:active {
     transform: none !important;
     margin: 0 !important;
     padding: 0 !important;
     position: static !important;
 }
+
+/* Prevent any CSS animations from affecting node position */
 svg .lineage-node {
     animation: none !important;
     transform: none !important;
 }
+
+/* Lineage Edit Mode Styles */
 .lineage-node.selected-source {
     stroke: #28a745 !important;
     stroke-width: 4 !important;
@@ -1363,6 +1518,8 @@ svg .lineage-node {
     stroke-width: 4 !important;
     opacity: 1 !important;
 }
+
+/* Pulse animation for potential targets */
 @keyframes pulse-target {
     0% { 
         stroke-width: 3;
@@ -1377,18 +1534,25 @@ svg .lineage-node {
         filter: brightness(1.1) drop-shadow(0 0 4px rgba(23, 162, 184, 0.4));
     }
 }
+
+/* Relationship management form styles */
+#relationship-form {
     background: #f8f9fa;
     border-radius: 8px;
     padding: 20px;
     border: 1px solid #dee2e6;
 }
 
+#relationship-form .form-label {
     font-weight: 600;
     color: #495057;
 }
 
+#edit-mode-instructions .alert {
     border-left: 4px solid #17a2b8;
 }
+
+/* Analysis Panel Styles */
 .timeline {
     position: relative;
     padding-left: 30px;
@@ -1486,6 +1650,8 @@ svg .lineage-node {
     border-radius: 8px;
     border-left: 4px solid #007bff;
 }
+
+/* Search Recommendations Styles */
 .search-container {
     position: relative;
 }
@@ -1588,6 +1754,8 @@ svg .lineage-node {
     color: #666;
     font-style: italic;
 }
+
+/* Enhanced filter styles */
 .filter-active {
     background-color: #e3f2fd !important;
     border-color: #2196f3 !important;
@@ -1598,6 +1766,9 @@ svg .lineage-node {
     color: #666;
     margin-left: 5px;
 }
+
+/* Search input focus styles */
+#asset-search:focus + .search-recommendations {
     display: block;
 }
 

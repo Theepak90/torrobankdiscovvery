@@ -374,6 +374,7 @@ async def start_full_discovery(background_tasks: BackgroundTasks):
         try:
             result = await discovery_engine.scan_all_data_sources()
         except Exception as e:
+            logger.error(f"Discovery scan failed: {e}")
     
     background_tasks.add_task(run_discovery)
     return {
@@ -393,7 +394,9 @@ async def scan_specific_source(source: str, background_tasks: BackgroundTasks):
                 for asset in assets:
                     await discovery_engine.asset_catalog.add_or_update_asset(asset)
             else:
+                logger.warning(f"Connector {source} not found")
         except Exception as e:
+            logger.error(f"Source discovery failed for {source}: {e}")
     
     background_tasks.add_task(run_source_discovery)
     return {
@@ -416,6 +419,7 @@ async def test_source_discovery(source: str):
                     for asset in assets:
                         await discovery_engine.asset_catalog.add_or_update_asset(asset)
                 except Exception as catalog_error:
+                    logger.error(f"Failed to add assets to catalog: {catalog_error}")
                 
                 return {
                     "status": "success",
@@ -441,6 +445,7 @@ async def test_source_discovery(source: str):
                 for asset in assets:
                     await discovery_engine.asset_catalog.add_or_update_asset(asset)
             except Exception as catalog_error:
+                logger.error(f"Failed to add assets to catalog: {catalog_error}")
             
             return {
                 "status": "success",
@@ -1155,6 +1160,8 @@ async def add_custom_relationships_to_lineage(lineage: dict, target_asset_id: st
         
         
     except Exception as e:
+        logger.error(f"Error loading lineage data: {e}")
+        return {"status": "error", "message": str(e)}
 
 @app.get("/api/assets")
 async def get_all_assets():
@@ -1429,7 +1436,7 @@ def detect_pii_in_field(field_name: str, field_type: str) -> List[str]:
     return pii_indicators
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent"
+GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent"
 
 async def call_gemini_api(prompt: str) -> Dict[str, Any]:
     """Call Gemini API with the given prompt"""
@@ -1545,13 +1552,22 @@ async def analyze_asset_with_gemini(asset: Dict[str, Any]) -> Dict[str, Any]:
                     "recommendations": "Please try again or contact support"
                 }
         else:
+            # Parse the error to provide more helpful feedback
+            error_msg = gemini_response['error']
+            if "404" in error_msg and "model" in error_msg.lower():
+                user_friendly_error = "AI model temporarily unavailable. Please try again in a few minutes."
+            elif "API error" in error_msg:
+                user_friendly_error = "AI service temporarily unavailable. Please try again later."
+            else:
+                user_friendly_error = "AI analysis service error. Please try again later."
+            
             return {
-                "summary": "AI analysis failed",
-                "insights": ["Unable to complete analysis"],
+                "summary": "AI analysis temporarily unavailable",
+                "insights": ["Unable to complete analysis at this time"],
                 "quality_score": 0,
                 "quality_notes": "Analysis could not be completed",
-                "issues": [f"AI service error: {gemini_response['error']}"],
-                "recommendations": "Please try again later"
+                "issues": [user_friendly_error],
+                "recommendations": "Please try again in a few minutes"
             }
             
     except Exception as e:
@@ -1664,6 +1680,15 @@ async def scan_asset_for_pii_with_gemini(asset: Dict[str, Any]) -> Dict[str, Any
                     "compliance_notes": "PII scan completed but response format was invalid"
                 }
         else:
+            # Parse the error to provide more helpful feedback
+            error_msg = gemini_response['error']
+            if "404" in error_msg and "model" in error_msg.lower():
+                user_friendly_error = "AI model temporarily unavailable. Please try again in a few minutes."
+            elif "API error" in error_msg:
+                user_friendly_error = "AI service temporarily unavailable. Please try again later."
+            else:
+                user_friendly_error = "PII scan service error. Please try again later."
+            
             return {
                 "pii_fields_count": 0,
                 "sensitive_fields_count": 0,
@@ -1671,7 +1696,7 @@ async def scan_asset_for_pii_with_gemini(asset: Dict[str, Any]) -> Dict[str, Any
                 "risk_level": "UNKNOWN",
                 "pii_fields": [],
                 "sensitive_fields": [],
-                "compliance_notes": f"PII scan failed: {gemini_response['error']}"
+                "compliance_notes": user_friendly_error
             }
             
     except Exception as e:
@@ -1694,6 +1719,7 @@ async def start_monitoring(monitoring_request: MonitoringRequest, background_tas
                 real_time=monitoring_request.real_time
             )
         except Exception as e:
+            logger.error(f"Monitoring failed: {e}")
     
     background_tasks.add_task(run_monitoring)
     return {
