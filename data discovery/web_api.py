@@ -17,11 +17,15 @@ import os
 import uvicorn
 import json
 import aiohttp
+import logging
 from dotenv import load_dotenv
 
 load_dotenv()
 
 from dynamic_discovery_engine import DynamicDataDiscoveryEngine
+
+# Setup logger
+logger = logging.getLogger(__name__)
 
 app = FastAPI(
     title="Data Discovery API",

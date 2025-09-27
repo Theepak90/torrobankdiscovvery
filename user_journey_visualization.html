@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Torro Data Discovery System - User Journey Visualization</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+
+        .personas {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            padding: 30px;
+            background: #f8f9fa;
+        }
+
+        .persona-card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            cursor: pointer;
+        }
+
+        .persona-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+        }
+
+        .persona-card.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .persona-icon {
+            font-size: 3rem;
+            margin-bottom: 15px;
+            color: #667eea;
+        }
+
+        .persona-card.active .persona-icon {
+            color: white;
+        }
+
+        .persona-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .persona-role {
+            font-size: 0.9rem;
+            opacity: 0.8;
+            margin-bottom: 15px;
+        }
+
+        .persona-goals {
+            font-size: 0.85rem;
+            line-height: 1.4;
+        }
+
+        .journey-phases {
+            padding: 30px;
+        }
+
+        .phase {
+            margin-bottom: 40px;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+
+        .phase-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px 30px;
+            font-size: 1.4rem;
+            font-weight: 600;
+        }
+
+        .phase-content {
+            background: white;
+            padding: 30px;
+        }
+
+        .touchpoints {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .touchpoint {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+            border-left: 4px solid #667eea;
+            transition: all 0.3s ease;
+        }
+
+        .touchpoint:hover {
+            background: #e9ecef;
+            transform: translateX(5px);
+        }
+
+        .touchpoint-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        .touchpoint-description {
+            font-size: 0.9rem;
+            color: #666;
+            line-height: 1.5;
+            margin-bottom: 15px;
+        }
+
+        .touchpoint-features {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .feature-tag {
+            background: #667eea;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+
+        .user-flow {
+            background: #f8f9fa;
+            padding: 30px;
+            border-radius: 15px;
+            margin-top: 20px;
+        }
+
+        .flow-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        .flow-steps {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            justify-content: center;
+        }
+
+        .flow-step {
+            background: white;
+            border-radius: 10px;
+            padding: 15px 20px;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            min-width: 150px;
+            position: relative;
+        }
+
+        .flow-step::after {
+            content: '→';
+            position: absolute;
+            right: -20px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 1.5rem;
+            color: #667eea;
+            font-weight: bold;
+        }
+
+        .flow-step:last-child::after {
+            display: none;
+        }
+
+        .step-number {
+            background: #667eea;
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 10px;
+            font-weight: 600;
+        }
+
+        .step-title {
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .step-description {
+            font-size: 0.8rem;
+            color: #666;
+        }
+
+        .metrics {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .metrics-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+
+        .metric-card {
+            background: rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+        }
+
+        .metric-value {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+
+        .metric-label {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+
+        .pain-points {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .pain-points-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: #856404;
+        }
+
+        .pain-point {
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: 15px;
+        }
+
+        .pain-point-icon {
+            color: #f39c12;
+            margin-right: 10px;
+            margin-top: 2px;
+        }
+
+        .pain-point-content {
+            flex: 1;
+        }
+
+        .pain-point-title {
+            font-weight: 600;
+            margin-bottom: 5px;
+            color: #856404;
+        }
+
+        .pain-point-description {
+            font-size: 0.9rem;
+            color: #856404;
+            line-height: 1.4;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .personas {
+                grid-template-columns: 1fr;
+            }
+            
+            .touchpoints {
+                grid-template-columns: 1fr;
+            }
+            
+            .flow-steps {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .flow-step::after {
+                content: '↓';
+                right: 50%;
+                top: 100%;
+                transform: translateX(50%);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1><i class="fas fa-route me-2"></i>Torro Data Discovery System</h1>
+            <p>Complete User Journey Visualization</p>
+        </div>
+
+        <div class="personas">
+            <div class="persona-card active" data-persona="engineer">
+                <div class="persona-icon">
+                    <i class="fas fa-cogs"></i>
+                </div>
+                <div class="persona-title">Data Engineer</div>
+                <div class="persona-role">Primary User</div>
+                <div class="persona-goals">
+                    Set up data connections, monitor discovery processes, troubleshoot issues
+                </div>
+            </div>
+            <div class="persona-card" data-persona="analyst">
+                <div class="persona-icon">
+                    <i class="fas fa-chart-line"></i>
+                </div>
+                <div class="persona-title">Data Analyst</div>
+                <div class="persona-role">Secondary User</div>
+                <div class="persona-goals">
+                    Find relevant datasets, understand data lineage, assess data quality
+                </div>
+            </div>
+            <div class="persona-card" data-persona="governance">
+                <div class="persona-icon">
+                    <i class="fas fa-shield-alt"></i>
+                </div>
+                <div class="persona-title">Data Governance Manager</div>
+                <div class="persona-role">Stakeholder</div>
+                <div class="persona-goals">
+                    Ensure data compliance, monitor PII detection, maintain data catalog
+                </div>
+            </div>
+            <div class="persona-card" data-persona="business">
+                <div class="persona-icon">
+                    <i class="fas fa-users"></i>
+                </div>
+                <div class="persona-title">Business User</div>
+                <div class="persona-role">Consumer</div>
+                <div class="persona-goals">
+                    Access business data, understand data context, make data-driven decisions
+                </div>
+            </div>
+        </div>
+
+        <div class="journey-phases">
+            <div class="phase">
+                <div class="phase-header">
+                    <i class="fas fa-rocket me-2"></i>Phase 1: Onboarding & Initial Setup
+                </div>
+                <div class="phase-content">
+                    <div class="touchpoints">
+                        <div class="touchpoint">
+                            <div class="touchpoint-title">First Login</div>
+                            <div class="touchpoint-description">
+                                User accesses the Torro Data Discovery System for the first time
+                            </div>
+                            <div class="touchpoint-features">
+                                <span class="feature-tag">Welcome Dashboard</span>
+                                <span class="feature-tag">Getting Started Wizard</span>
+                                <span class="feature-tag">System Overview</span>
+                            </div>
+                        </div>
+                        <div class="touchpoint">
+                            <div class="touchpoint-title">System Overview</div>
+                            <div class="touchpoint-description">
+                                User explores the dashboard and understands system capabilities
+                            </div>
+                            <div class="touchpoint-features">
+                                <span class="feature-tag">Health Status</span>
+                                <span class="feature-tag">Activity Feed</span>
+                                <span class="feature-tag">Statistics Chart</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="phase">
+                <div class="phase-header">
+                    <i class="fas fa-plug me-2"></i>Phase 2: Data Source Configuration
+                </div>
+                <div class="phase-content">
+                    <div class="touchpoints">
+                        <div class="touchpoint">
+                            <div class="touchpoint-title">Connector Setup</div>
+                            <div class="touchpoint-description">
+                                User navigates to connectors and explores 120+ available options
+                            </div>
+                            <div class="touchpoint-features">
+                                <span class="feature-tag">120+ Connectors</span>
+                                <span class="feature-tag">Categories</span>
+                                <span class="feature-tag">Visual Icons</span>
+                            </div>
+                        </div>
+                        <div class="touchpoint">
+                            <div class="touchpoint-title">Connection Wizard</div>
+                            <div class="touchpoint-description">
+                                User configures new data source through guided 4-step process
+                            </div>
+                            <div class="touchpoint-features">
+                                <span class="feature-tag">4-Step Wizard</span>
+                                <span class="feature-tag">Visual Progress</span>
+                                <span class="feature-tag">Real-time Validation</span>
+                            </div>
+                        </div>
+                        <div class="touchpoint">
+                            <div class="touchpoint-title">Connection Testing</div>
+                            <div class="touchpoint-description">
+                                User tests the configured connection and reviews results
+                            </div>
+                            <div class="touchpoint-features">
+                                <span class="feature-tag">Real-time Testing</span>
+                                <span class="feature-tag">Success/Error Feedback</span>
+                                <span class="feature-tag">Asset Preview</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="phase">
+                <div class="phase-header">
+                    <i class="fas fa-search me-2"></i>Phase 3: Data Discovery Process
+                </div>
+                <div class="phase-content">
+                    <div class="touchpoints">
+                        <div class="touchpoint">
+                            <div class="touchpoint-title">Discovery Configuration</div>
+                            <div class="touchpoint-description">
+                                User configures discovery parameters and selects scanning options
+                            </div>
+                            <div class="touchpoint-features">
+                                <span class="feature-tag">Discovery Controls</span>
+                                <span class="feature-tag">Status Indicators</span>
+                                <span class="feature-tag">Selective Scanning</span>
+                            </div>
+                        </div>
+                        <div class="touchpoint">
+                            <div class="touchpoint-title">Discovery Execution</div>
+                            <div class="touchpoint-description">
+                                System performs comprehensive scanning across all enabled connectors
+                            </div>
+                            <div class="touchpoint-features">
+                                <span class="feature-tag">Real-time Progress</span>
+                                <span class="feature-tag">Multi-source Scanning</span>
+                                <span class="feature-tag">Live Updates</span>
+                            </div>
+                        </div>
+                        <div class="touchpoint">
+                            <div class="touchpoint-title">Discovery Results</div>
+                            <div class="touchpoint-description">
+                                User reviews comprehensive discovery results and statistics
+                            </div>
+                            <div class="touchpoint-features">
+                                <span class="feature-tag">Results Summary</span>
+                                <span class="feature-tag">Visual Charts</span>
+                                <span class="feature-tag">Export Options</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="phase">
+                <div class="phase-header">
+                    <i class="fas fa-table me-2"></i>Phase 4: Asset Exploration & Management
+                </div>
+                <div class="phase-content">
+                    <div class="touchpoints">
+                        <div class="touchpoint">
+                            <div class="touchpoint-title">Asset Catalog</div>
+                            <div class="touchpoint-description">
+                                User explores discovered assets through searchable and filterable interface
+                            </div>
+                            <div class="touchpoint-features">
+                                <span class="feature-tag">Powerful Search</span>
+                                <span class="feature-tag">Advanced Filters</span>
+                                <span class="feature-tag">Sortable Columns</span>
+                            </div>
+                        </div>
+                        <div class="touchpoint">
+                            <div class="touchpoint-title">Asset Details</div>
+                            <div class="touchpoint-description">
+                                User examines detailed asset information including schema, profiling, and AI analysis
+                            </div>
+                            <div class="touchpoint-features">
+                                <span class="feature-tag">Rich Details</span>
+                                <span class="feature-tag">Schema Visualization</span>
+                                <span class="feature-tag">AI Insights</span>
+                                <span class="feature-tag">PII Scan</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="phase">
+                <div class="phase-header">
+                    <i class="fas fa-sitemap me-2"></i>Phase 5: Data Lineage & Relationships
+                </div>
+                <div class="phase-content">
+                    <div class="touchpoints">
+                        <div class="touchpoint">
+                            <div class="touchpoint-title">Lineage Exploration</div>
+                            <div class="touchpoint-description">
+                                User navigates to lineage tools and selects assets for relationship analysis
+                            </div>
+                            <div class="touchpoint-features">
+                                <span class="feature-tag">Interactive Graph</span>
+                                <span class="feature-tag">Asset Selection</span>
+                                <span class="feature-tag">Direction Controls</span>
+                            </div>
+                        </div>
+                        <div class="touchpoint">
+                            <div class="touchpoint-title">Lineage Visualization</div>
+                            <div class="touchpoint-description">
+                                User explores data relationships through interactive graph visualization
+                            </div>
+                            <div class="touchpoint-features">
+                                <span class="feature-tag">Visual Graph</span>
+                                <span class="feature-tag">Zoom & Pan</span>
+                                <span class="feature-tag">Column-level Details</span>
+                            </div>
+                        </div>
+                        <div class="touchpoint">
+                            <div class="touchpoint-title">Relationship Management</div>
+                            <div class="touchpoint-description">
+                                User adds or modifies data relationships with confidence scoring
+                            </div>
+                            <div class="touchpoint-features">
+                                <span class="feature-tag">Edit Mode</span>
+                                <span class="feature-tag">Custom Relationships</span>
+                                <span class="feature-tag">Confidence Scoring</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="phase">
+                <div class="phase-header">
+                    <i class="fas fa-chart-line me-2"></i>Phase 6: Monitoring & Maintenance
+                </div>
+                <div class="phase-content">
+                    <div class="touchpoints">
+                        <div class="touchpoint">
+                            <div class="touchpoint-title">Continuous Monitoring</div>
+                            <div class="touchpoint-description">
+                                User enables and configures continuous monitoring for ongoing discovery
+                            </div>
+                            <div class="touchpoint-features">
+                                <span class="feature-tag">Background Service</span>
+                                <span class="feature-tag">Real-time Status</span>
+                                <span class="feature-tag">Alert System</span>
+                            </div>
+                        </div>
+                        <div class="touchpoint">
+                            <div class="touchpoint-title">System Health Monitoring</div>
+                            <div class="touchpoint-description">
+                                User monitors system performance and connector health
+                            </div>
+                            <div class="touchpoint-features">
+                                <span class="feature-tag">Health Dashboard</span>
+                                <span class="feature-tag">Performance Charts</span>
+                                <span class="feature-tag">Status Indicators</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="user-flow">
+            <div class="flow-title">Key User Flow: New Data Source Onboarding</div>
+            <div class="flow-steps">
+                <div class="flow-step">
+                    <div class="step-number">1</div>
+                    <div class="step-title">Identify Need</div>
+                    <div class="step-description">User identifies need for new data source</div>
+                </div>
+                <div class="flow-step">
+                    <div class="step-number">2</div>
+                    <div class="step-title">Navigate</div>
+                    <div class="step-description">Go to Connectors tab</div>
+                </div>
+                <div class="flow-step">
+                    <div class="step-number">3</div>
+                    <div class="step-title">Select Type</div>
+                    <div class="step-description">Choose connector type</div>
+                </div>
+                <div class="flow-step">
+                    <div class="step-number">4</div>
+                    <div class="step-title">Configure</div>
+                    <div class="step-description">Set connection parameters</div>
+                </div>
+                <div class="flow-step">
+                    <div class="step-number">5</div>
+                    <div class="step-title">Test</div>
+                    <div class="step-description">Test connection</div>
+                </div>
+                <div class="flow-step">
+                    <div class="step-number">6</div>
+                    <div class="step-title">Save</div>
+                    <div class="step-description">Save configuration</div>
+                </div>
+                <div class="flow-step">
+                    <div class="step-number">7</div>
+                    <div class="step-title">Discover</div>
+                    <div class="step-description">Run discovery scan</div>
+                </div>
+                <div class="flow-step">
+                    <div class="step-number">8</div>
+                    <div class="step-title">Review</div>
+                    <div class="step-description">Review discovered assets</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="pain-points">
+            <div class="pain-points-title">
+                <i class="fas fa-exclamation-triangle me-2"></i>Key Pain Points & Solutions
+            </div>
+            <div class="pain-point">
+                <div class="pain-point-icon">
+                    <i class="fas fa-cog"></i>
+                </div>
+                <div class="pain-point-content">
+                    <div class="pain-point-title">Complex Configuration</div>
+                    <div class="pain-point-description">
+                        Setting up multiple data sources can be overwhelming. Solution: Guided connection wizard, pre-configured templates, bulk configuration options.
+                    </div>
+                </div>
+            </div>
+            <div class="pain-point">
+                <div class="pain-point-icon">
+                    <i class="fas fa-database"></i>
+                </div>
+                <div class="pain-point-content">
+                    <div class="pain-point-title">Data Discovery Overwhelm</div>
+                    <div class="pain-point-description">
+                        Too many discovered assets to manage. Solution: Advanced search and filtering, AI-powered categorization, smart recommendations.
+                    </div>
+                </div>
+            </div>
+            <div class="pain-point">
+                <div class="pain-point-icon">
+                    <i class="fas fa-shield-alt"></i>
+                </div>
+                <div class="pain-point-content">
+                    <div class="pain-point-title">Compliance Monitoring</div>
+                    <div class="pain-point-description">
+                        Tracking data privacy and compliance is manual. Solution: Automated PII detection, risk scoring system, compliance dashboards.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="metrics">
+            <div class="metrics-title">Success Metrics</div>
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-value">120+</div>
+                    <div class="metric-label">Available Connectors</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">5</div>
+                    <div class="metric-label">Main User Phases</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">15+</div>
+                    <div class="metric-label">Key Touchpoints</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">4</div>
+                    <div class="metric-label">User Personas</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Add interactivity to persona cards
+        document.querySelectorAll('.persona-card').forEach(card => {
+            card.addEventListener('click', function() {
+                // Remove active class from all cards
+                document.querySelectorAll('.persona-card').forEach(c => c.classList.remove('active'));
+                // Add active class to clicked card
+                this.classList.add('active');
+            });
+        });
+
+        // Add smooth scrolling for better UX
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                document.querySelector(this.getAttribute('href')).scrollIntoView({
+                    behavior: 'smooth'
+                });
+            });
+        });
+
+        // Add animation on scroll
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.opacity = '1';
+                    entry.target.style.transform = 'translateY(0)';
+                }
+            });
+        }, observerOptions);
+
+        // Observe all touchpoints for animation
+        document.querySelectorAll('.touchpoint').forEach(touchpoint => {
+            touchpoint.style.opacity = '0';
+            touchpoint.style.transform = 'translateY(20px)';
+            touchpoint.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+            observer.observe(touchpoint);
+        });
+    </script>
+</body>
+</html>
