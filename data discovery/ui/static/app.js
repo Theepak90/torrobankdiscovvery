@@ -1948,6 +1948,7 @@ async function showAssetDetails(assetName) {
             document.getElementById('asset-modal-title').textContent = `Asset Details - ${asset.name}`;
             
             // Populate Overview tab
+            const businessMetadata = response.business_metadata || {};
             const overviewContent = `
                 <div class="row">
                     <div class="col-md-6">
@@ -1972,6 +1973,76 @@ async function showAssetDetails(assetName) {
                         </div>
                         <h6>Metadata</h6>
                         <pre class="bg-light p-2 rounded" style="max-height: 200px; overflow-y: auto;">${JSON.stringify(asset.metadata, null, 2)}</pre>
+                    </div>
+                </div>
+                
+                <!-- Business Metadata Section -->
+                <div class="row mt-4">
+                    <div class="col-12">
+                        <h5 class="text-primary mb-3"><i class="fas fa-building me-2"></i>Business Metadata</h5>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6>Business Context</h6>
+                                <table class="table table-sm">
+                                    <tr><td><strong>Business Domain:</strong></td><td><span class="badge bg-primary">${businessMetadata.business_domain || 'Unknown'}</span></td></tr>
+                                    <tr><td><strong>Data Classification:</strong></td><td><span class="badge ${getClassificationBadgeClass(businessMetadata.data_classification)}">${businessMetadata.data_classification || 'Internal'}</span></td></tr>
+                                    <tr><td><strong>Sensitivity Level:</strong></td><td><span class="badge ${getSensitivityBadgeClass(businessMetadata.sensitivity_level)}">${businessMetadata.sensitivity_level || 'Low'}</span></td></tr>
+                                    <tr><td><strong>Criticality:</strong></td><td><span class="badge ${getCriticalityBadgeClass(businessMetadata.criticality)}">${businessMetadata.criticality || 'Medium'}</span></td></tr>
+                                    <tr><td><strong>Usage Frequency:</strong></td><td><span class="badge bg-info">${businessMetadata.usage_frequency || 'Medium'}</span></td></tr>
+                                    <tr><td><strong>Data Quality Score:</strong></td><td><span class="badge ${getQualityBadgeClass(businessMetadata.data_quality_score)}">${businessMetadata.data_quality_score || 75}%</span></td></tr>
+                                </table>
+                            </div>
+                            <div class="col-md-6">
+                                <h6>Governance & Compliance</h6>
+                                <table class="table table-sm">
+                                    <tr><td><strong>Business Owner:</strong></td><td>${businessMetadata.business_owner || 'To be assigned'}</td></tr>
+                                    <tr><td><strong>Data Steward:</strong></td><td>${businessMetadata.data_steward || 'To be assigned'}</td></tr>
+                                    <tr><td><strong>Retention Policy:</strong></td><td>${businessMetadata.retention_policy || 'Standard retention'}</td></tr>
+                                    <tr><td><strong>Last Business Review:</strong></td><td>${businessMetadata.last_business_review ? formatDateTime(businessMetadata.last_business_review) : 'Not reviewed'}</td></tr>
+                                    <tr><td><strong>Data Lineage Status:</strong></td><td><span class="badge bg-success">${businessMetadata.data_lineage_status || 'Available'}</span></td></tr>
+                                </table>
+                            </div>
+                        </div>
+                        
+                        <div class="row mt-3">
+                            <div class="col-md-6">
+                                <h6>Compliance Requirements</h6>
+                                <div class="mb-3">
+                                    ${businessMetadata.compliance_requirements && businessMetadata.compliance_requirements.length > 0 ? 
+                                        businessMetadata.compliance_requirements.map(req => `<span class="badge bg-warning text-dark me-1">${req}</span>`).join('') : 
+                                        '<span class="text-muted">No specific compliance requirements</span>'}
+                                </div>
+                                
+                                <h6>Business Tags</h6>
+                                <div class="mb-3">
+                                    ${businessMetadata.business_tags && businessMetadata.business_tags.length > 0 ? 
+                                        businessMetadata.business_tags.map(tag => `<span class="badge bg-light text-dark me-1">${tag}</span>`).join('') : 
+                                        '<span class="text-muted">No business tags</span>'}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <h6>Business Glossary Terms</h6>
+                                <div class="mb-3">
+                                    ${businessMetadata.business_glossary_terms && businessMetadata.business_glossary_terms.length > 0 ? 
+                                        businessMetadata.business_glossary_terms.map(term => `<span class="badge bg-secondary me-1">${term}</span>`).join('') : 
+                                        '<span class="text-muted">No glossary terms</span>'}
+                                </div>
+                                
+                                <h6>Related Processes</h6>
+                                <div class="mb-3">
+                                    ${businessMetadata.related_processes && businessMetadata.related_processes.length > 0 ? 
+                                        businessMetadata.related_processes.map(process => `<span class="badge bg-info me-1">${process}</span>`).join('') : 
+                                        '<span class="text-muted">No related processes</span>'}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row mt-3">
+                            <div class="col-12">
+                                <h6>Business Purpose</h6>
+                                <p class="text-muted">${businessMetadata.business_purpose || 'Data asset for business operations'}</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
             `;
@@ -9665,6 +9736,42 @@ function viewAssetLineage(assetId) {
     } else {
         showNotification(`Asset not found: ${assetId}`, 'warning');
     }
+}
+
+// Helper functions for business metadata badge classes
+function getClassificationBadgeClass(classification) {
+    switch(classification) {
+        case 'Public': return 'bg-success';
+        case 'Internal': return 'bg-info';
+        case 'Confidential': return 'bg-warning text-dark';
+        case 'Restricted': return 'bg-danger';
+        default: return 'bg-secondary';
+    }
+}
+
+function getSensitivityBadgeClass(sensitivity) {
+    switch(sensitivity) {
+        case 'Low': return 'bg-success';
+        case 'Medium': return 'bg-warning text-dark';
+        case 'High': return 'bg-danger';
+        default: return 'bg-secondary';
+    }
+}
+
+function getCriticalityBadgeClass(criticality) {
+    switch(criticality) {
+        case 'Low': return 'bg-success';
+        case 'Medium': return 'bg-warning text-dark';
+        case 'High': return 'bg-danger';
+        default: return 'bg-secondary';
+    }
+}
+
+function getQualityBadgeClass(score) {
+    if (score >= 90) return 'bg-success';
+    if (score >= 75) return 'bg-info';
+    if (score >= 60) return 'bg-warning text-dark';
+    return 'bg-danger';
 }
 
 // Update quality metrics

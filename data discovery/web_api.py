@@ -1245,11 +1245,33 @@ async def get_assets_by_source(source: str):
 
 @app.get("/api/assets/{asset_name}")
 async def get_asset_details(asset_name: str):
-    """Get detailed information about a specific asset"""
-    result = discovery_engine.get_asset_details(asset_name)
-    if result["status"] == "error":
-        raise HTTPException(status_code=404, detail=result["error"])
-    return result
+    """Get detailed information about a specific asset including business metadata"""
+    try:
+        # Get basic asset details
+        result = discovery_engine.get_asset_details(asset_name)
+        if result["status"] == "error":
+            raise HTTPException(status_code=404, detail=result["error"])
+        
+        # Get the asset from catalog for additional processing
+        assets = discovery_engine.asset_catalog.search_assets(asset_name)
+        if not assets:
+            raise HTTPException(status_code=404, detail="Asset not found")
+        
+        asset = assets[0]
+        
+        # Generate business metadata dynamically
+        business_metadata = await generate_business_metadata(asset)
+        
+        # Enhance the result with business metadata
+        enhanced_result = result.copy()
+        enhanced_result["business_metadata"] = business_metadata
+        
+        return enhanced_result
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/assets/{asset_name}/profiling")
 async def get_asset_profiling(asset_name: str):
@@ -1301,6 +1323,31 @@ async def get_asset_ai_analysis(asset_name: str):
             "timestamp": datetime.now().isoformat()
         }
 
+@app.get("/api/assets/{asset_name}/business-metadata")
+async def get_asset_business_metadata(asset_name: str):
+    """Get business metadata for a specific asset"""
+    try:
+        assets = discovery_engine.asset_catalog.search_assets(asset_name)
+        if not assets:
+            raise HTTPException(status_code=404, detail="Asset not found")
+        
+        asset = assets[0]  # Get the first matching asset
+        
+        business_metadata = await generate_business_metadata(asset)
+        
+        return {
+            "status": "success",
+            "asset_name": asset_name,
+            "business_metadata": business_metadata,
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": str(e),
+            "timestamp": datetime.now().isoformat()
+        }
+
 @app.get("/api/assets/{asset_name}/pii-scan")
 async def get_asset_pii_scan(asset_name: str):
     """Get PII scan results for a specific asset using Gemini"""
@@ -1324,6 +1371,202 @@ async def get_asset_pii_scan(asset_name: str):
             "status": "error",
             "message": str(e),
             "timestamp": datetime.now().isoformat()
+        }
+
+async def generate_business_metadata(asset: Dict[str, Any]) -> Dict[str, Any]:
+    """Generate business metadata for an asset dynamically"""
+    try:
+        asset_name = asset.get('name', '').lower()
+        asset_type = asset.get('type', '').lower()
+        source = asset.get('source', '').lower()
+        schema = asset.get('schema', {})
+        
+        # Initialize business metadata
+        business_metadata = {
+            "business_domain": "Unknown",
+            "data_classification": "Internal",
+            "business_owner": "To be assigned",
+            "data_steward": "To be assigned",
+            "business_purpose": "Data asset for business operations",
+            "retention_policy": "Standard retention",
+            "sensitivity_level": "Low",
+            "compliance_requirements": [],
+            "business_tags": [],
+            "data_quality_score": 85,
+            "usage_frequency": "Medium",
+            "criticality": "Medium",
+            "last_business_review": None,
+            "business_glossary_terms": [],
+            "related_processes": [],
+            "data_lineage_status": "Available"
+        }
+        
+        # Analyze asset name for business context
+        if any(keyword in asset_name for keyword in ['customer', 'client', 'user', 'account']):
+            business_metadata["business_domain"] = "Customer Management"
+            business_metadata["business_tags"].extend(["customer", "relationship-management"])
+            business_metadata["sensitivity_level"] = "High"
+            business_metadata["compliance_requirements"].extend(["GDPR", "CCPA"])
+            
+        elif any(keyword in asset_name for keyword in ['consent', 'privacy', 'gdpr', 'compliance']):
+            business_metadata["business_domain"] = "Privacy & Compliance"
+            business_metadata["business_tags"].extend(["privacy", "compliance", "consent"])
+            business_metadata["sensitivity_level"] = "High"
+            business_metadata["compliance_requirements"].extend(["GDPR", "CCPA", "Privacy Regulations"])
+            business_metadata["criticality"] = "High"
+            
+        elif any(keyword in asset_name for keyword in ['transaction', 'payment', 'financial', 'billing']):
+            business_metadata["business_domain"] = "Financial Services"
+            business_metadata["business_tags"].extend(["financial", "transactions", "payments"])
+            business_metadata["sensitivity_level"] = "High"
+            business_metadata["compliance_requirements"].extend(["PCI-DSS", "SOX", "Financial Regulations"])
+            business_metadata["criticality"] = "High"
+            
+        elif any(keyword in asset_name for keyword in ['product', 'inventory', 'catalog', 'merchandise']):
+            business_metadata["business_domain"] = "Product Management"
+            business_metadata["business_tags"].extend(["products", "inventory", "catalog"])
+            business_metadata["sensitivity_level"] = "Medium"
+            
+        elif any(keyword in asset_name for keyword in ['order', 'sales', 'revenue', 'purchase']):
+            business_metadata["business_domain"] = "Sales & Revenue"
+            business_metadata["business_tags"].extend(["sales", "orders", "revenue"])
+            business_metadata["sensitivity_level"] = "High"
+            business_metadata["criticality"] = "High"
+            
+        elif any(keyword in asset_name for keyword in ['marketing', 'campaign', 'promotion', 'advertisement']):
+            business_metadata["business_domain"] = "Marketing"
+            business_metadata["business_tags"].extend(["marketing", "campaigns", "promotions"])
+            business_metadata["sensitivity_level"] = "Medium"
+            
+        elif any(keyword in asset_name for keyword in ['analytics', 'reporting', 'dashboard', 'metrics']):
+            business_metadata["business_domain"] = "Analytics & Reporting"
+            business_metadata["business_tags"].extend(["analytics", "reporting", "business-intelligence"])
+            business_metadata["sensitivity_level"] = "Medium"
+            business_metadata["usage_frequency"] = "High"
+            
+        elif any(keyword in asset_name for keyword in ['audit', 'log', 'security', 'monitoring']):
+            business_metadata["business_domain"] = "Security & Audit"
+            business_metadata["business_tags"].extend(["security", "audit", "monitoring"])
+            business_metadata["sensitivity_level"] = "High"
+            business_metadata["compliance_requirements"].extend(["Security Standards", "Audit Requirements"])
+            
+        # Analyze schema for additional business context
+        if isinstance(schema, dict) and 'fields' in schema:
+            fields = schema.get('fields', [])
+            field_names = [field.get('name', '').lower() for field in fields]
+            
+            # Check for PII fields
+            pii_fields = []
+            for field_name in field_names:
+                if any(pii_indicator in field_name for pii_indicator in 
+                      ['email', 'phone', 'ssn', 'address', 'name', 'birth', 'id_number']):
+                    pii_fields.append(field_name)
+            
+            if pii_fields:
+                business_metadata["sensitivity_level"] = "High"
+                business_metadata["compliance_requirements"].extend(["GDPR", "CCPA"])
+                business_metadata["business_tags"].append("pii-data")
+                
+            # Check for financial fields
+            financial_fields = []
+            for field_name in field_names:
+                if any(fin_indicator in field_name for fin_indicator in 
+                      ['amount', 'price', 'cost', 'revenue', 'balance', 'payment', 'transaction']):
+                    financial_fields.append(field_name)
+            
+            if financial_fields:
+                business_metadata["business_tags"].append("financial-data")
+                if business_metadata["business_domain"] == "Unknown":
+                    business_metadata["business_domain"] = "Financial Services"
+        
+        # Determine data classification based on sensitivity
+        if business_metadata["sensitivity_level"] == "High":
+            business_metadata["data_classification"] = "Confidential"
+        elif business_metadata["sensitivity_level"] == "Medium":
+            business_metadata["data_classification"] = "Internal"
+        else:
+            business_metadata["data_classification"] = "Public"
+        
+        # Set retention policy based on domain
+        if business_metadata["business_domain"] in ["Privacy & Compliance", "Security & Audit"]:
+            business_metadata["retention_policy"] = "7 years (Compliance requirement)"
+        elif business_metadata["business_domain"] == "Financial Services":
+            business_metadata["retention_policy"] = "10 years (Financial regulations)"
+        elif business_metadata["business_domain"] == "Customer Management":
+            business_metadata["retention_policy"] = "5 years (Customer lifecycle)"
+        else:
+            business_metadata["retention_policy"] = "3 years (Standard business)"
+        
+        # Generate business glossary terms based on domain
+        domain_terms = {
+            "Customer Management": ["Customer ID", "Customer Profile", "Customer Journey", "Customer Lifetime Value"],
+            "Privacy & Compliance": ["Consent Record", "Privacy Policy", "Data Subject", "Right to Erasure"],
+            "Financial Services": ["Transaction ID", "Payment Method", "Account Balance", "Financial Instrument"],
+            "Product Management": ["Product SKU", "Product Category", "Inventory Level", "Product Lifecycle"],
+            "Sales & Revenue": ["Order ID", "Sales Channel", "Revenue Recognition", "Customer Acquisition Cost"],
+            "Marketing": ["Campaign ID", "Marketing Channel", "Conversion Rate", "Customer Acquisition"],
+            "Analytics & Reporting": ["KPI", "Business Metric", "Dashboard", "Data Visualization"],
+            "Security & Audit": ["Access Log", "Security Event", "Audit Trail", "Compliance Check"]
+        }
+        
+        business_metadata["business_glossary_terms"] = domain_terms.get(
+            business_metadata["business_domain"], 
+            ["Data Asset", "Business Process", "System Integration"]
+        )
+        
+        # Generate related processes
+        process_mapping = {
+            "Customer Management": ["Customer Onboarding", "Customer Support", "Customer Retention"],
+            "Privacy & Compliance": ["Consent Management", "Data Privacy Review", "Compliance Monitoring"],
+            "Financial Services": ["Payment Processing", "Financial Reporting", "Risk Management"],
+            "Product Management": ["Product Catalog Management", "Inventory Management", "Product Development"],
+            "Sales & Revenue": ["Order Processing", "Sales Pipeline", "Revenue Recognition"],
+            "Marketing": ["Campaign Management", "Lead Generation", "Marketing Analytics"],
+            "Analytics & Reporting": ["Business Intelligence", "Performance Monitoring", "Strategic Planning"],
+            "Security & Audit": ["Security Monitoring", "Compliance Auditing", "Risk Assessment"]
+        }
+        
+        business_metadata["related_processes"] = process_mapping.get(
+            business_metadata["business_domain"],
+            ["Data Management", "Business Operations", "System Integration"]
+        )
+        
+        # Calculate data quality score based on schema completeness
+        if isinstance(schema, dict) and 'fields' in schema:
+            fields = schema.get('fields', [])
+            total_fields = len(fields)
+            complete_fields = sum(1 for field in fields if field.get('description', '').strip())
+            
+            if total_fields > 0:
+                completeness_score = (complete_fields / total_fields) * 100
+                business_metadata["data_quality_score"] = min(100, max(60, int(completeness_score)))
+        
+        # Set last business review date (simulated)
+        from datetime import datetime, timedelta
+        business_metadata["last_business_review"] = (datetime.now() - timedelta(days=30)).isoformat()
+        
+        return business_metadata
+        
+    except Exception as e:
+        logger.error(f"Error generating business metadata: {e}")
+        return {
+            "business_domain": "Unknown",
+            "data_classification": "Internal",
+            "business_owner": "To be assigned",
+            "data_steward": "To be assigned",
+            "business_purpose": "Data asset for business operations",
+            "retention_policy": "Standard retention",
+            "sensitivity_level": "Low",
+            "compliance_requirements": [],
+            "business_tags": [],
+            "data_quality_score": 75,
+            "usage_frequency": "Medium",
+            "criticality": "Medium",
+            "last_business_review": None,
+            "business_glossary_terms": [],
+            "related_processes": [],
+            "data_lineage_status": "Available",
+            "error": f"Metadata generation failed: {str(e)}"
         }
 
 async def analyze_asset_profiling(asset: Dict[str, Any]) -> Dict[str, Any]:
