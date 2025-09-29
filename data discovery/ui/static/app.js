@@ -2043,6 +2043,69 @@ async function showAssetDetails(assetName) {
                                 <p class="text-muted">${businessMetadata.business_purpose || 'Data asset for business operations'}</p>
                             </div>
                         </div>
+                        
+                        <!-- Real-Time Analysis Section -->
+                        <div class="row mt-4">
+                            <div class="col-12">
+                                <h5 class="text-info mb-3"><i class="fas fa-chart-line me-2"></i>Real-Time Analysis</h5>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <h6>Schema Analysis</h6>
+                                        <div class="card bg-light">
+                                            <div class="card-body p-2">
+                                                <small>
+                                                    <strong>Total Fields:</strong> ${businessMetadata.real_time_analysis?.schema_analysis?.total_fields || 0}<br>
+                                                    <strong>Fields with Descriptions:</strong> ${businessMetadata.real_time_analysis?.schema_analysis?.fields_with_descriptions || 0}<br>
+                                                    <strong>Completeness Score:</strong> ${businessMetadata.real_time_analysis?.schema_analysis?.completeness_score || 0}%<br>
+                                                    <strong>Detected Tags:</strong> ${businessMetadata.real_time_analysis?.schema_analysis?.detected_tags?.join(', ') || 'None'}
+                                                </small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <h6>PII Detection</h6>
+                                        <div class="card bg-light">
+                                            <div class="card-body p-2">
+                                                <small>
+                                                    <strong>High Risk PII:</strong> ${businessMetadata.real_time_analysis?.pii_detection?.high_risk_pii_count || 0}<br>
+                                                    <strong>Medium Risk PII:</strong> ${businessMetadata.real_time_analysis?.pii_detection?.medium_risk_pii_count || 0}<br>
+                                                    <strong>Low Risk PII:</strong> ${businessMetadata.real_time_analysis?.pii_detection?.low_risk_pii_count || 0}<br>
+                                                    <strong>Compliance Risk:</strong> <span class="badge ${getSensitivityBadgeClass(businessMetadata.real_time_analysis?.pii_detection?.compliance_risk || 'Low')}">${businessMetadata.real_time_analysis?.pii_detection?.compliance_risk || 'Low'}</span>
+                                                </small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row mt-2">
+                                    <div class="col-md-6">
+                                        <h6>Data Volume Analysis</h6>
+                                        <div class="card bg-light">
+                                            <div class="card-body p-2">
+                                                <small>
+                                                    <strong>Size Category:</strong> ${businessMetadata.real_time_analysis?.data_volume_analysis?.size_category || 'Unknown'}<br>
+                                                    <strong>Estimated Records:</strong> ${businessMetadata.real_time_analysis?.data_volume_analysis?.estimated_records?.toLocaleString() || 'Unknown'}<br>
+                                                    <strong>Growth Rate:</strong> ${businessMetadata.real_time_analysis?.data_volume_analysis?.growth_rate || 'Unknown'}<br>
+                                                    <strong>Large Dataset:</strong> ${businessMetadata.real_time_analysis?.data_volume_analysis?.is_large_dataset ? 'Yes' : 'No'}
+                                                </small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <h6>Usage Patterns</h6>
+                                        <div class="card bg-light">
+                                            <div class="card-body p-2">
+                                                <small>
+                                                    <strong>Access Pattern:</strong> ${businessMetadata.real_time_analysis?.usage_patterns?.access_pattern || 'Unknown'}<br>
+                                                    <strong>Business Criticality:</strong> ${businessMetadata.real_time_analysis?.usage_patterns?.business_criticality || 'Unknown'}<br>
+                                                    <strong>Highly Used:</strong> ${businessMetadata.real_time_analysis?.usage_patterns?.is_highly_used ? 'Yes' : 'No'}<br>
+                                                    <strong>Frequency Level:</strong> ${businessMetadata.real_time_analysis?.usage_patterns?.frequency_level || 'Unknown'}
+                                                </small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             `;

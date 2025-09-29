@@ -1373,15 +1373,284 @@ async def get_asset_pii_scan(asset_name: str):
             "timestamp": datetime.now().isoformat()
         }
 
+async def analyze_schema_dynamically(schema: Dict[str, Any], asset_name: str) -> Dict[str, Any]:
+    """Dynamically analyze schema to extract real business context"""
+    analysis = {
+        "total_fields": 0,
+        "fields_with_descriptions": 0,
+        "quality_score": 75,
+        "detected_tags": [],
+        "business_terms": [],
+        "has_pii": False,
+        "field_types": {},
+        "completeness_score": 0
+    }
+    
+    if isinstance(schema, dict) and 'fields' in schema:
+        fields = schema.get('fields', [])
+        analysis["total_fields"] = len(fields)
+        
+        if analysis["total_fields"] > 0:
+            # Count fields with descriptions
+            fields_with_desc = sum(1 for field in fields if field.get('description', '').strip())
+            analysis["fields_with_descriptions"] = fields_with_desc
+            analysis["completeness_score"] = (fields_with_desc / analysis["total_fields"]) * 100
+            
+            # Calculate quality score based on completeness
+            analysis["quality_score"] = min(100, max(60, int(analysis["completeness_score"])))
+            
+            # Analyze field types
+            for field in fields:
+                field_type = field.get('type', 'unknown')
+                analysis["field_types"][field_type] = analysis["field_types"].get(field_type, 0) + 1
+                
+                # Extract business terms from field names
+                field_name = field.get('name', '').lower()
+                if any(term in field_name for term in ['id', 'key', 'code', 'number']):
+                    analysis["business_terms"].append(field.get('name', ''))
+                elif any(term in field_name for term in ['name', 'title', 'description']):
+                    analysis["business_terms"].append(field.get('name', ''))
+                elif any(term in field_name for term in ['date', 'time', 'created', 'updated']):
+                    analysis["business_terms"].append(field.get('name', ''))
+            
+            # Detect tags based on field patterns
+            field_names = [field.get('name', '').lower() for field in fields]
+            if any('email' in name for name in field_names):
+                analysis["detected_tags"].append("email-data")
+            if any('phone' in name for name in field_names):
+                analysis["detected_tags"].append("phone-data")
+            if any('address' in name for name in field_names):
+                analysis["detected_tags"].append("address-data")
+            if any('id' in name for name in field_names):
+                analysis["detected_tags"].append("identifier-data")
+            if any('date' in name for name in field_names):
+                analysis["detected_tags"].append("temporal-data")
+    
+    return analysis
+
+async def detect_pii_dynamically(schema: Dict[str, Any], asset_name: str, metadata: Dict[str, Any]) -> Dict[str, Any]:
+    """Dynamically detect PII in schema and metadata"""
+    pii_analysis = {
+        "high_risk_pii_count": 0,
+        "medium_risk_pii_count": 0,
+        "low_risk_pii_count": 0,
+        "pii_fields": [],
+        "pii_tags": [],
+        "compliance_risk": "Low"
+    }
+    
+    # PII detection patterns
+    high_risk_patterns = {
+        'email': ['email', 'e_mail', 'mail_address'],
+        'phone': ['phone', 'mobile', 'telephone', 'contact_number'],
+        'ssn': ['ssn', 'social_security', 'national_id'],
+        'address': ['address', 'street', 'city', 'zip', 'postal'],
+        'name': ['first_name', 'last_name', 'full_name', 'customer_name']
+    }
+    
+    medium_risk_patterns = {
+        'user_id': ['user_id', 'customer_id', 'client_id'],
+        'ip': ['ip_address', 'ip', 'client_ip'],
+        'birth': ['birth_date', 'dob', 'birthday', 'age']
+    }
+    
+    low_risk_patterns = {
+        'preferences': ['preference', 'setting', 'option'],
+        'activity': ['last_login', 'activity', 'session']
+    }
+    
+    if isinstance(schema, dict) and 'fields' in schema:
+        for field in schema.get('fields', []):
+            field_name = field.get('name', '').lower()
+            field_type = field.get('type', '').lower()
+            
+            # Check high risk PII
+            for pii_type, patterns in high_risk_patterns.items():
+                if any(pattern in field_name for pattern in patterns):
+                    pii_analysis["high_risk_pii_count"] += 1
+                    pii_analysis["pii_fields"].append({
+                        "field": field.get('name'),
+                        "type": pii_type,
+                        "risk": "High"
+                    })
+                    pii_analysis["pii_tags"].append(f"high-risk-{pii_type}")
+            
+            # Check medium risk PII
+            for pii_type, patterns in medium_risk_patterns.items():
+                if any(pattern in field_name for pattern in patterns):
+                    pii_analysis["medium_risk_pii_count"] += 1
+                    pii_analysis["pii_fields"].append({
+                        "field": field.get('name'),
+                        "type": pii_type,
+                        "risk": "Medium"
+                    })
+                    pii_analysis["pii_tags"].append(f"medium-risk-{pii_type}")
+            
+            # Check low risk PII
+            for pii_type, patterns in low_risk_patterns.items():
+                if any(pattern in field_name for pattern in patterns):
+                    pii_analysis["low_risk_pii_count"] += 1
+                    pii_analysis["pii_fields"].append({
+                        "field": field.get('name'),
+                        "type": pii_type,
+                        "risk": "Low"
+                    })
+                    pii_analysis["pii_tags"].append(f"low-risk-{pii_type}")
+    
+    # Determine compliance risk
+    if pii_analysis["high_risk_pii_count"] > 0:
+        pii_analysis["compliance_risk"] = "High"
+    elif pii_analysis["medium_risk_pii_count"] > 0:
+        pii_analysis["compliance_risk"] = "Medium"
+    
+    return pii_analysis
+
+async def analyze_data_volume_dynamically(size: int, schema: Dict[str, Any], created_date: str, modified_date: str) -> Dict[str, Any]:
+    """Dynamically analyze data volume and growth patterns"""
+    volume_analysis = {
+        "size_category": "Small",
+        "is_large_dataset": False,
+        "estimated_records": 0,
+        "growth_rate": "Unknown",
+        "storage_efficiency": "Standard"
+    }
+    
+    # Analyze size
+    if size > 100 * 1024 * 1024:  # > 100MB
+        volume_analysis["size_category"] = "Large"
+        volume_analysis["is_large_dataset"] = True
+    elif size > 10 * 1024 * 1024:  # > 10MB
+        volume_analysis["size_category"] = "Medium"
+    else:
+        volume_analysis["size_category"] = "Small"
+    
+    # Estimate records based on schema and size
+    if isinstance(schema, dict) and 'fields' in schema:
+        field_count = len(schema.get('fields', []))
+        if field_count > 0:
+            # Rough estimation: average field size * number of fields
+            avg_field_size = 50  # bytes
+            estimated_record_size = field_count * avg_field_size
+            if estimated_record_size > 0:
+                volume_analysis["estimated_records"] = size // estimated_record_size
+    
+    # Analyze growth based on dates
+    if created_date and modified_date:
+        try:
+            from datetime import datetime
+            created = datetime.fromisoformat(created_date.replace('Z', '+00:00'))
+            modified = datetime.fromisoformat(modified_date.replace('Z', '+00:00'))
+            days_diff = (modified - created).days
+            
+            if days_diff > 0:
+                if days_diff < 30:
+                    volume_analysis["growth_rate"] = "High"
+                elif days_diff < 90:
+                    volume_analysis["growth_rate"] = "Medium"
+                else:
+                    volume_analysis["growth_rate"] = "Low"
+        except:
+            volume_analysis["growth_rate"] = "Unknown"
+    
+    return volume_analysis
+
+async def analyze_usage_patterns_dynamically(asset_name: str, last_scanned: str, modified_date: str, size: int) -> Dict[str, Any]:
+    """Dynamically analyze usage patterns based on asset characteristics"""
+    usage_analysis = {
+        "frequency_level": "Medium",
+        "is_highly_used": False,
+        "access_pattern": "Regular",
+        "business_criticality": "Medium"
+    }
+    
+    # Analyze based on asset name patterns
+    high_usage_keywords = ['master', 'core', 'primary', 'main', 'central', 'reference']
+    if any(keyword in asset_name for keyword in high_usage_keywords):
+        usage_analysis["frequency_level"] = "High"
+        usage_analysis["is_highly_used"] = True
+        usage_analysis["business_criticality"] = "High"
+    
+    # Analyze based on modification patterns
+    if last_scanned and modified_date:
+        try:
+            from datetime import datetime, timedelta
+            last_scan = datetime.fromisoformat(last_scanned.replace('Z', '+00:00'))
+            modified = datetime.fromisoformat(modified_date.replace('Z', '+00:00'))
+            days_since_scan = (datetime.now() - last_scan).days
+            days_since_modification = (datetime.now() - modified).days
+            
+            if days_since_scan < 1:
+                usage_analysis["frequency_level"] = "High"
+                usage_analysis["is_highly_used"] = True
+            elif days_since_scan < 7:
+                usage_analysis["frequency_level"] = "Medium"
+            else:
+                usage_analysis["frequency_level"] = "Low"
+                
+            if days_since_modification < 7:
+                usage_analysis["access_pattern"] = "Active"
+            elif days_since_modification < 30:
+                usage_analysis["access_pattern"] = "Regular"
+            else:
+                usage_analysis["access_pattern"] = "Archive"
+        except:
+            pass
+    
+    return usage_analysis
+
+async def analyze_compliance_dynamically(schema: Dict[str, Any], asset_name: str, pii_analysis: Dict[str, Any]) -> Dict[str, Any]:
+    """Dynamically analyze compliance requirements based on data content"""
+    compliance_analysis = {
+        "required_compliance": [],
+        "compliance_tags": [],
+        "requires_gdpr": False,
+        "requires_ccpa": False,
+        "requires_hipaa": False,
+        "requires_pci": False
+    }
+    
+    # Check for PII-based compliance requirements
+    if pii_analysis.get('high_risk_pii_count', 0) > 0:
+        compliance_analysis["requires_gdpr"] = True
+        compliance_analysis["requires_ccpa"] = True
+        compliance_analysis["required_compliance"].extend(["GDPR", "CCPA"])
+        compliance_analysis["compliance_tags"].extend(["gdpr", "ccpa", "privacy"])
+    
+    # Check for financial data
+    if isinstance(schema, dict) and 'fields' in schema:
+        field_names = [field.get('name', '').lower() for field in schema.get('fields', [])]
+        if any(fin_term in ' '.join(field_names) for fin_term in ['payment', 'credit', 'debit', 'transaction', 'billing']):
+            compliance_analysis["requires_pci"] = True
+            compliance_analysis["required_compliance"].append("PCI-DSS")
+            compliance_analysis["compliance_tags"].append("pci-dss")
+    
+    # Check for health data
+    if any(health_term in asset_name for health_term in ['health', 'medical', 'patient', 'diagnosis']):
+        compliance_analysis["requires_hipaa"] = True
+        compliance_analysis["required_compliance"].append("HIPAA")
+        compliance_analysis["compliance_tags"].append("hipaa")
+    
+    # Check for financial services
+    if any(fin_term in asset_name for fin_term in ['bank', 'financial', 'investment', 'securities']):
+        compliance_analysis["required_compliance"].extend(["SOX", "Basel III"])
+        compliance_analysis["compliance_tags"].extend(["sox", "basel"])
+    
+    return compliance_analysis
+
 async def generate_business_metadata(asset: Dict[str, Any]) -> Dict[str, Any]:
-    """Generate business metadata for an asset dynamically"""
+    """Generate business metadata for an asset dynamically based on real data analysis"""
     try:
         asset_name = asset.get('name', '').lower()
         asset_type = asset.get('type', '').lower()
         source = asset.get('source', '').lower()
         schema = asset.get('schema', {})
+        metadata = asset.get('metadata', {})
+        size = asset.get('size', 0)
+        created_date = asset.get('created_date')
+        modified_date = asset.get('modified_date')
+        last_scanned = asset.get('last_scanned')
         
-        # Initialize business metadata
+        # Initialize business metadata with dynamic analysis
         business_metadata = {
             "business_domain": "Unknown",
             "data_classification": "Internal",
@@ -1392,138 +1661,164 @@ async def generate_business_metadata(asset: Dict[str, Any]) -> Dict[str, Any]:
             "sensitivity_level": "Low",
             "compliance_requirements": [],
             "business_tags": [],
-            "data_quality_score": 85,
+            "data_quality_score": 75,
             "usage_frequency": "Medium",
             "criticality": "Medium",
             "last_business_review": None,
             "business_glossary_terms": [],
             "related_processes": [],
-            "data_lineage_status": "Available"
+            "data_lineage_status": "Available",
+            "real_time_analysis": {
+                "schema_analysis": {},
+                "pii_detection": {},
+                "data_volume_analysis": {},
+                "usage_patterns": {},
+                "compliance_analysis": {}
+            }
         }
         
-        # Analyze asset name for business context
-        if any(keyword in asset_name for keyword in ['customer', 'client', 'user', 'account']):
-            business_metadata["business_domain"] = "Customer Management"
-            business_metadata["business_tags"].extend(["customer", "relationship-management"])
-            business_metadata["sensitivity_level"] = "High"
-            business_metadata["compliance_requirements"].extend(["GDPR", "CCPA"])
-            
-        elif any(keyword in asset_name for keyword in ['consent', 'privacy', 'gdpr', 'compliance']):
-            business_metadata["business_domain"] = "Privacy & Compliance"
-            business_metadata["business_tags"].extend(["privacy", "compliance", "consent"])
-            business_metadata["sensitivity_level"] = "High"
-            business_metadata["compliance_requirements"].extend(["GDPR", "CCPA", "Privacy Regulations"])
-            business_metadata["criticality"] = "High"
-            
-        elif any(keyword in asset_name for keyword in ['transaction', 'payment', 'financial', 'billing']):
-            business_metadata["business_domain"] = "Financial Services"
-            business_metadata["business_tags"].extend(["financial", "transactions", "payments"])
-            business_metadata["sensitivity_level"] = "High"
-            business_metadata["compliance_requirements"].extend(["PCI-DSS", "SOX", "Financial Regulations"])
-            business_metadata["criticality"] = "High"
-            
-        elif any(keyword in asset_name for keyword in ['product', 'inventory', 'catalog', 'merchandise']):
-            business_metadata["business_domain"] = "Product Management"
-            business_metadata["business_tags"].extend(["products", "inventory", "catalog"])
-            business_metadata["sensitivity_level"] = "Medium"
-            
-        elif any(keyword in asset_name for keyword in ['order', 'sales', 'revenue', 'purchase']):
-            business_metadata["business_domain"] = "Sales & Revenue"
-            business_metadata["business_tags"].extend(["sales", "orders", "revenue"])
-            business_metadata["sensitivity_level"] = "High"
-            business_metadata["criticality"] = "High"
-            
-        elif any(keyword in asset_name for keyword in ['marketing', 'campaign', 'promotion', 'advertisement']):
-            business_metadata["business_domain"] = "Marketing"
-            business_metadata["business_tags"].extend(["marketing", "campaigns", "promotions"])
-            business_metadata["sensitivity_level"] = "Medium"
-            
-        elif any(keyword in asset_name for keyword in ['analytics', 'reporting', 'dashboard', 'metrics']):
-            business_metadata["business_domain"] = "Analytics & Reporting"
-            business_metadata["business_tags"].extend(["analytics", "reporting", "business-intelligence"])
-            business_metadata["sensitivity_level"] = "Medium"
-            business_metadata["usage_frequency"] = "High"
-            
-        elif any(keyword in asset_name for keyword in ['audit', 'log', 'security', 'monitoring']):
-            business_metadata["business_domain"] = "Security & Audit"
-            business_metadata["business_tags"].extend(["security", "audit", "monitoring"])
-            business_metadata["sensitivity_level"] = "High"
-            business_metadata["compliance_requirements"].extend(["Security Standards", "Audit Requirements"])
-            
-        # Analyze schema for additional business context
-        if isinstance(schema, dict) and 'fields' in schema:
-            fields = schema.get('fields', [])
-            field_names = [field.get('name', '').lower() for field in fields]
-            
-            # Check for PII fields
-            pii_fields = []
-            for field_name in field_names:
-                if any(pii_indicator in field_name for pii_indicator in 
-                      ['email', 'phone', 'ssn', 'address', 'name', 'birth', 'id_number']):
-                    pii_fields.append(field_name)
-            
-            if pii_fields:
-                business_metadata["sensitivity_level"] = "High"
-                business_metadata["compliance_requirements"].extend(["GDPR", "CCPA"])
-                business_metadata["business_tags"].append("pii-data")
-                
-            # Check for financial fields
-            financial_fields = []
-            for field_name in field_names:
-                if any(fin_indicator in field_name for fin_indicator in 
-                      ['amount', 'price', 'cost', 'revenue', 'balance', 'payment', 'transaction']):
-                    financial_fields.append(field_name)
-            
-            if financial_fields:
-                business_metadata["business_tags"].append("financial-data")
-                if business_metadata["business_domain"] == "Unknown":
-                    business_metadata["business_domain"] = "Financial Services"
+        # ===== DYNAMIC REAL-TIME ANALYSIS =====
         
-        # Determine data classification based on sensitivity
-        if business_metadata["sensitivity_level"] == "High":
+        # 1. REAL SCHEMA ANALYSIS
+        schema_analysis = await analyze_schema_dynamically(schema, asset_name)
+        business_metadata["real_time_analysis"]["schema_analysis"] = schema_analysis
+        
+        # 2. REAL PII DETECTION
+        pii_analysis = await detect_pii_dynamically(schema, asset_name, metadata)
+        business_metadata["real_time_analysis"]["pii_detection"] = pii_analysis
+        
+        # 3. REAL DATA VOLUME ANALYSIS
+        volume_analysis = await analyze_data_volume_dynamically(size, schema, created_date, modified_date)
+        business_metadata["real_time_analysis"]["data_volume_analysis"] = volume_analysis
+        
+        # 4. REAL USAGE PATTERNS
+        usage_analysis = await analyze_usage_patterns_dynamically(asset_name, last_scanned, modified_date, size)
+        business_metadata["real_time_analysis"]["usage_patterns"] = usage_analysis
+        
+        # 5. REAL COMPLIANCE ANALYSIS
+        compliance_analysis = await analyze_compliance_dynamically(schema, asset_name, pii_analysis)
+        business_metadata["real_time_analysis"]["compliance_analysis"] = compliance_analysis
+        
+        # ===== DYNAMIC BUSINESS DOMAIN DETECTION =====
+        business_domain_score = {}
+        
+        # Analyze asset name patterns
+        domain_keywords = {
+            'Customer Management': ['customer', 'client', 'user', 'account', 'member', 'subscriber'],
+            'Privacy & Compliance': ['consent', 'privacy', 'gdpr', 'compliance', 'opt', 'permission'],
+            'Financial Services': ['transaction', 'payment', 'financial', 'billing', 'invoice', 'money', 'bank', 'credit', 'debit'],
+            'Product Management': ['product', 'inventory', 'catalog', 'merchandise', 'item', 'sku'],
+            'Sales & Revenue': ['order', 'sales', 'revenue', 'purchase', 'deal', 'opportunity'],
+            'Marketing': ['marketing', 'campaign', 'promotion', 'advertisement', 'lead', 'prospect'],
+            'Analytics & Reporting': ['analytics', 'reporting', 'dashboard', 'metrics', 'kpi', 'statistics'],
+            'Security & Audit': ['audit', 'log', 'security', 'monitoring', 'access', 'permission'],
+            'HR & Employee': ['employee', 'hr', 'staff', 'personnel', 'payroll', 'benefits'],
+            'Operations': ['operation', 'process', 'workflow', 'task', 'activity', 'procedure']
+        }
+        
+        for domain, keywords in domain_keywords.items():
+            score = sum(1 for keyword in keywords if keyword in asset_name)
+            if score > 0:
+                business_domain_score[domain] = score
+        
+        # Analyze schema fields for domain indicators
+        if isinstance(schema, dict) and 'fields' in schema:
+            for field in schema.get('fields', []):
+                field_name = field.get('name', '').lower()
+                for domain, keywords in domain_keywords.items():
+                    if any(keyword in field_name for keyword in keywords):
+                        business_domain_score[domain] = business_domain_score.get(domain, 0) + 0.5
+        
+        # Set business domain based on highest score
+        if business_domain_score:
+            business_metadata["business_domain"] = max(business_domain_score, key=business_domain_score.get)
+        else:
+            business_metadata["business_domain"] = "General Business Data"
+        
+        # ===== DYNAMIC METADATA GENERATION BASED ON REAL ANALYSIS =====
+        
+        # Set sensitivity level based on PII analysis
+        if pii_analysis.get('high_risk_pii_count', 0) > 0:
+            business_metadata["sensitivity_level"] = "High"
+        elif pii_analysis.get('medium_risk_pii_count', 0) > 0:
+            business_metadata["sensitivity_level"] = "Medium"
+        else:
+            business_metadata["sensitivity_level"] = "Low"
+        
+        # Set data classification based on sensitivity and compliance
+        if business_metadata["sensitivity_level"] == "High" or compliance_analysis.get('requires_gdpr', False):
             business_metadata["data_classification"] = "Confidential"
         elif business_metadata["sensitivity_level"] == "Medium":
             business_metadata["data_classification"] = "Internal"
         else:
             business_metadata["data_classification"] = "Public"
         
-        # Set retention policy based on domain
-        if business_metadata["business_domain"] in ["Privacy & Compliance", "Security & Audit"]:
-            business_metadata["retention_policy"] = "7 years (Compliance requirement)"
-        elif business_metadata["business_domain"] == "Financial Services":
-            business_metadata["retention_policy"] = "10 years (Financial regulations)"
-        elif business_metadata["business_domain"] == "Customer Management":
-            business_metadata["retention_policy"] = "5 years (Customer lifecycle)"
+        # Set compliance requirements based on real analysis
+        business_metadata["compliance_requirements"] = compliance_analysis.get('required_compliance', [])
+        
+        # Set business tags based on real analysis
+        business_metadata["business_tags"] = list(set(
+            schema_analysis.get('detected_tags', []) + 
+            pii_analysis.get('pii_tags', []) + 
+            compliance_analysis.get('compliance_tags', [])
+        ))
+        
+        # Set data quality score based on real schema analysis
+        business_metadata["data_quality_score"] = schema_analysis.get('quality_score', 75)
+        
+        # Set usage frequency based on real usage patterns
+        business_metadata["usage_frequency"] = usage_analysis.get('frequency_level', 'Medium')
+        
+        # Set criticality based on real analysis
+        criticality_score = 0
+        if business_metadata["sensitivity_level"] == "High":
+            criticality_score += 3
+        elif business_metadata["sensitivity_level"] == "Medium":
+            criticality_score += 2
         else:
-            business_metadata["retention_policy"] = "3 years (Standard business)"
+            criticality_score += 1
+            
+        if volume_analysis.get('is_large_dataset', False):
+            criticality_score += 2
+            
+        if usage_analysis.get('is_highly_used', False):
+            criticality_score += 2
+            
+        if criticality_score >= 5:
+            business_metadata["criticality"] = "High"
+        elif criticality_score >= 3:
+            business_metadata["criticality"] = "Medium"
+        else:
+            business_metadata["criticality"] = "Low"
         
-        # Generate business glossary terms based on domain
-        domain_terms = {
-            "Customer Management": ["Customer ID", "Customer Profile", "Customer Journey", "Customer Lifetime Value"],
-            "Privacy & Compliance": ["Consent Record", "Privacy Policy", "Data Subject", "Right to Erasure"],
-            "Financial Services": ["Transaction ID", "Payment Method", "Account Balance", "Financial Instrument"],
-            "Product Management": ["Product SKU", "Product Category", "Inventory Level", "Product Lifecycle"],
-            "Sales & Revenue": ["Order ID", "Sales Channel", "Revenue Recognition", "Customer Acquisition Cost"],
-            "Marketing": ["Campaign ID", "Marketing Channel", "Conversion Rate", "Customer Acquisition"],
-            "Analytics & Reporting": ["KPI", "Business Metric", "Dashboard", "Data Visualization"],
-            "Security & Audit": ["Access Log", "Security Event", "Audit Trail", "Compliance Check"]
+        # Set retention policy based on domain and compliance
+        domain_retention = {
+            'Privacy & Compliance': "7 years (Compliance requirement)",
+            'Financial Services': "10 years (Financial regulations)",
+            'Customer Management': "5 years (Customer lifecycle)",
+            'Security & Audit': "7 years (Audit requirements)",
+            'HR & Employee': "7 years (Employment law)"
         }
-        
-        business_metadata["business_glossary_terms"] = domain_terms.get(
+        business_metadata["retention_policy"] = domain_retention.get(
             business_metadata["business_domain"], 
-            ["Data Asset", "Business Process", "System Integration"]
+            "3 years (Standard business)"
         )
         
-        # Generate related processes
+        # Generate business glossary terms based on real schema
+        business_metadata["business_glossary_terms"] = schema_analysis.get('business_terms', [])
+        
+        # Generate related processes based on domain
         process_mapping = {
-            "Customer Management": ["Customer Onboarding", "Customer Support", "Customer Retention"],
-            "Privacy & Compliance": ["Consent Management", "Data Privacy Review", "Compliance Monitoring"],
-            "Financial Services": ["Payment Processing", "Financial Reporting", "Risk Management"],
-            "Product Management": ["Product Catalog Management", "Inventory Management", "Product Development"],
-            "Sales & Revenue": ["Order Processing", "Sales Pipeline", "Revenue Recognition"],
-            "Marketing": ["Campaign Management", "Lead Generation", "Marketing Analytics"],
-            "Analytics & Reporting": ["Business Intelligence", "Performance Monitoring", "Strategic Planning"],
-            "Security & Audit": ["Security Monitoring", "Compliance Auditing", "Risk Assessment"]
+            "Customer Management": ["Customer Onboarding", "Customer Support", "Customer Retention", "Customer Analytics"],
+            "Privacy & Compliance": ["Consent Management", "Data Privacy Review", "Compliance Monitoring", "Data Subject Requests"],
+            "Financial Services": ["Payment Processing", "Financial Reporting", "Risk Management", "Transaction Monitoring"],
+            "Product Management": ["Product Catalog Management", "Inventory Management", "Product Development", "Pricing Strategy"],
+            "Sales & Revenue": ["Order Processing", "Sales Pipeline", "Revenue Recognition", "Customer Acquisition"],
+            "Marketing": ["Campaign Management", "Lead Generation", "Marketing Analytics", "Customer Segmentation"],
+            "Analytics & Reporting": ["Business Intelligence", "Performance Monitoring", "Strategic Planning", "Data Visualization"],
+            "Security & Audit": ["Security Monitoring", "Compliance Auditing", "Risk Assessment", "Access Management"],
+            "HR & Employee": ["Employee Onboarding", "Payroll Processing", "Performance Management", "Benefits Administration"],
+            "Operations": ["Process Optimization", "Workflow Management", "Quality Control", "Operational Analytics"]
         }
         
         business_metadata["related_processes"] = process_mapping.get(
@@ -1531,19 +1826,21 @@ async def generate_business_metadata(asset: Dict[str, Any]) -> Dict[str, Any]:
             ["Data Management", "Business Operations", "System Integration"]
         )
         
-        # Calculate data quality score based on schema completeness
-        if isinstance(schema, dict) and 'fields' in schema:
-            fields = schema.get('fields', [])
-            total_fields = len(fields)
-            complete_fields = sum(1 for field in fields if field.get('description', '').strip())
-            
-            if total_fields > 0:
-                completeness_score = (complete_fields / total_fields) * 100
-                business_metadata["data_quality_score"] = min(100, max(60, int(completeness_score)))
+        # Set last business review based on real data
+        if last_scanned:
+            business_metadata["last_business_review"] = last_scanned
+        elif modified_date:
+            business_metadata["last_business_review"] = modified_date
+        else:
+            business_metadata["last_business_review"] = created_date
         
-        # Set last business review date (simulated)
-        from datetime import datetime, timedelta
-        business_metadata["last_business_review"] = (datetime.now() - timedelta(days=30)).isoformat()
+        # Set business purpose based on real analysis
+        if schema_analysis.get('has_pii', False):
+            business_metadata["business_purpose"] = f"Data asset containing personal information for {business_metadata['business_domain'].lower()} operations"
+        elif volume_analysis.get('is_large_dataset', False):
+            business_metadata["business_purpose"] = f"Large-scale data asset supporting {business_metadata['business_domain'].lower()} operations"
+        else:
+            business_metadata["business_purpose"] = f"Data asset supporting {business_metadata['business_domain'].lower()} operations"
         
         return business_metadata
         
